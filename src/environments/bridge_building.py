@@ -88,7 +88,7 @@ class BridgeBuilding():
     def render(self):
         pass
 
-    def get_legal_mask(self):
+    def get_illegal_mask(self):
         pass
 
     def __get_direction_tuple(self, direction_num):
