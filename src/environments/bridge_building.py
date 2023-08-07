@@ -7,6 +7,7 @@ class BridgeBuilding():
     BRIDGE_PENALTY = -50
 
     RIVER_WIDTH = 3
+    N_BOULDERS = RIVER_WIDTH
     RIVER_HEIGHT = 3
     LEFT_BANK_WIDTH = 3
     TOTAL_WIDTH = LEFT_BANK_WIDTH + RIVER_WIDTH + 1
@@ -25,7 +26,7 @@ class BridgeBuilding():
 
     def reset(self):
         self.episode_steps = 0
-        self.boulder_positions = [None for _ in range(self.RIVER_WIDTH)]
+        self.boulder_positions = [None for _ in range(self.N_BOULDERS)]
         self.__generate_initial_state()
         return self.observe()
 
@@ -35,7 +36,11 @@ class BridgeBuilding():
         def collides_with_boulder(target):
             return target in self.boulder_positions
         def get_target_boulder_index(target):
+            for i in range(self.N_BOULDERS):
+                if target == self.boulder_positions[i]:
+                    return i
             return None
+
 
         self.episode_steps += 1
         reward = self.STEP_PENALTY
@@ -62,7 +67,7 @@ class BridgeBuilding():
             if is_on_river(target) and not collides_with_boulder(target):
                 reward += self.DROWN_PENALTY
                 is_terminal = True
-            if target == self.GOAL_POSITION:
+            if target[0] == self.TOTAL_WIDTH - 2: # GOAL POSITION
                 is_terminal = True
         else:
             if self.player_has_boulder:
@@ -71,8 +76,10 @@ class BridgeBuilding():
                     self.active_boulder_index = None
                     self.player_has_boulder = False
             else:
+                print('hello')
                 self.active_boulder_index = get_target_boulder_index(target)
-                if self.active_boulder_index:
+                print(self.active_boulder_index)
+                if self.active_boulder_index is not None:
                     self.boulder_positions[self.active_boulder_index] = (-1, -1)
                     self.player_has_boulder = True
 
@@ -80,7 +87,7 @@ class BridgeBuilding():
 
     def observe(self):
         state = self.player_position
-        for i in range(self.RIVER_WIDTH): 
+        for i in range(self.N_BOULDERS): 
             state += self.boulder_positions[i]
         # state += (1,) if self.player_has_boulder else (0,)
         return state
@@ -121,11 +128,11 @@ class BridgeBuilding():
             self.boulder_positions[i] = (i + self.LEFT_BANK_WIDTH, bridge_y_position)
 
         # generate boulders on the bank
-        for i in range(self.n_boulders_placed, self.RIVER_WIDTH):
+        for i in range(self.n_boulders_placed, self.N_BOULDERS):
             self.boulder_positions[i] = generate_non_overlapping_position(i)
 
         # generate player position
-        self.player_position = generate_non_overlapping_position(self.RIVER_WIDTH)
+        self.player_position = generate_non_overlapping_position(self.N_BOULDERS)
 
         self.player_has_boulder=self.start_with_boulder
         if self.player_has_boulder:
