@@ -2,6 +2,8 @@ import numpy as np
 
 class BridgeBuilding():
 
+    N_ACTIONS=8
+
     STEP_PENALTY = -1
     DROWN_PENALTY = -100
     BRIDGE_PENALTY = -50
@@ -11,6 +13,7 @@ class BridgeBuilding():
     RIVER_HEIGHT = 3
     LEFT_BANK_WIDTH = 3
     TOTAL_WIDTH = LEFT_BANK_WIDTH + RIVER_WIDTH + 1
+    BRIDGE_ENTRANCE = LEFT_BANK_WIDTH - 1, -1
     # RIGHT_BANK_WIDTH = 1
 
     # GOAL_POSITION = (LEFT_BANK_WIDTH+RIVER_WIDTH+RIVER_WIDTH-1, RIVER_HEIGHT//2)
@@ -31,53 +34,40 @@ class BridgeBuilding():
         return self.observe()
 
     def step(self, action):
-        def is_on_river(target):
-            return self.LEFT_BANK_WIDTH <= target[0] < self.LEFT_BANK_WIDTH + self.RIVER_WIDTH
-        def collides_with_boulder(target):
-            return target in self.boulder_positions
-        def get_target_boulder_index(target):
-            for i in range(self.N_BOULDERS):
-                if target == self.boulder_positions[i]:
-                    return i
-            return None
-
 
         self.episode_steps += 1
         reward = self.STEP_PENALTY
         is_terminal = self.episode_steps >= self.max_steps
 
         # parse action
-        is_walk_action = (action & 1) == 0
-        action_direction = action >> 1
-        position_offset = self.__get_direction_tuple(action_direction)
+        is_walk_action = (action & 4) == 0
+        action_direction = action & 3
+        position_offset = self.__get_offset_from_direction(action_direction)
         target = self.player_position[0] + position_offset[0], self.player_position[1] + position_offset[1]
-        is_target_valid = (0 <= target[0] < self.TOTAL_WIDTH) and (0 <= target[1] < self.RIVER_HEIGHT)
 
-        if not is_target_valid:
-            if is_walk_action and target[0] == self.LEFT_BANK_WIDTH - 1 and target[1] == -1:
+        if not self.__is_target_valid(target):
+            return self.observe(), reward, is_terminal
+        if is_walk_action:
+            if target == self.BRIDGE_ENTRANCE:
                 self.player_position = self.TOTAL_WIDTH - 1, 0
                 reward += self.BRIDGE_PENALTY
                 is_terminal = True
                 return self.observe(), reward, is_terminal
-            else:
-                return self.observe(), reward, is_terminal    
-        
-        if is_walk_action:
-            if is_on_river(target) or not collides_with_boulder(target):
+            if self.__is_on_river(target) or not self.__collides_with_boulder(target):
                 self.player_position = target
-            if is_on_river(target) and not collides_with_boulder(target):
+            if self.__is_on_river(target) and not self.__collides_with_boulder(target):
                 reward += self.DROWN_PENALTY
                 is_terminal = True
             if target[0] == self.TOTAL_WIDTH - 1: # GOAL POSITION
                 is_terminal = True
         else:
             if self.player_has_boulder:
-                if not collides_with_boulder(target):
+                if not self.__collides_with_boulder(target):
                     self.boulder_positions[self.active_boulder_index] = target
                     self.active_boulder_index = None
                     self.player_has_boulder = False
             else:
-                self.active_boulder_index = get_target_boulder_index(target)
+                self.active_boulder_index = self.__get_target_boulder_index(target)
                 if self.active_boulder_index is not None:
                     self.boulder_positions[self.active_boulder_index] = (-1, -1)
                     self.player_has_boulder = True
@@ -95,9 +85,40 @@ class BridgeBuilding():
         pass
 
     def get_legal_mask(self):
-        pass
+        mask = np.zeros(self.N_ACTIONS)
+        offsets = [self.__get_offset_from_direction(d) for d in range(4)]
+        for i, offset in enumerate(offsets):
+            target = self.player_position[0] + offset[0], self.player_position[1] + offset[1]
+            if self.__is_target_valid(target):
+                collides_with_boulder = self.__collides_with_boulder(target)
+                if not collides_with_boulder or self.__is_on_river(target):
+                    mask[i] = 1
+                if collides_with_boulder ^ self.player_has_boulder:
+                    mask[i+4] = 1
+        return mask
 
-    def __get_direction_tuple(self, direction_num):
+
+
+
+    def __is_on_river(self, target):
+        # assuming target is valid
+        return self.LEFT_BANK_WIDTH <= target[0] < self.LEFT_BANK_WIDTH + self.RIVER_WIDTH
+    
+    def __collides_with_boulder(self, target):
+        return target in self.boulder_positions
+    
+    def __get_target_boulder_index(self, target):
+        for i in range(self.N_BOULDERS):
+            if target == self.boulder_positions[i]:
+                return i
+        return None
+    
+    def __is_target_valid(self, target):
+        return ((0 <= target[0] < self.TOTAL_WIDTH) and \
+                (0 <= target[1] < self.RIVER_HEIGHT)) or \
+                    target==self.BRIDGE_ENTRANCE
+
+    def __get_offset_from_direction(self, direction_num):
         if direction_num == 0:
             return (0, 1)
         elif direction_num == 1:
