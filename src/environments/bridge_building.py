@@ -77,9 +77,7 @@ class BridgeBuilding():
                     self.active_boulder_index = None
                     self.player_has_boulder = False
             else:
-                print('hello')
                 self.active_boulder_index = get_target_boulder_index(target)
-                print(self.active_boulder_index)
                 if self.active_boulder_index is not None:
                     self.boulder_positions[self.active_boulder_index] = (-1, -1)
                     self.player_has_boulder = True
