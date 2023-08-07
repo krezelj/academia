@@ -44,7 +44,7 @@ class BridgeBuilding():
 
         self.episode_steps += 1
         reward = self.STEP_PENALTY
-        is_terminal = False
+        is_terminal = self.episode_steps >= self.max_steps
 
         # parse action
         is_walk_action = (action & 1) == 0
