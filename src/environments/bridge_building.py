@@ -56,6 +56,7 @@ class BridgeBuilding():
         if not is_target_valid:
             if is_walk_action and target[0] == self.LEFT_BANK_WIDTH - 1 and target[1] == -1:
                 self.player_position = self.TOTAL_WIDTH - 1, 0
+                reward += self.BRIDGE_PENALTY
                 is_terminal = True
                 return self.observe(), reward, is_terminal
             else:
