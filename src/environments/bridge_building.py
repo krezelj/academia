@@ -68,7 +68,7 @@ class BridgeBuilding():
             if is_on_river(target) and not collides_with_boulder(target):
                 reward += self.DROWN_PENALTY
                 is_terminal = True
-            if target[0] == self.TOTAL_WIDTH - 2: # GOAL POSITION
+            if target[0] == self.TOTAL_WIDTH - 1: # GOAL POSITION
                 is_terminal = True
         else:
             if self.player_has_boulder:
