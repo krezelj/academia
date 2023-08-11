@@ -7,6 +7,8 @@ class BridgeBuilding():
     STEP_PENALTY = -1
     DROWN_PENALTY = -100
     BRIDGE_PENALTY = -50
+    BOULDER_LEFT_PENALTY = -20
+    GOAL_REWARD = 100
 
     RIVER_WIDTH = 3
     N_BOULDERS = RIVER_WIDTH
@@ -14,9 +16,9 @@ class BridgeBuilding():
     LEFT_BANK_WIDTH = 3
     TOTAL_WIDTH = LEFT_BANK_WIDTH + RIVER_WIDTH + 1
     BRIDGE_ENTRANCE = LEFT_BANK_WIDTH - 1, -1
-    # RIGHT_BANK_WIDTH = 1
+    CAN_USE_BRIDGE = False
 
-    # GOAL_POSITION = (LEFT_BANK_WIDTH+RIVER_WIDTH+RIVER_WIDTH-1, RIVER_HEIGHT//2)
+    
 
     __slots__ = ['episode_steps', 'max_steps', 'n_boulders_placed', 'start_with_boulder',
                  'player_position', 'player_has_boulder', 'boulder_positions', 'active_boulder_index']
@@ -39,7 +41,6 @@ class BridgeBuilding():
         reward = self.STEP_PENALTY
         is_terminal = self.episode_steps >= self.max_steps
 
-        # parse action
         is_walk_action = (action & 4) == 0
         action_direction = action & 3
         position_offset = self.__get_offset_from_direction(action_direction)
@@ -59,6 +60,9 @@ class BridgeBuilding():
                 reward += self.DROWN_PENALTY
                 is_terminal = True
             if target[0] == self.TOTAL_WIDTH - 1: # GOAL POSITION
+                if self.__is_boulder_left():
+                    reward += self.BOULDER_LEFT_PENALTY
+                reward += self.GOAL_REWARD
                 is_terminal = True
         else:
             if self.player_has_boulder:
@@ -78,7 +82,6 @@ class BridgeBuilding():
         state = self.player_position
         for i in range(self.N_BOULDERS): 
             state += self.boulder_positions[i]
-        # state += (1,) if self.player_has_boulder else (0,)
         return state
     
     def render(self):
@@ -97,8 +100,11 @@ class BridgeBuilding():
                     mask[i+4] = 1
         return mask
 
-
-
+    def __is_boulder_left(self):
+        for position in self.boulder_positions:
+            if position[0] < self.LEFT_BANK_WIDTH:
+                return True
+        return False
 
     def __is_on_river(self, target):
         # assuming target is valid
@@ -116,7 +122,8 @@ class BridgeBuilding():
     def __is_target_valid(self, target):
         return ((0 <= target[0] < self.TOTAL_WIDTH) and \
                 (0 <= target[1] < self.RIVER_HEIGHT)) or \
-                    target==self.BRIDGE_ENTRANCE
+                (self.CAN_USE_BRIDGE and \
+                target==self.BRIDGE_ENTRANCE)
 
     def __get_offset_from_direction(self, direction_num):
         if direction_num == 0:
@@ -156,7 +163,7 @@ class BridgeBuilding():
 
         self.player_has_boulder=self.start_with_boulder
         if self.player_has_boulder:
-            self.active_boulder_index = -1 # last one, use one from the bank
+            self.active_boulder_index = -1
             self.boulder_positions[-1] = -1, -1
 
     def __str__(self):
@@ -172,11 +179,6 @@ class BridgeBuilding():
                 else:
                     str_representation += '.'
             str_representation += '\n'
-        # for x in range(self.LEFT_BANK_WIDTH-1):
-        #     str_representation += ' '
-        # for x in range(self.RIVER_WIDTH + 2):
-        #     str_representation += '='
-        # str_representation += '\n'
         return str_representation
 
 
