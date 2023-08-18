@@ -33,10 +33,8 @@ class QLAgent():
         self.q_table[state][action] =\
             (1-self.alpha)*self.q_table[state][action] +\
             self.alpha*(reward + self.gamma * np.max(self.q_table[new_state]))
-        if is_terminal:
-            self.__update_epsilon()
 
-    def __update_epsilon(self):
+    def decay_epsilon(self):
         self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
     def reset_epsilon(self, epsilon=1):
