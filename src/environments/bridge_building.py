@@ -1,6 +1,6 @@
 import numpy as np
 
-from base_env import BaseEnvironment
+from . import BaseEnvironment
 
 
 class BridgeBuilding(BaseEnvironment):
