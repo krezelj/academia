@@ -1,6 +1,9 @@
 import numpy as np
 
-class BridgeBuilding():
+from base_env import BaseEnvironment
+
+
+class BridgeBuilding(BaseEnvironment):
 
     N_ACTIONS=8
 
