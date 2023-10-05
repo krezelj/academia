@@ -10,5 +10,3 @@ class SarsaAgent(TabularAgent):
         self.q_table[state][action] = \
             (1 - self.alpha) * self.q_table[state][action] + \
             self.alpha * (reward + self.gamma * self.q_table[new_state][policy_next_action])
-        if is_terminal:
-            self._update_epsilon()

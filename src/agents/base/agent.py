@@ -18,7 +18,7 @@ class Agent(ABC):
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         pass
 
-    def _update_epsilon(self):
+    def decay_epsilon(self):
         self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
 
     def reset_epsilon(self, epsilon=1):

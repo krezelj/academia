@@ -11,6 +11,3 @@ class QLAgent(TabularAgent):
         self.q_table[state][action] =\
             (1-self.alpha)*self.q_table[state][action] +\
             self.alpha*(reward + self.gamma * np.max(self.q_table[new_state]))
-
-    def decay_epsilon(self):
-        self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
