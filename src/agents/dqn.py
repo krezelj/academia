@@ -50,4 +50,27 @@ class DQN:
             if not done:
                 next_action = np.argmax(self.network.predict(next_state))
                 target = reward + self.gamma * self.target_network.predict(next_state)[next_action]
-            target 
+            target_function = self.network.predict(state)
+            target_function[0][action] = target
+            self.network.fit(state, target_function, epochs=1, verbose=0)
+        if self.epsilon > self.epsilon_min:
+            self.epsilon = self.epsilon * self.epsilon_decay
+        
+    def train_agent(agent, env, episodes=1000, max_time_steps=500, batch_size=32):
+        for episode in range(episodes):
+            state = env.reset()
+            state = np.reshape(state, [1, agent.state_size])
+            for time_step in range(max_time_steps):
+                action = agent.act(state)
+                next_state, reward, done, _ = env.step(action)
+                reward = reward if not done else -10
+                next_state = np.reshape(next_state, [1, agent.state_size])
+                agent.remember(state, action, reward, next_state, done)
+                state = next_state
+                if done:
+                    print("Episode: {}/{}, Score: {}, Epsilon: {:.2f}".format(
+                        episode, episodes, time_step, agent.epsilon))
+                    break
+            if len(agent.memory) > batch_size:
+                agent.replay(batch_size)
+                agent.update_target_model()
