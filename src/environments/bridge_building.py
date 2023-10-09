@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Hashable
 
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +35,7 @@ class BridgeBuilding(BaseEnvironment):
         self.start_with_boulder = start_with_boulder
         self.reset()
 
-    def reset(self) -> Any:
+    def reset(self) -> Hashable:
         self.episode_steps = 0
         self.boulder_positions = [None for _ in range(self.N_BOULDERS)]
         self.__generate_initial_state()
@@ -84,7 +84,7 @@ class BridgeBuilding(BaseEnvironment):
 
         return self.observe(), reward, is_terminal
 
-    def observe(self) -> Any:
+    def observe(self) -> Hashable:
         state = self.player_position
         for i in range(self.N_BOULDERS): 
             state += self.boulder_positions[i]
