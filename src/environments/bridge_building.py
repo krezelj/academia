@@ -1,4 +1,7 @@
+from typing import Union, Any
+
 import numpy as np
+import numpy.typing as npt
 
 from .base import BaseEnvironment
 
@@ -32,7 +35,7 @@ class BridgeBuilding(BaseEnvironment):
         self.start_with_boulder = start_with_boulder
         self.reset()
 
-    def reset(self):
+    def reset(self) -> Any:
         self.episode_steps = 0
         self.boulder_positions = [None for _ in range(self.N_BOULDERS)]
         self.__generate_initial_state()
@@ -81,7 +84,7 @@ class BridgeBuilding(BaseEnvironment):
 
         return self.observe(), reward, is_terminal
 
-    def observe(self):
+    def observe(self) -> Any:
         state = self.player_position
         for i in range(self.N_BOULDERS): 
             state += self.boulder_positions[i]
@@ -90,7 +93,7 @@ class BridgeBuilding(BaseEnvironment):
     def render(self):
         pass
 
-    def get_legal_mask(self):
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
         mask = np.zeros(self.N_ACTIONS)
         offsets = [self.__get_offset_from_direction(d) for d in range(4)]
         for i, offset in enumerate(offsets):

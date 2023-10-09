@@ -1,14 +1,22 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Union
+
+import numpy as np
+import numpy.typing as npt
 
 
 class BaseEnvironment(ABC):
+    """Base class for all environments used in this package"""
 
     N_ACTIONS: int
+    """Number of available actions"""
+
     STATE_SIZE: int
+    """Dimension of the state representation"""
+
 
     @abstractmethod
-    def step(self, action: Any) -> tuple[Any, float, bool]:
+    def step(self, action: int) -> tuple[Any, float, bool]:
         """Takes the given action in the environment
 
         :param action: an action to take
@@ -17,8 +25,10 @@ class BaseEnvironment(ABC):
         pass
 
     @abstractmethod
-    def reset(self):
-        """Resets the environment"""
+    def reset(self) -> Any:
+        """Resets the environment
+
+        :return: A starting state"""
         pass
 
     @abstractmethod
@@ -31,5 +41,5 @@ class BaseEnvironment(ABC):
         pass
 
     @abstractmethod
-    def get_legal_mask(self):
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
         pass
