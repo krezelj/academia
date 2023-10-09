@@ -5,6 +5,7 @@ from typing import Any
 class BaseEnvironment(ABC):
 
     N_ACTIONS: int
+    STATE_SIZE: int
 
     @abstractmethod
     def step(self, action: Any) -> tuple[Any, float, bool]:
