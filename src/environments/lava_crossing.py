@@ -16,7 +16,7 @@ class LavaCrossing(ScalableEnvironment):
 
     N_ACTIONS = 3
 
-    _difficulty_envid_map = {
+    __difficulty_envid_map = {
         0: 'MiniGrid-LavaCrossingS9N1-v0',
         1: 'MiniGrid-LavaCrossingS9N2-v0',
         2: 'MiniGrid-LavaCrossingS9N3-v0',
@@ -28,7 +28,7 @@ class LavaCrossing(ScalableEnvironment):
         """Difficulty from 0 to 3, where 0 is the easiest and 3 is the hardest"""
         super().__init__(difficulty)
         try:
-            env_id = LavaCrossing._difficulty_envid_map[difficulty]
+            env_id = LavaCrossing.__difficulty_envid_map[difficulty]
         except KeyError:
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 3")
