@@ -1,4 +1,4 @@
-from typing import Hashable, Union, Any
+from typing import Union, Any
 
 import gymnasium
 import numpy as np
@@ -38,18 +38,18 @@ class LavaCrossing(ScalableEnvironment):
         self.reset()
         self.STATE_SIZE = len(self._state)
 
-    def step(self, action: int) -> tuple[Hashable, float, bool]:
+    def step(self, action: int) -> tuple[Any, float, bool]:
         new_state, reward, terminated, _, _ = self.__base_env.step(action)
         self.__state_raw = new_state
         return self.observe(), float(reward), terminated
 
-    def observe(self) -> Hashable:
+    def observe(self) -> Any:
         return self._state
 
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
         return np.array([True for _ in range(self.N_ACTIONS)])
 
-    def reset(self) -> Hashable:
+    def reset(self) -> Any:
         self.__state_raw = self.__base_env.reset()[0]
         return self.observe()
 

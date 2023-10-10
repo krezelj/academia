@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Hashable, Union
+from typing import Any, Union
 
 import numpy.typing as npt
 
@@ -13,7 +13,7 @@ class BaseEnvironment(ABC):
     """A constant denoting the dimension of the state representation"""
 
     @abstractmethod
-    def step(self, action: int) -> tuple[Hashable, float, bool]:
+    def step(self, action: int) -> tuple[Any, float, bool]:
         """Takes the given action in the environment
 
         :param action: an action to take
@@ -22,14 +22,14 @@ class BaseEnvironment(ABC):
         pass
 
     @abstractmethod
-    def reset(self) -> Hashable:
+    def reset(self) -> Any:
         """Resets the environment
 
         :return: A starting state"""
         pass
 
     @abstractmethod
-    def observe(self) -> Hashable:
+    def observe(self) -> Any:
         """:return: A current state"""
         pass
 
