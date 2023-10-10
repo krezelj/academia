@@ -1,21 +1,25 @@
 import numpy as np
+from typing import Union
 
 from src.environments import BaseEnvironment
-from src.agents.base import Agent
+from src.agents import Agent
 
 class Task():
 
     __slots__ = ['env_type', 'env_args', 'env', 
                  'stop_condition', 'evaluation_interval', 
-                 'episode_rewards', 'agent_evaluations']
+                 'episode_rewards', 'agent_evaluations',
+                 'task_name']
 
-    def __init__(self, env_type, env_args : dict, stop_conditions : dict, evaluation_interval : int = 100) -> None:
+    def __init__(self, env_type, env_args : dict, stop_conditions : dict, evaluation_interval : int = 100, task_name : Union[str,None] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
         # TODO assert at least one stop condition is present (i.e. dict not empty)
         self.stop_condition = stop_conditions
         self.evaluation_interval = evaluation_interval
+
+        self.task_name = task_name
 
     def run_task(self, agent : Agent) -> None:
         self.__reset_task()
