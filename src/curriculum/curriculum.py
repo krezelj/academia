@@ -3,6 +3,10 @@ from typing import List
 
 from . import Task
 
+# TODO Add more statistics about agent training process (e.g. time to train)
+# TODO Possibly add ability to form the curriculum as a dynamic directed graph
+# (many parallel dependencies, adding new tasks automatically etc. probably very advanced)
+
 class Curriculum():
 
     __slots__ = ['tasks']

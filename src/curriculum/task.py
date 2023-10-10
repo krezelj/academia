@@ -4,6 +4,9 @@ from typing import Union
 from src.environments import BaseEnvironment
 from src.agents import Agent
 
+# TODO Add docstrings to all methods
+# TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
+
 class Task():
 
     __slots__ = ['env_type', 'env_args', 'env', 
