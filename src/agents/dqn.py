@@ -11,12 +11,15 @@ from collections import deque
 #cuda
 #conv model razem z stackowaniem tych ramek
 
-class StopTrainingOnRewardsTreshold:
-    def __init__(self, threshold: int):
-        self.threshold = threshold
+USE_CUDA = torch.cuda.is_available()
+device = torch.device("cuda" if USE_CUDA else "cpu")
 
-    def should_stop(self, episode_rewards: list, num_of_last_episodes: int):
-        return all(reward > self.threshold for reward in episode_rewards[-num_of_last_episodes:])  
+class StopTrainingOnRewardsTreshold:
+    def __init__(self, threshold: int, num_of_last_episodes: int = 10):
+        self.threshold = threshold
+        self.num_of_last_episodes = num_of_last_episodes
+    def should_stop(self, episode_rewards: list):
+        return all(reward > self.threshold for reward in episode_rewards[-self.num_of_last_episodes:])  
 
 class DQNNetwork(nn.Module):
     def __init__(self, state_size, n_actions, use_convolutions=False):
@@ -46,7 +49,7 @@ class DQNNetwork(nn.Module):
             )
     def forward(self, x):
         #tutaj dla conv zmienic
-        return self.network(x)
+        return self.network(x.to(device))
 
 class DQN(Agent):
 
@@ -71,6 +74,8 @@ class DQN(Agent):
         self.policy_type = policy_type
         self.batch_size = batch_size
         self._build_network_()
+        self.network.to(device)
+        self.target_network.to(device)
         self.best_reward = float("-inf")
 
     def _build_network_(self):
@@ -90,11 +95,12 @@ class DQN(Agent):
             self.memory = self.memory[-self.REPLAY_MEMORY_SIZE:]
 
     def get_action(self, state, legal_mask=None, greedy=False):
-        if np.random.uniform() <= self.epsilon:
-            return np.random.randint(0, self.n_actions)
-        else:
+        if np.random.uniform() > self.epsilon or greedy:
             q_val_act = self.network(torch.Tensor(state))
             return torch.argmax(q_val_act).item()
+        else:
+            return np.random.randint(0, self.n_actions)
+
         
     def update_target(self):
         self.target_network.load_state_dict(self.network.state_dict())
@@ -126,8 +132,8 @@ class DQN(Agent):
             states.append(state)
             targets.append(target_value)
         #To allow faster transformation to tensor is preffered numpy array
-        states = torch.Tensor(np.array(states))
-        targets = torch.stack(targets)
+        states = torch.Tensor(np.array(states)).to(device)
+        targets = torch.stack(targets).to(device)
         return states, targets
     
     def save(self, save_path):
@@ -166,7 +172,7 @@ class DQN(Agent):
                 if self.best_reward < total_reward:
                     self.best_reward = total_reward
                     best_network_params = self.network.state_dict()
-                if episode % save_interval == 8:
+                if episode % save_interval == save_interval//2:
                     torch.save(best_network_params,  
                                path + f"_episode_{episode}" + f"_reward_{self.best_reward}")
             
