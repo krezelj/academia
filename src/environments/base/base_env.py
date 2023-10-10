@@ -9,12 +9,8 @@ class BaseEnvironment(ABC):
 
     N_ACTIONS: int
     """Number of available actions"""
-
-    @property
-    @abstractmethod
-    def state_size(self) -> int:
-        """A constant denoting the dimension of the state representation"""
-        pass
+    STATE_SIZE: int
+    """A constant denoting the dimension of the state representation"""
 
     @abstractmethod
     def step(self, action: int) -> tuple[Hashable, float, bool]:
