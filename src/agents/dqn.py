@@ -5,7 +5,12 @@ from .base import Agent
 from typing import Literal
 import torch.optim as optim
 import torch.nn.functional as F
-
+from collections import deque
+#do zrobienia:
+#zapisywanie i odczyt modeli
+#cuda
+#conv model razem z stackowaniem tych ramek
+#funkcja update
 class DQNNetwork(nn.Module):
     #zastanowic sie nad konwencja
     def __init__(self, state_size, n_actions, use_convolutions=False):
@@ -38,21 +43,27 @@ class DQNNetwork(nn.Module):
         return self.network(x)
 
 class DQN(Agent):
+
+    REPLAY_MEMORY_SIZE = 50000
+    UPDATE_TARGET_FREQ = 10
+
     def __init__(self, state_size: int, 
                  policy_type: Literal['CnnPolicy', 'MlpPolicy'],
                  n_actions: int, gamma: float =1., 
                  epsilon: float =1., epsilon_decay: float =0.99,
-                 min_epsilon: float =0.01, learning_rate: float =0.01
+                 min_epsilon: float =0.01, learning_rate: float =0.01,
+                 batch_size=64
                  ):
         self.state_size = state_size
         self.n_actions = n_actions
-        self.memory = []
+        self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
         self.gamma = gamma
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
         self.learning_rate = learning_rate
         self.policy_type = policy_type
+        self.batch_size = batch_size
         self._build_network_()
 
     def _build_network_(self):
@@ -62,14 +73,14 @@ class DQN(Agent):
         else:
             self.network = DQNNetwork(self.state_size, self.n_actions, use_convolutions=False)
             self.target_network = DQNNetwork(self.state_size, self.n_actions, use_convolutions=False)
-        self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
+        self.optimizer = optim.Adam(self.network.parameters(), lr=self.learning_rate)
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_network.eval()
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
-        if len(self.memory) > 1024:
-            self.memory = self.memory[-1024:]
+        if len(self.memory) > self.REPLAY_MEMORY_SIZE:
+            self.memory = self.memory[-self.REPLAY_MEMORY_SIZE:]
 
     def get_action(self, state, legal_mask=None, greedy=False):
         if np.random.uniform() <= self.epsilon:
@@ -82,11 +93,21 @@ class DQN(Agent):
         self.target_network.load_state_dict(self.network.state_dict())
     
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
-        #pomyslec nad tym
-        return super().update(state, action, reward, new_state, is_terminal)
-    
-    def replay(self, batch_size):
-        batch_indices = np.random.choice(len(self.memory), size=batch_size, replace=False)
+        was_update = False
+        self.remember(state=state, action=action, reward=reward, next_state=new_state, done=is_terminal)
+        if len(self.memory) > self.batch_size:
+            states, targets = self.replay()
+            self.optimizer.zero_grad()
+            q_values = self.network(states)
+            loss = F.mse_loss(q_values, targets)
+            loss.backward()
+            self.optimizer.step()
+            self._update_epsilon()
+            was_update=True
+        return was_update
+
+    def replay(self):
+        batch_indices = np.random.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
         states, targets = [], []
         for state, action, reward, next_state, done in batch:
@@ -97,39 +118,30 @@ class DQN(Agent):
             target_value[action] = target
             states.append(state)
             targets.append(target_value)
-        
-        states = torch.Tensor(states)
+        #Too allow faster transformation to tensor is preffered numpy array
+        states = torch.Tensor(np.array(states))
         targets = torch.stack(targets)
-        self.optimizer.zero_grad()
-        q_values = self.network(states)
-        loss = F.mse_loss(q_values, targets)
-        loss.backward()
-        self.optimizer.step()
-        self._update_epsilon()
+        return states, targets
     
-    def train_agent(self, env, num_episodes, batch_size, update_target_frequency = 100, learn_frequency = 10):
+    def train_agent(self, env, num_episodes):
         step = 0
         n_updates = 0
         for episode in range(num_episodes):
             state, _ = env.reset()
             total_reward = 0
             done = False
-
             while not done:
                 action = self.get_action(state)
                 next_state, reward, done, _, __ = env.step(action)
-                self.remember(state, action, reward, next_state, done)
-                state = next_state
-                total_reward += reward
                 step += 1
-                if len(self.memory) > batch_size and step % learn_frequency == 0:
-                    self.replay(batch_size)
+                total_reward += reward
+                was_update = self.update(state, action, reward, next_state, done)
+                state = next_state
+                if was_update:
                     n_updates += 1
-                if n_updates % update_target_frequency == 0:
+                if n_updates % self.UPDATE_TARGET_FREQ == 0:
                     self.update_target()
-            if episode % 50 == 0:
-                print(f"Episode: {episode + 1}, Total Reward: {total_reward}")
-
-
+            #if episode % 10 == 0:
+            print(f"Episode: {episode + 1}, Total Reward: {total_reward}")
 
         print("Training finished.")
