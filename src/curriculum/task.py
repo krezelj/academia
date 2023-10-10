@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.environments.base_env import BaseEnvironment
+from src.environments import BaseEnvironment
 from src.agents.base import Agent
 
 class Task():
