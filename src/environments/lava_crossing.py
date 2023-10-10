@@ -61,7 +61,7 @@ class LavaCrossing(ScalableEnvironment):
         """
         This property takes the raw state representation (self.__state) returned
         by the base environment and transforms it so that it is compatible
-        with the agent API provided by this package (i.e. is hashable).
+        with the agent API provided by this package.
 
         The raw state representation is a dictionary with three items:
 
