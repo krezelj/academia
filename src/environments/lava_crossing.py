@@ -1,18 +1,20 @@
-from typing import Any, Hashable
+from typing import Hashable, Union, Any
 
 import gymnasium
+import numpy as np
+import numpy.typing as npt
 
 from .base import ScalableEnvironment
 
 
 class LavaCrossing(ScalableEnvironment):
     """
-    An environment where an agent has to go around a patch of lava to get to
-    reach the destination. The higher the difficulty is, the more lava patches there are
+    A grid environment where an agent has to avoid patches of lava in order to
+    reach the destination. The higher the difficulty, the more lava patches are
+    generated on the grid.
     """
 
     N_ACTIONS = 3
-    STATE_SIZE = NotImplemented
 
     _difficulty_envid_map = {
         0: 'MiniGrid-LavaCrossingS9N1-v0',
@@ -32,28 +34,71 @@ class LavaCrossing(ScalableEnvironment):
                    "Difficulty level should be an integer between 0 and 3")
             raise ValueError(msg)
         self.__base_env = gymnasium.make(env_id, render_mode="human")
-        self.__state = NotImplemented
+        self.__state_raw = None  # will be set inside self.reset()
         self.reset()
+        self.STATE_SIZE = len(self._state)
 
-    def step(self, action: int) -> tuple[Any, float, bool]:
+    def step(self, action: int) -> tuple[Hashable, float, bool]:
         new_state, reward, terminated, _, _ = self.__base_env.step(action)
-        self.__state = new_state
+        self.__state_raw = new_state
         return self.observe(), float(reward), terminated
 
-    def observe(self) -> Any:
-        return self._encode_state(self.__state)
+    def observe(self) -> Hashable:
+        return self._state
 
-    def get_legal_mask(self):
-        pass
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+        return np.array([True for _ in range(self.N_ACTIONS)])
 
-    def reset(self) -> Any:
-        init_state = self.__base_env.reset()[0]
-        return self._encode_state(init_state)
+    def reset(self) -> Hashable:
+        self.__state_raw = self.__base_env.reset()[0]
+        return self.observe()
 
     def render(self):
         self.__base_env.render()
 
-    @staticmethod
-    def _encode_state(state) -> tuple:
-        # TODO
-        return str(state)
+    @property
+    def _state(self) -> tuple[int, ...]:
+        """
+        This property takes the raw state representation (self.__state) returned
+        by the base environment and transforms it so that it is compatible
+        with the agent API provided by this package (i.e. is hashable).
+
+        The raw state representation is a dictionary with three items:
+
+        - "image": a 2D array which encodes information on each cell
+          in the agent's field of view,
+        - "direction": an integer indicating the direction which agent is
+          facing,
+        - "mission": a static string that denotes the objective of the agent.
+
+        Every cell on the grid is represented by a three-element array which values
+        indicate respectively:
+
+        - an integer encoding the object type (unseen, empty, lava, wall, etc.),
+        - an integer encoding cell colour,
+        - an integer encoding the door state (open, closed, locked).
+
+        Details on each of these encodings can be found here:
+        https://github.com/Farama-Foundation/Minigrid/blob/master/minigrid/core/constants.py
+
+        The colour is not relevant to the agent and the door state is not used
+        in this particular environment.
+
+        To obtain the final result, object types of each cell and the direction
+        the agent is facing are used.
+
+        **Note:** the position of the agent is not marked on the 2D "image"
+        array that comes in the input state. Agent's cell might be in one of
+        four positions in this array - in the center of any of the array's
+        sides. This position could be different in every generated environment,
+        but once the environment is initialised this position will not change
+        no matter the direction the agent is facing or its location on the grid.
+
+        :return: a tuple of object types of every grid cell concatenated with
+                 the direction which the agent is facing.
+        """
+        cells_obj_types: np.ndarray = self.__state_raw['image'][:, :, 0]
+        cells_flattened = cells_obj_types.flatten()
+        direction = self.__state_raw['direction']
+        return *cells_flattened, direction
+
