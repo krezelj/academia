@@ -6,11 +6,11 @@ from typing import Literal
 import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque
+import os 
 #do zrobienia:
-#zapisywanie i odczyt modeli
 #cuda
 #conv model razem z stackowaniem tych ramek
-#funkcja update
+#kryterium stopu
 class DQNNetwork(nn.Module):
     #zastanowic sie nad konwencja
     def __init__(self, state_size, n_actions, use_convolutions=False):
@@ -52,7 +52,7 @@ class DQN(Agent):
                  n_actions: int, gamma: float =1., 
                  epsilon: float =1., epsilon_decay: float =0.99,
                  min_epsilon: float =0.01, learning_rate: float =0.01,
-                 batch_size=64
+                 batch_size: int =64
                  ):
         self.state_size = state_size
         self.n_actions = n_actions
@@ -65,6 +65,7 @@ class DQN(Agent):
         self.policy_type = policy_type
         self.batch_size = batch_size
         self._build_network_()
+        self.best_reward = float("-inf")
 
     def _build_network_(self):
         if self.policy_type == "CnnPolicy":
@@ -123,17 +124,24 @@ class DQN(Agent):
         targets = torch.stack(targets)
         return states, targets
     
-    def train_agent(self, env, num_episodes):
-        step = 0
+    def save(self, save_path):
+        torch.save(self.network.state_dict(), save_path)
+
+    def load(self, model_path):
+        self.network.load_state_dict(torch.load(model_path))
+        self.network.eval()
+
+    def train_agent(self, env, num_episodes: int, save_interval=20, path=None):
         n_updates = 0
         for episode in range(num_episodes):
+            n_steps = 0
             state, _ = env.reset()
             total_reward = 0
             done = False
             while not done:
                 action = self.get_action(state)
                 next_state, reward, done, _, __ = env.step(action)
-                step += 1
+                n_steps += 1
                 total_reward += reward
                 was_update = self.update(state, action, reward, next_state, done)
                 state = next_state
@@ -142,6 +150,12 @@ class DQN(Agent):
                 if n_updates % self.UPDATE_TARGET_FREQ == 0:
                     self.update_target()
             #if episode % 10 == 0:
-            print(f"Episode: {episode + 1}, Total Reward: {total_reward}")
-
+            print(f"Episode: {episode + 1}, Total Reward: {total_reward}, total_steps: {n_steps}")
+            if path is not None:
+                if self.best_reward < total_reward:
+                    self.best_reward = total_reward
+                    best_network_params = self.network.state_dict()
+                if episode % save_interval == 8:
+                    torch.save(best_network_params,  
+                               path + f"_episode_{episode}" + f"_reward_{self.best_reward}")
         print("Training finished.")
