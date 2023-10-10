@@ -6,13 +6,19 @@ from typing import Literal
 import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque
-import os 
+
 #do zrobienia:
 #cuda
 #conv model razem z stackowaniem tych ramek
-#kryterium stopu
+
+class StopTrainingOnRewardsTreshold:
+    def __init__(self, threshold: int):
+        self.threshold = threshold
+
+    def should_stop(self, episode_rewards: list, num_of_last_episodes: int):
+        return all(reward > self.threshold for reward in episode_rewards[-num_of_last_episodes:])  
+
 class DQNNetwork(nn.Module):
-    #zastanowic sie nad konwencja
     def __init__(self, state_size, n_actions, use_convolutions=False):
         super(DQNNetwork, self).__init__()
         self.use_convolutions = use_convolutions
@@ -119,7 +125,7 @@ class DQN(Agent):
             target_value[action] = target
             states.append(state)
             targets.append(target_value)
-        #Too allow faster transformation to tensor is preffered numpy array
+        #To allow faster transformation to tensor is preffered numpy array
         states = torch.Tensor(np.array(states))
         targets = torch.stack(targets)
         return states, targets
@@ -131,8 +137,11 @@ class DQN(Agent):
         self.network.load_state_dict(torch.load(model_path))
         self.network.eval()
 
-    def train_agent(self, env, num_episodes: int, save_interval=20, path=None):
+    def train_agent(self, env, num_episodes: int, save_interval=20, path: str =None, stop_criterion=None, print_after: int = 1):
+        if stop_criterion is None:
+            stop_criterion = StopTrainingOnRewardsTreshold(threshold=500)
         n_updates = 0
+        episode_rewards = []
         for episode in range(num_episodes):
             n_steps = 0
             state, _ = env.reset()
@@ -149,8 +158,10 @@ class DQN(Agent):
                     n_updates += 1
                 if n_updates % self.UPDATE_TARGET_FREQ == 0:
                     self.update_target()
-            #if episode % 10 == 0:
-            print(f"Episode: {episode + 1}, Total Reward: {total_reward}, total_steps: {n_steps}")
+            if episode % print_after == 0:
+                print(f"Episode: {episode + 1}, Total Reward: {total_reward}, total_steps: {n_steps}")
+            episode_rewards.append(total_reward)
+
             if path is not None:
                 if self.best_reward < total_reward:
                     self.best_reward = total_reward
@@ -158,4 +169,7 @@ class DQN(Agent):
                 if episode % save_interval == 8:
                     torch.save(best_network_params,  
                                path + f"_episode_{episode}" + f"_reward_{self.best_reward}")
+            
+            if stop_criterion.should_stop(episode_rewards):
+                break
         print("Training finished.")
