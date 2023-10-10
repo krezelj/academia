@@ -7,10 +7,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque
 
-#do zrobienia:
-#cuda
-#conv model razem z stackowaniem tych ramek
-
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
 
@@ -20,7 +16,7 @@ class StopTrainingOnRewardsTreshold:
         self.num_of_last_episodes = num_of_last_episodes
     def should_stop(self, episode_rewards: list):
         return all(reward > self.threshold for reward in episode_rewards[-self.num_of_last_episodes:])  
-
+  
 class DQNNetwork(nn.Module):
     def __init__(self, state_size, n_actions, use_convolutions=False):
         super(DQNNetwork, self).__init__()
@@ -32,7 +28,6 @@ class DQNNetwork(nn.Module):
                 nn.Linear(120, 84),
                 nn.ReLU(),
                 nn.Linear(84, n_actions),
-                #zastanowić się jak w przypadku przestrzeni akcji która również jest ciągła
             )
         else:
             self.network = nn.Sequential(
@@ -48,7 +43,6 @@ class DQNNetwork(nn.Module):
                 nn.Linear(512, n_actions),
             )
     def forward(self, x):
-        #tutaj dla conv zmienic
         return self.network(x.to(device))
 
 class DQN(Agent):
@@ -77,6 +71,7 @@ class DQN(Agent):
         self.network.to(device)
         self.target_network.to(device)
         self.best_reward = float("-inf")
+        self.update_counter = 0
 
     def _build_network_(self):
         if self.policy_type == "CnnPolicy":
@@ -95,18 +90,20 @@ class DQN(Agent):
             self.memory = self.memory[-self.REPLAY_MEMORY_SIZE:]
 
     def get_action(self, state, legal_mask=None, greedy=False):
+        q_val_act = self.network(torch.Tensor(state))
+        if legal_mask is not None:
+            q_val_act = (q_val_act - torch.min(q_val_act)) * torch.Tensor(legal_mask) + torch.Tensor(legal_mask)
         if np.random.uniform() > self.epsilon or greedy:
-            q_val_act = self.network(torch.Tensor(state))
             return torch.argmax(q_val_act).item()
+        elif legal_mask is not None:
+            return np.random.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
         else:
             return np.random.randint(0, self.n_actions)
-
         
     def update_target(self):
         self.target_network.load_state_dict(self.network.state_dict())
     
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
-        was_update = False
         self.remember(state=state, action=action, reward=reward, next_state=new_state, done=is_terminal)
         if len(self.memory) > self.batch_size:
             states, targets = self.replay()
@@ -115,9 +112,12 @@ class DQN(Agent):
             loss = F.mse_loss(q_values, targets)
             loss.backward()
             self.optimizer.step()
-            self._update_epsilon()
-            was_update=True
-        return was_update
+            self.epsilon_decay()
+            self.update_counter += 1
+        if self.update_counter > self.UPDATE_TARGET_FREQ:
+            self.update_target()
+            self.update_counter = 0
+
 
     def replay(self):
         batch_indices = np.random.choice(len(self.memory), size=self.batch_size, replace=False)
@@ -143,10 +143,10 @@ class DQN(Agent):
         self.network.load_state_dict(torch.load(model_path))
         self.network.eval()
 
-    def train_agent(self, env, num_episodes: int, save_interval=20, path: str =None, stop_criterion=None, print_after: int = 1):
-        if stop_criterion is None:
-            stop_criterion = StopTrainingOnRewardsTreshold(threshold=500)
-        n_updates = 0
+    def train_agent(self, env, num_episodes: int, save_interval=20, path: str =None, stop_training_criterion=None, print_after: int = 1):
+        if stop_training_criterion is None:
+            stop_training_criterion = StopTrainingOnRewardsTreshold(threshold=500)
+
         episode_rewards = []
         for episode in range(num_episodes):
             n_steps = 0
@@ -155,15 +155,16 @@ class DQN(Agent):
             done = False
             while not done:
                 action = self.get_action(state)
-                next_state, reward, done, _, __ = env.step(action)
+                next_state, reward, terminated, truncated, info = env.step(action) 
                 n_steps += 1
                 total_reward += reward
-                was_update = self.update(state, action, reward, next_state, done)
+
+                if terminated or truncated:
+                    done = True
+
+                self.update(state, action, reward, next_state, done)
                 state = next_state
-                if was_update:
-                    n_updates += 1
-                if n_updates % self.UPDATE_TARGET_FREQ == 0:
-                    self.update_target()
+
             if episode % print_after == 0:
                 print(f"Episode: {episode + 1}, Total Reward: {total_reward}, total_steps: {n_steps}")
             episode_rewards.append(total_reward)
@@ -176,6 +177,8 @@ class DQN(Agent):
                     torch.save(best_network_params,  
                                path + f"_episode_{episode}" + f"_reward_{self.best_reward}")
             
-            if stop_criterion.should_stop(episode_rewards):
+            if stop_training_criterion.should_stop(episode_rewards):
                 break
         print("Training finished.")
+        torch.save(best_network_params,  
+                               path + f"best_network_after_training" + f"_reward_{self.best_reward}")
