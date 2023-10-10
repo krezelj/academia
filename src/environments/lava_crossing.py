@@ -36,7 +36,7 @@ class LavaCrossing(ScalableEnvironment):
         self.__base_env = gymnasium.make(env_id, render_mode="human")
         self.__state_raw = None  # will be set inside self.reset()
         self.reset()
-        self.STATE_SIZE = len(self._state)
+        self.STATE_SIZE = len(self.__state)
 
     def step(self, action: int) -> tuple[Any, float, bool]:
         new_state, reward, terminated, _, _ = self.__base_env.step(action)
@@ -44,10 +44,10 @@ class LavaCrossing(ScalableEnvironment):
         return self.observe(), float(reward), terminated
 
     def observe(self) -> Any:
-        return self._state
+        return self.__state
 
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        return np.array([True for _ in range(self.N_ACTIONS)])
+        return np.array([1 for _ in range(self.N_ACTIONS)])
 
     def reset(self) -> Any:
         self.__state_raw = self.__base_env.reset()[0]
@@ -57,7 +57,7 @@ class LavaCrossing(ScalableEnvironment):
         self.__base_env.render()
 
     @property
-    def _state(self) -> tuple[int, ...]:
+    def __state(self) -> tuple[int, ...]:
         """
         This property takes the raw state representation (self.__state) returned
         by the base environment and transforms it so that it is compatible
