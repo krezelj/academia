@@ -20,4 +20,4 @@ class Curriculum():
             if verbose > 0:
                 print(f"finished after {len(task.episode_rewards)} episodes.")
         if verbose > 0:
-            print(f"Curriculum finished after {total_episodes} episodes")
+            print(f"Curriculum finished after {total_episodes} episodes.")
