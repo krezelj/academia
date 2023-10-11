@@ -1,7 +1,7 @@
-from .base_env import BaseEnvironment
 from .bridge_building import BridgeBuilding
+from .lava_crossing import LavaCrossing
 
 __all__ = [
-    'BaseEnvironment',
     'BridgeBuilding',
+    'LavaCrossing',
 ]
