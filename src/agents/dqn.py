@@ -17,6 +17,7 @@ class DQNAgent(Agent):
     UPDATE_TARGET_FREQ = 10
 
     def __init__(self, nn_architecture: Type[nn.Module],
+                 n_actions: int,
                  gamma: float =0.99, epsilon: float =1.,
                  epsilon_decay: float =0.99,
                  min_epsilon: float =0.01,
@@ -28,6 +29,7 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.update_counter = 0
         self.nn_architecture = nn_architecture
+        self.n_actions = n_actions
         self.__build_network_()
 
     def __build_network_(self):
