@@ -4,17 +4,18 @@ from typing import Optional, Type
 from academia.environments.base import BaseEnvironment
 from academia.agents.base import Agent
 
+
 # TODO Add docstrings to all methods
 # TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
 
 class Task:
-
     __slots__ = ['env_type', 'env_args', 'env',
                  'stop_condition', 'evaluation_interval',
                  'episode_rewards', 'agent_evaluations',
                  'task_name']
 
-    def __init__(self, env_type : Type[BaseEnvironment], env_args : dict, stop_conditions : dict, evaluation_interval : int = 100, task_name : Optional[str] = None) -> None:
+    def __init__(self, env_type: Type[BaseEnvironment], env_args: dict, stop_conditions: dict,
+                 evaluation_interval: int = 100, task_name: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -24,7 +25,7 @@ class Task:
 
         self.task_name = task_name
 
-    def run_task(self, agent : Agent) -> None:
+    def run_task(self, agent: Agent) -> None:
         self.__reset_task()
 
         episode = 0
@@ -38,12 +39,13 @@ class Task:
                 agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
                 np.append(self.agent_evaluations, agent_evaluation)
 
-    def __run_episode(self, agent : Agent, evaluation_mode : bool = False) -> float:
+    def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> float:
         episode_reward = 0
         state = self.env.reset()
         done = False
         while not done:
-            action = agent.get_action(state, legal_mask=self.env.get_legal_mask(), greedy=evaluation_mode)
+            action = agent.get_action(state, legal_mask=self.env.get_legal_mask(),
+                                      greedy=evaluation_mode)
             new_state, reward, done = self.env.step(action)
 
             if not evaluation_mode:
@@ -64,7 +66,6 @@ class Task:
             return self.stop_condition['predicate'](self.episode_rewards, self.agent_evaluations)
 
     def __reset_task(self) -> None:
-        self.env : BaseEnvironment = self.environment_type(**self.env_args)
+        self.env: BaseEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
-
