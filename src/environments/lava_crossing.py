@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, Optional
 
 import gymnasium
 import numpy as np
@@ -24,8 +24,12 @@ class LavaCrossing(ScalableEnvironment):
     }
     """A dictionary that maps difficulty levels to environment ids"""
 
-    def __init__(self, difficulty: int):
-        """Difficulty from 0 to 3, where 0 is the easiest and 3 is the hardest"""
+    def __init__(self, difficulty: int, render_mode: Optional[str] = None):
+        """
+        :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
+                            and 3 is the hardest
+        :param render_mode: render_mode value passed to gymnasium.make
+        """
         super().__init__(difficulty)
         try:
             env_id = LavaCrossing.__difficulty_envid_map[difficulty]
@@ -33,7 +37,7 @@ class LavaCrossing(ScalableEnvironment):
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 3")
             raise ValueError(msg)
-        self.__base_env = gymnasium.make(env_id, render_mode="human")
+        self.__base_env = gymnasium.make(env_id, render_mode=render_mode)
         self.__state_raw = None  # will be set inside self.reset()
         self.reset()
         self.STATE_SIZE = len(self.__state)
