@@ -4,13 +4,21 @@ from typing import Any, Union
 import numpy.typing as npt
 
 
-class BaseEnvironment(ABC):
-    """Base class for all environments used in this package"""
+class ScalableEnvironment(ABC):
+    """Base class for all scalable environments used in this package"""
 
     N_ACTIONS: int
     """Number of available actions"""
     STATE_SIZE: int
     """A constant denoting the dimension of the state representation"""
+
+    @abstractmethod
+    def __init__(self, difficulty: int):
+        """
+        :param difficulty: Difficulty level. Higher values indicate more
+                           difficult environments
+        """
+        self.difficulty = difficulty
 
     @abstractmethod
     def step(self, action: int) -> tuple[Any, float, bool]:
