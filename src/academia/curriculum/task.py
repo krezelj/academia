@@ -1,16 +1,16 @@
 import numpy as np
 from typing import Optional, Type
 
-from src.environments.base import BaseEnvironment
-from src.agents.base import Agent
+from academia.environments.base import BaseEnvironment
+from academia.agents.base import Agent
 
 # TODO Add docstrings to all methods
 # TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
 
 class Task:
 
-    __slots__ = ['env_type', 'env_args', 'env', 
-                 'stop_condition', 'evaluation_interval', 
+    __slots__ = ['env_type', 'env_args', 'env',
+                 'stop_condition', 'evaluation_interval',
                  'episode_rewards', 'agent_evaluations',
                  'task_name']
 
@@ -68,4 +68,3 @@ class Task:
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
 
-    
