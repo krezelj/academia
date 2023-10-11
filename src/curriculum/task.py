@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional, Type
 
-from src.environments import BaseEnvironment
+from src.environments.base import BaseEnvironment
 from src.agents.base import Agent
 
 # TODO Add docstrings to all methods
