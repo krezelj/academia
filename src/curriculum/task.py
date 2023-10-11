@@ -1,20 +1,20 @@
 import numpy as np
-from typing import Union
+from typing import Optional, Type
 
 from src.environments import BaseEnvironment
-from src.agents import Agent
+from src.agents.base import Agent
 
 # TODO Add docstrings to all methods
 # TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
 
-class Task():
+class Task:
 
     __slots__ = ['env_type', 'env_args', 'env', 
                  'stop_condition', 'evaluation_interval', 
                  'episode_rewards', 'agent_evaluations',
                  'task_name']
 
-    def __init__(self, env_type, env_args : dict, stop_conditions : dict, evaluation_interval : int = 100, task_name : Union[str,None] = None) -> None:
+    def __init__(self, env_type : Type[BaseEnvironment], env_args : dict, stop_conditions : dict, evaluation_interval : int = 100, task_name : Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -38,7 +38,7 @@ class Task():
                 agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
                 np.append(self.agent_evaluations, agent_evaluation)
 
-    def __run_episode(self, agent : Agent, evaluation_mode : bool = False) -> None:
+    def __run_episode(self, agent : Agent, evaluation_mode : bool = False) -> float:
         episode_reward = 0
         state = self.env.reset()
         done = False

@@ -1,17 +1,15 @@
 import numpy as np
-from typing import List
-
 from . import Task
 
 # TODO Add more statistics about agent training process (e.g. time to train)
 # TODO Possibly add ability to form the curriculum as a dynamic directed graph
 # (many parallel dependencies, adding new tasks automatically etc. probably very advanced)
 
-class Curriculum():
+class Curriculum:
 
     __slots__ = ['tasks']
 
-    def __init__(self, tasks : List[Task]) -> None:
+    def __init__(self, tasks : list[Task]) -> None:
         self.tasks = tasks
 
     def run_curriculum(self, agent, verbose=0):
