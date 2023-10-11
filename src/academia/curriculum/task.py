@@ -1,7 +1,7 @@
 import numpy as np
 from typing import Optional, Type
 
-from academia.environments.base import BaseEnvironment
+from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 
 
@@ -14,7 +14,7 @@ class Task:
                  'episode_rewards', 'agent_evaluations',
                  'task_name']
 
-    def __init__(self, env_type: Type[BaseEnvironment], env_args: dict, stop_conditions: dict,
+    def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, task_name: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
@@ -66,6 +66,6 @@ class Task:
             return self.stop_condition['predicate'](self.episode_rewards, self.agent_evaluations)
 
     def __reset_task(self) -> None:
-        self.env: BaseEnvironment = self.env_type(**self.env_args)
+        self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])

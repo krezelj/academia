@@ -3,12 +3,11 @@ from typing import Union, Any
 import numpy as np
 import numpy.typing as npt
 
-from .base import BaseEnvironment
+from .base import ScalableEnvironment
 
 
-class BridgeBuilding(BaseEnvironment):
-
-    N_ACTIONS=8
+class BridgeBuilding(ScalableEnvironment):
+    N_ACTIONS = 8
 
     STEP_PENALTY = -1
     DROWN_PENALTY = -100
@@ -24,10 +23,9 @@ class BridgeBuilding(BaseEnvironment):
     BRIDGE_ENTRANCE = LEFT_BANK_WIDTH - 1, -1
     CAN_USE_BRIDGE = False
 
-    
-
     __slots__ = ['episode_steps', 'max_steps', 'n_boulders_placed', 'start_with_boulder',
-                 'player_position', 'player_has_boulder', 'boulder_positions', 'active_boulder_index']
+                 'player_position', 'player_has_boulder', 'boulder_positions',
+                 'active_boulder_index']
 
     def __init__(self, max_steps=100, n_boulders_placed=0, start_with_boulder=False) -> None:
         self.max_steps = max_steps
@@ -50,7 +48,8 @@ class BridgeBuilding(BaseEnvironment):
         is_walk_action = (action & 4) == 0
         action_direction = action & 3
         position_offset = self.__get_offset_from_direction(action_direction)
-        target = self.player_position[0] + position_offset[0], self.player_position[1] + position_offset[1]
+        target = self.player_position[0] + position_offset[0], self.player_position[1] + \
+                 position_offset[1]
 
         if not self.__is_target_valid(target):
             return self.observe(), reward, is_terminal
@@ -65,7 +64,7 @@ class BridgeBuilding(BaseEnvironment):
             if self.__is_on_river(target) and not self.__collides_with_boulder(target):
                 reward += self.DROWN_PENALTY
                 is_terminal = True
-            if target[0] == self.TOTAL_WIDTH - 1: # GOAL POSITION
+            if target[0] == self.TOTAL_WIDTH - 1:  # GOAL POSITION
                 if self.__is_boulder_left():
                     reward += self.BOULDER_LEFT_PENALTY
                 reward += self.GOAL_REWARD
@@ -86,10 +85,10 @@ class BridgeBuilding(BaseEnvironment):
 
     def observe(self) -> Any:
         state = self.player_position
-        for i in range(self.N_BOULDERS): 
+        for i in range(self.N_BOULDERS):
             state += self.boulder_positions[i]
         return state
-    
+
     def render(self):
         pass
 
@@ -103,7 +102,7 @@ class BridgeBuilding(BaseEnvironment):
                 if not collides_with_boulder or self.__is_on_river(target):
                     mask[i] = 1
                 if collides_with_boulder ^ self.player_has_boulder:
-                    mask[i+4] = 1
+                    mask[i + 4] = 1
         return mask
 
     def __is_boulder_left(self):
@@ -115,21 +114,21 @@ class BridgeBuilding(BaseEnvironment):
     def __is_on_river(self, target):
         # assuming target is valid
         return self.LEFT_BANK_WIDTH <= target[0] < self.LEFT_BANK_WIDTH + self.RIVER_WIDTH
-    
+
     def __collides_with_boulder(self, target):
         return target in self.boulder_positions
-    
+
     def __get_target_boulder_index(self, target):
         for i in range(self.N_BOULDERS):
             if target == self.boulder_positions[i]:
                 return i
         return None
-    
+
     def __is_target_valid(self, target):
         return ((0 <= target[0] < self.TOTAL_WIDTH) and \
                 (0 <= target[1] < self.RIVER_HEIGHT)) or \
-                (self.CAN_USE_BRIDGE and \
-                target==self.BRIDGE_ENTRANCE)
+            (self.CAN_USE_BRIDGE and \
+             target == self.BRIDGE_ENTRANCE)
 
     def __get_offset_from_direction(self, direction_num):
         if direction_num == 0:
@@ -150,7 +149,8 @@ class BridgeBuilding(BaseEnvironment):
                 x_position = np.random.randint(0, self.LEFT_BANK_WIDTH)
                 y_position = np.random.randint(0, self.RIVER_HEIGHT)
                 for j in range(self.n_boulders_placed, end_index):
-                    if self.boulder_positions[j][0] == x_position and self.boulder_positions[j][1] == y_position:
+                    if self.boulder_positions[j][0] == x_position and self.boulder_positions[j][
+                        1] == y_position:
                         break
                 else:
                     return x_position, y_position
@@ -167,7 +167,7 @@ class BridgeBuilding(BaseEnvironment):
         # generate player position
         self.player_position = generate_non_overlapping_position(self.N_BOULDERS)
 
-        self.player_has_boulder=self.start_with_boulder
+        self.player_has_boulder = self.start_with_boulder
         if self.player_has_boulder:
             self.active_boulder_index = -1
             self.boulder_positions[-1] = -1, -1
@@ -188,10 +188,10 @@ class BridgeBuilding(BaseEnvironment):
         return str_representation
 
 
-
 def main():
     bb = BridgeBuilding(n_boulders_placed=2)
     print(bb)
+
 
 if __name__ == '__main__':
     main()
