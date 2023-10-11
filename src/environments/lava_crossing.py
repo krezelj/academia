@@ -43,9 +43,10 @@ class LavaCrossing(ScalableEnvironment):
         self.STATE_SIZE = len(self.__state)
 
     def step(self, action: int) -> tuple[Any, float, bool]:
-        new_state, reward, terminated, _, _ = self.__base_env.step(action)
+        new_state, reward, terminated, truncated, _ = self.__base_env.step(action)
         self.__state_raw = new_state
-        return self.observe(), float(reward), terminated
+        is_episode_end = terminated or truncated
+        return self.observe(), float(reward), is_episode_end
 
     def observe(self) -> Any:
         return self.__state
