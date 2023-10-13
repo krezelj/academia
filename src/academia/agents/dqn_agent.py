@@ -98,13 +98,12 @@ class DQNAgent(Agent):
             - `batch_size (int)`: Size of the mini-batch used for training the DQN (default: 64).
 
         """
-        super(DQNAgent, self).__init__(epsilon, min_epsilon, epsilon_decay)
+        super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
+                                       n_actions=n_actions, gamma=gamma)
         self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
-        self.gamma = gamma
         self.batch_size = batch_size
         self.update_counter = 0
         self.nn_architecture = nn_architecture
-        self.n_actions = n_actions
         self.__build_network_()
 
     def __build_network_(self):

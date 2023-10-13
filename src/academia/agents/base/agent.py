@@ -5,10 +5,14 @@ import numpy as np
 
 class Agent(ABC):
 
-    def __init__(self, epsilon=1, epsilon_decay=0.999, min_epsilon=0.01):
+    def __init__(self, n_actions: int, epsilon: float =1., 
+                 epsilon_decay: float =0.999, min_epsilon: float =0.01,
+                 gamma: float =0.99):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
+        self.n_actions = n_actions
+        self.gamma = gamma
 
     @abstractmethod
     def get_action(self, state, legal_mask=None, greedy=False):
