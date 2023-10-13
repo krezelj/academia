@@ -12,10 +12,9 @@ class TabularAgent(Agent, ABC):
 
     def __init__(self, n_actions, alpha=0.1, gamma=0.99, epsilon=1, epsilon_decay=0.999,
                  min_epsilon=0.01) -> None:
-        super().__init__(epsilon, epsilon_decay, min_epsilon)
-        self.n_actions = n_actions
+        super().__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
+                         n_actions=n_actions, gamma=gamma)
         self.alpha = alpha
-        self.gamma = gamma
         self.q_table = defaultdict(lambda: np.zeros(n_actions))
 
     def get_action(self, state, legal_mask=None, greedy=False):
