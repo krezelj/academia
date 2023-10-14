@@ -21,6 +21,14 @@ class Agent(ABC):
     @abstractmethod
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         pass
+    
+    @abstractmethod
+    def save(self, path: str):
+        pass
+    
+    @abstractmethod
+    def load(self, path: str):
+        pass
 
     def decay_epsilon(self):
         self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
