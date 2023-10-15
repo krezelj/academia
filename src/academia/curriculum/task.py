@@ -79,28 +79,32 @@ class Task(SavableLoadable):
     def load(cls, path: str) -> 'Task':
         with open(path, 'r') as file:
             task_data: dict = yaml.safe_load(file)
+        return cls.from_dict(task_data)
+
+    def save(self, path: str) -> None:
+        task_data = self.to_dict()
+        # add file extension
+        if not path.endswith('.yaml') and not path.endswith('.task'):
+            path += '.task.yaml'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as file:
+            yaml.dump(task_data, file)
+
+    @classmethod
+    def from_dict(cls, task_data: dict) -> 'Task':
         env_type = cls.get_type(task_data['env_type'])
         # delete env_type because it will be passed to contructor separately
         del task_data['env_type']
-        return Task(env_type=env_type, **task_data)
+        return cls(env_type=env_type, **task_data)
 
-    def save(self, path: str) -> None:
+    def to_dict(self) -> dict:
         task_data = {
             'env_type': self.get_type_name_full(self.env_type),
             'env_args': self.env_args,
-            'stop_conditions': dict(self.stop_conditions),  # copy
+            'stop_conditions': self.stop_conditions,
             'evaluation_interval': self.evaluation_interval,
         }
         if self.task_name is not None:
             task_data['task_name'] = self.task_name
+        return task_data
 
-        # lambda can't be saved
-        task_data['stop_conditions'].pop('predicate', None)
-
-        # add file extension
-        if not path.endswith('.yaml'):
-            path += '.yaml'
-
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
-            yaml.dump(task_data, file)
