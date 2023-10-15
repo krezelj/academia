@@ -1,16 +1,21 @@
-import numpy as np
 from typing import Optional, Type
+import os
+
+import numpy as np
+import yaml
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
+from academia.utils import SavableLoadable
 
 
 # TODO Add docstrings to all methods
 # TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
 
-class Task:
+class Task(SavableLoadable):
+
     __slots__ = ['env_type', 'env_args', 'env',
-                 'stop_condition', 'evaluation_interval',
+                 'stop_conditions', 'evaluation_interval',
                  'episode_rewards', 'agent_evaluations',
                  'task_name']
 
@@ -20,7 +25,7 @@ class Task:
         self.env_args = env_args
 
         # TODO assert at least one stop condition is present (i.e. dict not empty)
-        self.stop_condition = stop_conditions
+        self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
 
         self.task_name = task_name
@@ -58,14 +63,42 @@ class Task:
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
-        if 'max_episodes' in self.stop_condition:
-            return len(self.episode_rewards) >= self.stop_condition['max_episodes']
-        if 'predicate' in self.stop_condition:
+        if 'max_episodes' in self.stop_conditions:
+            return len(self.episode_rewards) >= self.stop_conditions['max_episodes']
+        if 'predicate' in self.stop_conditions:
             # custom predicate, value is a function that takes episode_rewards and agent_evaluations
             # as arguments and returns True or False deciding whether the episode should stop or not
-            return self.stop_condition['predicate'](self.episode_rewards, self.agent_evaluations)
+            return self.stop_conditions['predicate'](self.episode_rewards, self.agent_evaluations)
 
     def __reset(self) -> None:
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
+
+    @classmethod
+    def load(cls, path: str) -> 'Task':
+        with open(path, 'r') as file:
+            task_data: dict = yaml.safe_load(file)
+        env_type = cls.get_type(task_data['env_type'])
+        # delete env_type because it will be passed to contructor separately
+        del task_data['env_type']
+        # TODO: sort out stop_conditions
+        return Task(env_type=env_type, **task_data, stop_conditions={})
+
+    def save(self, path: str) -> None:
+        task_data = {
+            'env_type': self.get_type_name_full(self.env_type),
+            'env_args': self.env_args,
+            # 'stop_conditions': self.stop_conditions,
+            'evaluation_interval': self.evaluation_interval,
+        }
+        if self.task_name is not None:
+            task_data['task_name'] = self.task_name
+
+        # add file extension
+        if not path.endswith('.yaml'):
+            path += '.yaml'
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as file:
+            yaml.dump(task_data, file)
