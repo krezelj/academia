@@ -25,11 +25,11 @@ class Task:
 
         self.task_name = task_name
 
-    def run_task(self, agent: Agent) -> None:
-        self.__reset_task()
+    def run(self, agent: Agent) -> None:
+        self.__reset()
 
         episode = 0
-        while not self.__is_task_finished():
+        while not self.__is_finished():
             episode += 1
 
             episode_reward = self.__run_episode(agent)
@@ -56,7 +56,7 @@ class Task:
             episode_reward += reward
         return episode_reward
 
-    def __is_task_finished(self) -> bool:
+    def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
         if 'max_episodes' in self.stop_condition:
             return len(self.episode_rewards) >= self.stop_condition['max_episodes']
@@ -65,7 +65,7 @@ class Task:
             # as arguments and returns True or False deciding whether the episode should stop or not
             return self.stop_condition['predicate'](self.episode_rewards, self.agent_evaluations)
 
-    def __reset_task(self) -> None:
+    def __reset(self) -> None:
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
