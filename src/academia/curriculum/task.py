@@ -82,18 +82,20 @@ class Task(SavableLoadable):
         env_type = cls.get_type(task_data['env_type'])
         # delete env_type because it will be passed to contructor separately
         del task_data['env_type']
-        # TODO: sort out stop_conditions
-        return Task(env_type=env_type, **task_data, stop_conditions={})
+        return Task(env_type=env_type, **task_data)
 
     def save(self, path: str) -> None:
         task_data = {
             'env_type': self.get_type_name_full(self.env_type),
             'env_args': self.env_args,
-            # 'stop_conditions': self.stop_conditions,
+            'stop_conditions': dict(self.stop_conditions),  # copy
             'evaluation_interval': self.evaluation_interval,
         }
         if self.task_name is not None:
             task_data['task_name'] = self.task_name
+
+        # lambda can't be saved
+        task_data['stop_conditions'].pop('predicate', None)
 
         # add file extension
         if not path.endswith('.yaml'):
