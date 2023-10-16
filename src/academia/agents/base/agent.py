@@ -1,9 +1,9 @@
-from abc import ABC, abstractmethod
-
+from abc import abstractmethod
 import numpy as np
 
+from academia.utils import SavableLoadable
 
-class Agent(ABC):
+class Agent(SavableLoadable):
 
     def __init__(self, n_actions: int, epsilon: float =1., 
                  epsilon_decay: float =0.999, min_epsilon: float =0.01,
@@ -22,12 +22,10 @@ class Agent(ABC):
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         pass
     
-    @abstractmethod
-    def save(self, path: str):
-        pass
-    
-    @abstractmethod
     def load(self, path: str):
+        pass
+
+    def save(self, path: str) -> None:
         pass
 
     def decay_epsilon(self):

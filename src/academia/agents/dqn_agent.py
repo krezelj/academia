@@ -1,4 +1,4 @@
-from .base import Agent
+from academia.agents.base import Agent
 import numpy as np
 import torch
 import torch.nn as nn
@@ -6,10 +6,12 @@ import torch.optim as optim
 import torch.nn.functional as F
 from collections import deque
 from typing import Type
+import yaml
+import os
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
-
+# TODO: think about how to write two files into zip directly
 
 class DQNAgent(Agent):
     """
@@ -289,13 +291,13 @@ class DQNAgent(Agent):
         targets = torch.stack(targets).to(device)
         return states, targets
     
-    def save(self, save_path):
+    def save(self, path: str):
         """
         Saves the state dictionary of the neural network model to the 
         specified file path.
 
         Parameters:
-            - `save_path (str)`: The file path (including filename and extension) where the model's state dictionary will be saved.
+            - `path (str)`: The file path (including filename and extension) where the model's state dictionary will be saved.
 
         Returns:
             None
@@ -310,14 +312,30 @@ class DQNAgent(Agent):
             - The saved file can be loaded later using the 'load' method to restore the model's state for inference or further training.
 
         """
-        torch.save(self.network.state_dict(), save_path)
+        torch.save(self.network.state_dict(), f"{path}_network_params.pth")
 
-    def load(self, model_path):
+        learner_state_dict = {
+            'n_actions': self.n_actions,
+            'gamma': self.gamma,
+            'epsilon': self.epsilon,
+            'epsilon_decay' : self.epsilon_decay,
+            'min_epsilon' : self.min_epsilon,
+            'batch_size' : self.batch_size,
+            'nn_architecture' : self.get_type_name_full(self.nn_architecture)
+        }
+        if not path.endswith('.yaml') and not path.endswith('.agent.yml'):
+            path += '.agent.yaml' 
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as file:
+            yaml.dump(dict(learner_state_dict), file)
+        
+    @classmethod
+    def load(cls, path: str) -> 'DQNAgent':
         """
         Loads the state dictionary of the neural network model from the specified file path. After loading the model, it sets the network to evaluation mode (`eval()`) to disable gradient computation, making the model ready for inference.
 
         Parameters:
-            - `model_path (str)`: The file path from which to load the model's state dictionary.
+            - `path (str)`: The file path from which to load the model's state dictionary.
 
         Returns:
             None
@@ -330,5 +348,18 @@ class DQNAgent(Agent):
             - The method assumes that the model architecture and structure match the one used during the initial training.
             - It's recommended to call this method after initializing an instance of the `DQNAgent` class to load pre-trained weights before using the agent for inference or further training.
         """
-        self.network.load_state_dict(torch.load(model_path))
-        self.network.eval()
+        network_params = torch.load(f"{path}_network_params.pth")
+
+        if not path.endswith('.yaml') and not path.endswith('.agent.yml'):
+            path += '.agent.yaml'
+        with open(path, 'r') as file:
+            params = yaml.safe_load(file)
+
+        nn_architecture = cls.get_type(params['nn_architecture'])
+        del params['nn_architecture']
+
+        agent = cls(nn_architecture=nn_architecture,**params)
+        agent.network.load_state_dict(network_params)
+        agent.network.eval()
+        agent.update_target()
+        return agent
