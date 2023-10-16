@@ -84,8 +84,8 @@ class Task(SavableLoadable):
     def save(self, path: str) -> None:
         task_data = self.to_dict()
         # add file extension
-        if not path.endswith('.yaml') and not path.endswith('.task'):
-            path += '.task.yaml'
+        if not path.endswith('.yml') and not path.endswith('.task'):
+            path += '.task.yml'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(task_data, file)
