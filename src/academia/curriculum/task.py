@@ -17,7 +17,7 @@ class Task(SavableLoadable):
     __slots__ = ['env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval',
                  'episode_rewards', 'agent_evaluations',
-                 'task_name']
+                 'name']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, task_name: Optional[str] = None) -> None:
@@ -28,7 +28,7 @@ class Task(SavableLoadable):
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
 
-        self.task_name = task_name
+        self.name = task_name
 
     def run(self, agent: Agent) -> None:
         self.__reset()
@@ -104,7 +104,7 @@ class Task(SavableLoadable):
             'stop_conditions': self.stop_conditions,
             'evaluation_interval': self.evaluation_interval,
         }
-        if self.task_name is not None:
-            task_data['task_name'] = self.task_name
+        if self.name is not None:
+            task_data['name'] = self.name
         return task_data
 

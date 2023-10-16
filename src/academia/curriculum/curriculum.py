@@ -16,7 +16,7 @@ class Curriculum:
         total_episodes = 0
         for i, task in enumerate(self.tasks):
             if verbose > 0:
-                print(f"Running Task: {i + 1 if task.task_name is None else task.task_name}... ", end="")
+                print(f"Running Task: {i + 1 if task.name is None else task.name}... ", end="")
             task.run()
             total_episodes += len(task.episode_rewards)
             if verbose > 0:
