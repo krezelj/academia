@@ -20,7 +20,7 @@ class Task(SavableLoadable):
                  'name']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, task_name: Optional[str] = None) -> None:
+                 evaluation_interval: int = 100, name: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -28,7 +28,7 @@ class Task(SavableLoadable):
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
 
-        self.name = task_name
+        self.name = name
 
     def run(self, agent: Agent) -> None:
         self.__reset()
