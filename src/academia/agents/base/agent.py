@@ -21,11 +21,11 @@ class Agent(SavableLoadable):
     @abstractmethod
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         pass
+ 
+    def save(self, path: str):
+        pass
     
     def load(self, path: str):
-        pass
-
-    def save(self, path: str) -> None:
         pass
 
     def decay_epsilon(self):
