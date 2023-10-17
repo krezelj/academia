@@ -39,15 +39,15 @@ class TabularAgent(Agent):
             'epsilon_decay': self.epsilon_decay,
             'min_epsilon': self.min_epsilon,
         }
-        if not path.endswith('.yaml') and not path.endswith('.agent.yaml'):
-            path += '.agent.yaml'
+        if not path.endswith('.yml'):
+            path += '.agent.yml'
         with open(path, 'w') as file:
             yaml.dump(dict(learner_state_dict), file)
 
     @classmethod
     def load(cls, path: str) -> 'TabularAgent':
-        if not path.endswith('.yaml') and not path.endswith('.agent.yaml'):
-            path += '.agent.yaml'
+        if not path.endswith('.yml'):
+            path += '.agent.yml'
 
         with open(path, 'r') as file:
             learner_state_dict = yaml.safe_load(file)
