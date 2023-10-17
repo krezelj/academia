@@ -77,6 +77,9 @@ class Task(SavableLoadable):
 
     @classmethod
     def load(cls, path: str) -> 'Task':
+        # add file extension (consistency with save() method)
+        if not path.endswith('.yml'):
+            path += '.task.yml'
         with open(path, 'r') as file:
             task_data: dict = yaml.safe_load(file)
         return cls.from_dict(task_data)
@@ -84,7 +87,7 @@ class Task(SavableLoadable):
     def save(self, path: str) -> None:
         task_data = self.to_dict()
         # add file extension
-        if not path.endswith('.yml') and not path.endswith('.task'):
+        if not path.endswith('.yml'):
             path += '.task.yml'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:

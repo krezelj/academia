@@ -31,6 +31,9 @@ class Curriculum(SavableLoadable):
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
+        # add file extension (consistency with save() method)
+        if not path.endswith('.yml'):
+            path += '.curriculum.yml'
         with open(path, 'r') as file:
             curriculum_data: dict = yaml.safe_load(file)
         directory = os.path.dirname(path)
@@ -57,7 +60,7 @@ class Curriculum(SavableLoadable):
             'tasks': {i: task.to_dict() for i, task in enumerate(self.tasks)},
         }
         # add file extension
-        if not path.endswith('.yml') and not path.endswith('.curriculum'):
+        if not path.endswith('.yml'):
             path += '.curriculum.yml'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
