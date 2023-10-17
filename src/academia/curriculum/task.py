@@ -21,7 +21,10 @@ class Task(SavableLoadable):
         self.env_type = env_type
         self.env_args = env_args
 
-        # TODO assert at least one stop condition is present (i.e. dict not empty)
+        if len(stop_conditions) == 0:
+            msg = ('stop_conditions dict must not be empty. '
+                   'Please provide at least one stop condition.')
+            raise ValueError(msg)
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
 
