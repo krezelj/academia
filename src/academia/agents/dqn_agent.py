@@ -1,13 +1,17 @@
-from academia.agents.base import Agent
+from collections import deque
+from typing import Type
+import yaml
+import os
+import zipfile
+import tempfile
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from collections import deque
-from typing import Type
-import yaml
-import os
+
+from academia.agents.base import Agent
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
@@ -380,22 +384,29 @@ class DQNAgent(Agent):
             state for inference or further training.
 
         """
-        torch.save(self.network.state_dict(), f"{path}_network_params.pth")
-
-        learner_state_dict = {
-            'n_actions': self.n_actions,
-            'gamma': self.gamma,
-            'epsilon': self.epsilon,
-            'epsilon_decay': self.epsilon_decay,
-            'min_epsilon': self.min_epsilon,
-            'batch_size': self.batch_size,
-            'nn_architecture': self.get_type_name_full(self.nn_architecture)
-        }
-        if not path.endswith('.yaml') and not path.endswith('.agent.yml'):
-            path += '.agent.yaml'
+        if not path.endswith('.zip'):
+            path += '.agent.zip'
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
-            yaml.dump(dict(learner_state_dict), file)
+        with zipfile.ZipFile(path, 'w') as zf:
+            # network state
+            network_temp = tempfile.NamedTemporaryFile()
+            torch.save(self.network.state_dict(), network_temp)
+            # agent config
+            agent_temp = tempfile.NamedTemporaryFile()
+            learner_state_dict = {
+                'n_actions': self.n_actions,
+                'gamma': self.gamma,
+                'epsilon': self.epsilon,
+                'epsilon_decay': self.epsilon_decay,
+                'min_epsilon': self.min_epsilon,
+                'batch_size': self.batch_size,
+                'nn_architecture': self.get_type_name_full(self.nn_architecture)
+            }
+            with open(agent_temp.name, 'w') as file:
+                yaml.dump(dict(learner_state_dict), file)
+            # zip both
+            zf.write(network_temp.name, 'network.pth')
+            zf.write(agent_temp.name, 'config.agent.yml')
 
     @classmethod
     def load(cls, path: str) -> 'DQNAgent':
@@ -426,12 +437,16 @@ class DQNAgent(Agent):
             - It's recommended to call this method after initializing an instance of the `DQNAgent`
             class to load pre-trained weights before using the agent for inference or further training.
         """
-        network_params = torch.load(f"{path}_network_params.pth")
-
-        if not path.endswith('.yaml') and not path.endswith('.agent.yml'):
-            path += '.agent.yaml'
-        with open(path, 'r') as file:
-            params = yaml.safe_load(file)
+        if not path.endswith('.zip'):
+            path += '.agent.zip'
+        zf = zipfile.ZipFile(path)
+        with tempfile.TemporaryDirectory() as tempdir:
+            zf.extractall(tempdir)
+            # network state
+            network_params = torch.load(os.path.join(tempdir, 'network.pth'))
+            # agent config
+            with open(os.path.join(tempdir, 'config.agent.yml'), 'r') as file:
+                params = yaml.safe_load(file)
 
         nn_architecture = cls.get_type(params['nn_architecture'])
         del params['nn_architecture']
