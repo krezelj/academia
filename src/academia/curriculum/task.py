@@ -9,9 +9,6 @@ from academia.agents.base import Agent
 from academia.utils import SavableLoadable
 
 
-# TODO Add docstrings to all methods
-# TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
-
 class Task(SavableLoadable):
 
     __slots__ = ['env_type', 'env_args', 'env',
