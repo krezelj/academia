@@ -22,12 +22,12 @@ class TabularAgent(Agent):
         if legal_mask is not None:
             qs = (qs - np.min(qs)) * legal_mask + legal_mask
             # add legal mask in case best action shares value with an illegal action
-        if greedy or np.random.uniform() > self.epsilon:
+        if greedy or self._rng.uniform() > self.epsilon:
             return np.argmax(qs)
         elif legal_mask is not None:
-            return np.random.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
+            return self._rng.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
         else:
-            return np.random.randint(0, self.n_actions)
+            return self._rng.integers(0, self.n_actions)
 
     def save(self, path: str):
         learner_state_dict = {

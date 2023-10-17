@@ -13,6 +13,8 @@ class Agent(SavableLoadable):
         self.min_epsilon = min_epsilon
         self.n_actions = n_actions
         self.gamma = gamma
+        self._rng = np.random.default_rng(seed=42)
+         
 
     @abstractmethod
     def get_action(self, state, legal_mask=None, greedy=False):

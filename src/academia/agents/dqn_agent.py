@@ -190,12 +190,12 @@ class DQNAgent(Agent):
         q_val_act = self.network(torch.Tensor(state)).to(device)
         if legal_mask is not None:
             q_val_act = (q_val_act - torch.min(q_val_act)) * torch.Tensor(legal_mask) + torch.Tensor(legal_mask)
-        if np.random.uniform() > self.epsilon or greedy:
+        if self._rng.uniform() > self.epsilon or greedy:
             return torch.argmax(q_val_act).item()
         elif legal_mask is not None:
-            return np.random.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
+            return self._rng.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
         else:
-            return np.random.randint(0, self.n_actions)
+            return self._rng.integers(0, self.n_actions)
         
     def update_target(self):
         """
@@ -275,7 +275,7 @@ class DQNAgent(Agent):
             - The `target_network` is used to estimate the maximum Q-value for the next state during target computation.
 
         """
-        batch_indices = np.random.choice(len(self.memory), size=self.batch_size, replace=False)
+        batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
         states, targets = [], []
         for state, action, reward, next_state, done in batch:
