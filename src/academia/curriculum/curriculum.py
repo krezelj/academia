@@ -3,6 +3,7 @@ import os
 import yaml
 
 from . import Task
+from academia.agents.base import Agent
 from academia.utils import SavableLoadable
 
 
@@ -13,12 +14,12 @@ class Curriculum(SavableLoadable):
     def __init__(self, tasks: list[Task]) -> None:
         self.tasks = tasks
 
-    def run(self, agent, verbose=0):
+    def run(self, agent: Agent, verbose=0):
         total_episodes = 0
         for i, task in enumerate(self.tasks):
             if verbose > 0:
                 print(f"Running Task: {i + 1 if task.name is None else task.name}... ", end="")
-            task.run()
+            task.run(agent)
             total_episodes += len(task.episode_rewards)
             if verbose > 0:
                 print(f"finished after {len(task.episode_rewards)} episodes.")
