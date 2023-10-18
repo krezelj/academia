@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Type
+from typing import Type, Optional
 import yaml
 import os
 import zipfile
@@ -91,7 +91,7 @@ class DQNAgent(Agent):
                  gamma: float = 0.99, epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
                  min_epsilon: float = 0.01,
-                 batch_size: int = 64
+                 batch_size: int = 64, random_state: Optional[int] = None
                  ):
         """
         Constructor method initializing the DQNAgent.
@@ -108,7 +108,7 @@ class DQNAgent(Agent):
         """
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
-                                       n_actions=n_actions, gamma=gamma)
+                                       n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
         self.batch_size = batch_size
         self.update_counter = 0
@@ -400,7 +400,8 @@ class DQNAgent(Agent):
                 'epsilon_decay': self.epsilon_decay,
                 'min_epsilon': self.min_epsilon,
                 'batch_size': self.batch_size,
-                'nn_architecture': self.get_type_name_full(self.nn_architecture)
+                'nn_architecture': self.get_type_name_full(self.nn_architecture),
+                'random_state': self._rng.bit_generator.state
             }
             with open(agent_temp.name, 'w') as file:
                 yaml.dump(dict(learner_state_dict), file)
@@ -450,8 +451,9 @@ class DQNAgent(Agent):
 
         nn_architecture = cls.get_type(params['nn_architecture'])
         del params['nn_architecture']
-
+        rng_state = params.pop('random_state')
         agent = cls(nn_architecture=nn_architecture, **params)
+        agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
         agent.network.eval()
         agent.update_target()

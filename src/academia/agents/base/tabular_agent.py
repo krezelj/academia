@@ -1,5 +1,6 @@
 import yaml
 from collections import defaultdict
+from typing import Optional
 import numpy as np
 
 from .agent import Agent
@@ -8,9 +9,9 @@ from .agent import Agent
 class TabularAgent(Agent):
 
     def __init__(self, n_actions, alpha=0.1, gamma=0.99, epsilon=1, epsilon_decay=0.999,
-                 min_epsilon=0.01, q_table=None) -> None:
+                 min_epsilon=0.01, q_table=None, random_state: Optional[int] = None) -> None:
         super().__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
-                         n_actions=n_actions, gamma=gamma)
+                         n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.alpha = alpha
         if q_table is None:
             self.q_table = defaultdict(lambda: np.zeros(n_actions))
@@ -38,6 +39,7 @@ class TabularAgent(Agent):
             'epsilon': self.epsilon,
             'epsilon_decay': self.epsilon_decay,
             'min_epsilon': self.min_epsilon,
+            'random_state': self._rng.bit_generator.state
         }
         if not path.endswith('.yml'):
             path += '.agent.yml'
@@ -56,7 +58,9 @@ class TabularAgent(Agent):
         for key, value in learner_state_dict['q_table'].items():
             q_table[eval(key)] = np.array(value)
         del learner_state_dict['q_table']
-
-        return cls(q_table=q_table, **learner_state_dict)
+        rng_state = learner_state_dict.pop('random_state')
+        agent = cls(q_table=q_table, **learner_state_dict)
+        agent._rng.bit_generator.state = rng_state
+        return agent
 
     
