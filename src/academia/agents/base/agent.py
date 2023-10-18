@@ -1,6 +1,8 @@
 from abc import abstractmethod
-import numpy as np
 from typing import Optional
+
+import numpy as np
+
 from academia.utils import SavableLoadable
 
 

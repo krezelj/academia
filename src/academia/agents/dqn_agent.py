@@ -1,10 +1,10 @@
 from collections import deque
 from typing import Type, Optional
-import yaml
 import os
 import zipfile
 import tempfile
 
+import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -113,9 +113,9 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.update_counter = 0
         self.nn_architecture = nn_architecture
-        self.__build_network_()
+        self.__build_network()
 
-    def __build_network_(self):
+    def __build_network(self):
         """
         Builds the neural network architectures for both the main and target networks.
 
@@ -150,7 +150,7 @@ class DQNAgent(Agent):
         self.target_network.load_state_dict(self.network.state_dict())
         self.target_network.eval()
 
-    def remember(self, state, action, reward, next_state, done):
+    def __remember(self, state, action, reward, next_state, done):
         """
         Function: remember
 
@@ -236,7 +236,7 @@ class DQNAgent(Agent):
         else:
             return self._rng.integers(0, self.n_actions)
 
-    def update_target(self):
+    def __update_target(self):
         """
         Updates the target network's weights with the main network's weights.
 
@@ -292,10 +292,10 @@ class DQNAgent(Agent):
             - The target network is updated periodically based on the `UPDATE_TARGET_FREQ`
             parameter.
         """
-        self.remember(state=state, action=action, reward=reward, next_state=new_state,
+        self.__remember(state=state, action=action, reward=reward, next_state=new_state,
                       done=is_terminal)
         if len(self.memory) >= self.batch_size:
-            states, targets = self.replay()
+            states, targets = self.__replay()
             self.optimizer.zero_grad()
             q_values = self.network(states).to(device)
             loss = F.mse_loss(q_values, targets)
@@ -304,10 +304,10 @@ class DQNAgent(Agent):
         if is_terminal:
             self.update_counter += 1
         if self.update_counter > self.UPDATE_TARGET_FREQ:
-            self.update_target()
+            self.__update_target()
             self.update_counter = 0
 
-    def replay(self) -> (torch.Tensor, torch.Tensor):
+    def __replay(self) -> (torch.Tensor, torch.Tensor):
         """
         This function samples a mini-batch from the replay memory and prepares states and
         corresponding target Q-values for optimization.
@@ -456,5 +456,5 @@ class DQNAgent(Agent):
         agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
         agent.network.eval()
-        agent.update_target()
+        agent.__update_target()
         return agent

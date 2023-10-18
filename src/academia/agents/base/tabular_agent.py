@@ -1,6 +1,7 @@
-import yaml
 from collections import defaultdict
 from typing import Optional
+
+import yaml
 import numpy as np
 
 from .agent import Agent
