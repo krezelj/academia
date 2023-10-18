@@ -1,14 +1,22 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import Optional
 
 import numpy as np
 
+from academia.utils import SavableLoadable
 
-class Agent(ABC):
 
-    def __init__(self, epsilon=1, epsilon_decay=0.999, min_epsilon=0.01):
+class Agent(SavableLoadable):
+
+    def __init__(self, n_actions: int, epsilon: float = 1.,
+                 epsilon_decay: float = 0.999, min_epsilon: float = 0.01,
+                 gamma: float = 0.99, random_state: Optional[int] = None):
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
+        self.n_actions = n_actions
+        self.gamma = gamma
+        self._rng = np.random.default_rng(seed=random_state)
 
     @abstractmethod
     def get_action(self, state, legal_mask=None, greedy=False):
@@ -16,6 +24,12 @@ class Agent(ABC):
 
     @abstractmethod
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
+        pass
+
+    def save(self, path: str):
+        pass
+
+    def load(self, path: str):
         pass
 
     def decay_epsilon(self):
