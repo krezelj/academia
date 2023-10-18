@@ -3,7 +3,7 @@ from .base import TabularAgent
 
 class SarsaAgent(TabularAgent):
 
-    __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon', 'random_state']
+    __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon']
 
     def update(self, state, action, reward, new_state, is_terminal):
         policy_next_action = self.get_action(state)

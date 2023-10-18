@@ -5,7 +5,7 @@ from .base import TabularAgent
 
 class QLAgent(TabularAgent):
 
-    __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon', 'random_state']
+    __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon']
 
     def update(self, state, action, reward, new_state, is_terminal):
         self.q_table[state][action] =\
