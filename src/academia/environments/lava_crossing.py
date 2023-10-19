@@ -12,6 +12,24 @@ class LavaCrossing(GenericMiniGridWrapper):
     A grid environment where an agent has to avoid patches of lava in order to
     reach the destination. The higher the difficulty, the more lava patches are
     generated on the grid.
+
+    Possible actions:
+
+    | Num | Name    | Action             |
+    |-----|---------|--------------------|
+    | 0   | left    | Turn left          |
+    | 1   | right   | Turn right         |
+    | 2   | forward | Move forward       |
+    | 3   | pickup  | Unused             |
+    | 4   | drop    | Unused             |
+    | 5   | toggle  | Unused             |
+    | 6   | done    | Unused             |
+
+    Possible difficulty levels:
+    0: 9x9 grid size with 1 lava patch
+    1: 9x9 grid size with 2 lava patches
+    2: 9x9 grid size with 3 lava patches
+    3: 11x11 grid size with 5 lava patches
     """
 
     N_ACTIONS = 3
