@@ -2,10 +2,10 @@ from typing import Union, Any, Optional
 from abc import abstractmethod
 
 import gymnasium
-import numpy as np
 import numpy.typing as npt
 
 from .scalable_env import ScalableEnvironment
+
 
 class GenericMiniGridWrapper(ScalableEnvironment):
     """
@@ -18,6 +18,7 @@ class GenericMiniGridWrapper(ScalableEnvironment):
                             and 3 is the hardest
         :param render_mode: render_mode value passed to gymnasium.make
         """
+        
         super().__init__(difficulty)
         self._difficulty_envid_map = difficulty_envid_map
         try:
@@ -40,9 +41,9 @@ class GenericMiniGridWrapper(ScalableEnvironment):
     def observe(self) -> Any:
         return self._state
     
-
+    @abstractmethod
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        return np.array([1 for _ in range(self.N_ACTIONS)])
+        pass
 
     def reset(self) -> Any:
         self._state_raw = self._base_env.reset()[0]
@@ -54,4 +55,4 @@ class GenericMiniGridWrapper(ScalableEnvironment):
     @property
     @abstractmethod
     def _state(self) -> tuple[int, ...]:
-        raise NotImplementedError
+        pass

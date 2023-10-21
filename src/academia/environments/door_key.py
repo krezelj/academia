@@ -1,13 +1,12 @@
-from typing import Union, Any, Optional
+from typing import Optional, Union
 
-import gymnasium
 import numpy as np
 import numpy.typing as npt
 
 from .base import GenericMiniGridWrapper
 
-class DoorKey(GenericMiniGridWrapper):
 
+class DoorKey(GenericMiniGridWrapper):
     """
     A grid environment where an agent has to find a key and then open a door to reach the destination.
     The higher the difficulty, the bigger the grid so it is more complicated to find the key, next the door 
@@ -31,7 +30,7 @@ class DoorKey(GenericMiniGridWrapper):
     3: 16x16 grid size with 1 key and 1 door
     """
 
-    N_ACTIONS = 5
+    N_ACTIONS = 6
 
     __difficulty_envid_map = {
         0: 'MiniGrid-DoorKey-5x5-v0',
@@ -47,8 +46,14 @@ class DoorKey(GenericMiniGridWrapper):
                             and 3 is the hardest
         :param render_mode: render_mode value passed to gymnasium.make
         """
+
         self._door_status = 2
         super().__init__(difficulty, DoorKey.__difficulty_envid_map, render_mode=render_mode)
+    
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+        mask = np.array([1 for _ in range(self.N_ACTIONS)])
+        mask[4] = 0 #drop action is unused
+        return mask
     
     @property
     def _state(self) -> tuple[int, ...]:
@@ -91,7 +96,8 @@ class DoorKey(GenericMiniGridWrapper):
         :return: a tuple of object types of every grid cell concatenated with
                  the direction which the agent is facing and with door state.
         """
-        cells_obj_types = self._state_raw['image'][:,:,0]
+
+        cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
         direction = self._state_raw['direction']
         door_array = self._state_raw['image'][:,:,2].flatten()
@@ -103,8 +109,3 @@ class DoorKey(GenericMiniGridWrapper):
 
         return *cells_flattened, direction, self._door_status
     
-
-
-
-
-

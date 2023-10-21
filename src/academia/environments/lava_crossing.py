@@ -1,6 +1,5 @@
-from typing import Union, Any, Optional
+from typing import Optional, Union
 
-import gymnasium
 import numpy as np
 import numpy.typing as npt
 
@@ -48,9 +47,12 @@ class LavaCrossing(GenericMiniGridWrapper):
                             and 3 is the hardest
         :param render_mode: render_mode value passed to gymnasium.make
         """
+        
         super().__init__(difficulty, LavaCrossing.__difficulty_envid_map, render_mode=render_mode)
 
-
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+        return np.array([1 for _ in range(self.N_ACTIONS)])
+        
     @property
     def _state(self) -> tuple[int, ...]:
         """
@@ -93,9 +95,8 @@ class LavaCrossing(GenericMiniGridWrapper):
                  the direction which the agent is facing.
         """
 
-        cells_obj_types = self._state_raw['image'][:,:,0]
+        cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
         direction = self._state_raw['direction']
 
         return *cells_flattened, direction
-
