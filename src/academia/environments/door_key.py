@@ -6,38 +6,37 @@ import numpy.typing as npt
 from .base import GenericMiniGridWrapper
 
 
-class LavaCrossing(GenericMiniGridWrapper):
+class DoorKey(GenericMiniGridWrapper):
     """
-    A grid environment where an agent has to avoid patches of lava in order to
-    reach the destination. The higher the difficulty, the more lava patches are
-    generated on the grid.
-
+    A grid environment where an agent has to find a key and then open a door to reach the destination.
+    The higher the difficulty, the bigger the grid so it is more complicated to find the key, next the door 
+    and next the destination.
     Possible actions:
 
-    | Num | Name    | Action             |
-    |-----|---------|--------------------|
-    | 0   | left    | Turn left          |
-    | 1   | right   | Turn right         |
-    | 2   | forward | Move forward       |
-    | 3   | pickup  | Unused             |
-    | 4   | drop    | Unused             |
-    | 5   | toggle  | Unused             |
-    | 6   | done    | Unused             |
+    | Num | Name     | Action             |
+    |-----|----------|--------------------|
+    | 0   | left     | Turn left          |
+    | 1   | right    | Turn right         |
+    | 2   | forward  | Move forward       |
+    | 3   | pickup   | Pick up an object  |
+    | 4   | drop     | Unused             |
+    | 5   | toggle   | Toggle/activate an object |
+    | 6   | done     | Unused             |
 
     Possible difficulty levels:
-    0: 9x9 grid size with 1 lava patch
-    1: 9x9 grid size with 2 lava patches
-    2: 9x9 grid size with 3 lava patches
-    3: 11x11 grid size with 5 lava patches
+    0: 5x5 grid size with 1 key and 1 door
+    1: 6x6 grid size with 1 key and 1 door
+    2: 8x8 grid size with 1 key and 1 door
+    3: 16x16 grid size with 1 key and 1 door
     """
 
-    N_ACTIONS = 3
+    N_ACTIONS = 6
 
     __difficulty_envid_map = {
-        0: 'MiniGrid-LavaCrossingS9N1-v0',
-        1: 'MiniGrid-LavaCrossingS9N2-v0',
-        2: 'MiniGrid-LavaCrossingS9N3-v0',
-        3: 'MiniGrid-LavaCrossingS11N5-v0'
+        0: 'MiniGrid-DoorKey-5x5-v0',
+        1: 'MiniGrid-DoorKey-6x6-v0',
+        2: 'MiniGrid-DoorKey-8x8-v0',
+        3: 'MiniGrid-DoorKey-16x16-v0'
     }
     """A dictionary that maps difficulty levels to environment ids"""
 
@@ -47,12 +46,15 @@ class LavaCrossing(GenericMiniGridWrapper):
                             and 3 is the hardest
         :param render_mode: render_mode value passed to gymnasium.make
         """
-        
-        super().__init__(difficulty, LavaCrossing.__difficulty_envid_map, render_mode=render_mode)
 
+        self._door_status = 2
+        super().__init__(difficulty, DoorKey.__difficulty_envid_map, render_mode=render_mode)
+    
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        return np.array([1 for _ in range(self.N_ACTIONS)])
-        
+        mask = np.array([1 for _ in range(self.N_ACTIONS)])
+        mask[4] = 0 #drop action is unused
+        return mask
+    
     @property
     def _state(self) -> tuple[int, ...]:
         """
@@ -92,11 +94,18 @@ class LavaCrossing(GenericMiniGridWrapper):
         no matter the direction the agent is facing or its location on the grid.
 
         :return: a tuple of object types of every grid cell concatenated with
-                 the direction which the agent is facing.
+                 the direction which the agent is facing and with door state.
         """
 
         cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
         direction = self._state_raw['direction']
+        door_array = self._state_raw['image'][:,:,2].flatten()
 
-        return *cells_flattened, direction
+        if self._door_status == 2 and 1 in door_array:
+            self._door_status = 1
+        elif self._door_status == 1 and 0 in door_array:
+            self._door_status = 0
+
+        return *cells_flattened, direction, self._door_status
+    
