@@ -3,5 +3,5 @@ from .curriculum import Curriculum
 
 __all__ = [
     'Task',
-    'Curriculum'
+    'Curriculum',
 ]
