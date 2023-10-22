@@ -3,7 +3,7 @@ import logging
 
 import yaml
 
-from . import Task
+from . import LearningTask
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable, Stopwatch
 
@@ -15,7 +15,7 @@ class Curriculum(SavableLoadable):
 
     __slots__ = ['tasks']
 
-    def __init__(self, tasks: list[Task]) -> None:
+    def __init__(self, tasks: list[LearningTask]) -> None:
         self.tasks = tasks
 
     def run(self, agent: Agent, verbose=0, render=False):
@@ -52,12 +52,12 @@ class Curriculum(SavableLoadable):
             # 1. full task data (as stored in Curriculum.save)
             # 2. path to a task config file (relative from curriculum file)
             if 'path' not in task_data.keys():
-                task = Task.from_dict(task_data)
+                task = LearningTask.from_dict(task_data)
             else:
                 task_path_abs = os.path.abspath(
                     os.path.join(directory, task_data['path'])
                 )
-                task = Task.load(task_path_abs)
+                task = LearningTask.load(task_path_abs)
             tasks.append(task)
         return Curriculum(tasks)
 

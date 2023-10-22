@@ -13,7 +13,7 @@ from academia.utils import SavableLoadable
 _logger = logging.getLogger('academia.curriculum')
 
 
-class Task(SavableLoadable):
+class LearningTask(SavableLoadable):
 
     __slots__ = ['env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval',
@@ -88,7 +88,7 @@ class Task(SavableLoadable):
         self.agent_evaluations = np.array([])
 
     @classmethod
-    def load(cls, path: str) -> 'Task':
+    def load(cls, path: str) -> 'LearningTask':
         # add file extension (consistency with save() method)
         if not path.endswith('.yml'):
             path += '.task.yml'
@@ -106,7 +106,7 @@ class Task(SavableLoadable):
             yaml.dump(task_data, file)
 
     @classmethod
-    def from_dict(cls, task_data: dict) -> 'Task':
+    def from_dict(cls, task_data: dict) -> 'LearningTask':
         env_type = cls.get_type(task_data['env_type'])
         # delete env_type because it will be passed to contructor separately
         del task_data['env_type']
