@@ -28,6 +28,9 @@ class Task(SavableLoadable):
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
 
+        self.agent_evaluations = np.array([])
+        self.episode_rewards = np.array([])
+
         self.name = name
 
     def run(self, agent: Agent, render=False) -> None:
@@ -43,11 +46,11 @@ class Task(SavableLoadable):
             episode += 1
 
             episode_reward = self.__run_episode(agent)
-            np.append(self.episode_rewards, episode_reward)
+            self.episode_rewards = np.append(self.episode_rewards, episode_reward)
 
             if episode % self.evaluation_interval == 0:
                 agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
-                np.append(self.agent_evaluations, agent_evaluation)
+                self.agent_evaluations = np.append(self.agent_evaluations, agent_evaluation)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> float:
         episode_reward = 0
