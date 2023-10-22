@@ -1,7 +1,7 @@
-from .task import Task
+from .task import LearningTask
 from .curriculum import Curriculum
 
 __all__ = [
-    'Task',
+    'LearningTask',
     'Curriculum',
 ]
