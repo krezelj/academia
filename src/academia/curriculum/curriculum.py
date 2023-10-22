@@ -4,7 +4,7 @@ import yaml
 
 from . import Task
 from academia.agents.base import Agent
-from academia.utils import SavableLoadable
+from academia.utils import SavableLoadable, Stopwatch
 
 
 class Curriculum(SavableLoadable):
@@ -16,6 +16,7 @@ class Curriculum(SavableLoadable):
 
     def run(self, agent: Agent, verbose=0, render=False):
         total_episodes = 0
+        stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):
             if verbose > 0:
                 print(f'Running Task: {i + 1 if task.name is None else task.name}... ', end="")
@@ -23,8 +24,14 @@ class Curriculum(SavableLoadable):
             total_episodes += len(task.episode_rewards)
             if verbose > 0:
                 print(f'finished after {len(task.episode_rewards)} episodes.')
+                wall_time, cpu_time = stopwatch.lap()
+                print(f'Elapsed wall time: {wall_time:.2f} sec')
+                print(f'Elapsed CPU time: {cpu_time:.2f} sec')
         if verbose > 0:
             print(f'Curriculum finished after {total_episodes} episodes.')
+            wall_time, cpu_time = stopwatch.stop()
+            print(f'Elapsed wall time: {wall_time:.2f} sec')
+            print(f'Elapsed CPU time: {cpu_time:.2f} sec')
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
