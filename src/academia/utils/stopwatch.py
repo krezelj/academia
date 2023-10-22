@@ -10,9 +10,12 @@ class Stopwatch:
 
     __slots__ = ['__wall_stopwatch', '__cpu_stopwatch']
 
-    def __init__(self):
-        self.__wall_stopwatch = _GenericStopwatch(timestamp_func=time.perf_counter)
-        self.__cpu_stopwatch = _GenericStopwatch(timestamp_func=time.process_time)
+    def __init__(self, start=True):
+        """
+        :param start: whether or not to start a stopwatch immidiately after initialising it
+        """
+        self.__wall_stopwatch = _GenericStopwatch(timestamp_func=time.perf_counter, start=start)
+        self.__cpu_stopwatch = _GenericStopwatch(timestamp_func=time.process_time, start=start)
 
     def start(self) -> None:
         self.__wall_stopwatch.start()
@@ -46,10 +49,15 @@ class _GenericStopwatch:
 
     __slots__ = ['lap_times', '__lap_start', '__timestamp_func']
 
-    def __init__(self, timestamp_func: Callable[[], float]):
+    def __init__(self, timestamp_func: Callable[[], float], start=True):
+        """
+        :param start: whether or not to start a stopwatch immidiately after initialising it
+        """
         self.__timestamp_func = timestamp_func
         self.lap_times: list[float] = []
         self.__lap_start: Optional[float] = None
+        if start:
+            self.start()
 
     def start(self) -> None:
         self.__lap_start = self.__timestamp_func()
