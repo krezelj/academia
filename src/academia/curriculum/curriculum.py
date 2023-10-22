@@ -14,17 +14,17 @@ class Curriculum(SavableLoadable):
     def __init__(self, tasks: list[Task]) -> None:
         self.tasks = tasks
 
-    def run(self, agent: Agent, verbose=0):
+    def run(self, agent: Agent, verbose=0, render=False):
         total_episodes = 0
         for i, task in enumerate(self.tasks):
             if verbose > 0:
-                print(f"Running Task: {i + 1 if task.name is None else task.name}... ", end="")
-            task.run(agent)
+                print(f'Running Task: {i + 1 if task.name is None else task.name}... ', end="")
+            task.run(agent, render=render)
             total_episodes += len(task.episode_rewards)
             if verbose > 0:
-                print(f"finished after {len(task.episode_rewards)} episodes.")
+                print(f'finished after {len(task.episode_rewards)} episodes.')
         if verbose > 0:
-            print(f"Curriculum finished after {total_episodes} episodes.")
+            print(f'Curriculum finished after {total_episodes} episodes.')
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
