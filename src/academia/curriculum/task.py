@@ -30,8 +30,13 @@ class Task(SavableLoadable):
 
         self.name = name
 
-    def run(self, agent: Agent) -> None:
+    def run(self, agent: Agent, render=False) -> None:
         self.__reset()
+        if render and self.env_args.get('render_mode') == 'human':
+            self.env.render()
+        elif render:
+            print("WARNING: Cannot render environment when render_mode is not 'human'. Consider"
+                  "passing render_mode in env_args in the task configuration")
 
         episode = 0
         while not self.__is_finished():
@@ -110,4 +115,3 @@ class Task(SavableLoadable):
         if self.name is not None:
             task_data['name'] = self.name
         return task_data
-
