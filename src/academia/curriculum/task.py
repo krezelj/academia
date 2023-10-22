@@ -1,5 +1,6 @@
 from typing import Optional, Type
 import os
+import logging
 
 import numpy as np
 import yaml
@@ -7,6 +8,9 @@ import yaml
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable
+
+
+_logger = logging.getLogger('academia.curriculum')
 
 
 class Task(SavableLoadable):
@@ -24,6 +28,7 @@ class Task(SavableLoadable):
         if len(stop_conditions) == 0:
             msg = ('stop_conditions dict must not be empty. '
                    'Please provide at least one stop condition.')
+            _logger.error(msg)
             raise ValueError(msg)
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
@@ -38,9 +43,8 @@ class Task(SavableLoadable):
         if render and self.env_args.get('render_mode') == 'human':
             self.env.render()
         elif render:
-            print("WARNING: Cannot render environment when render_mode is not 'human'. Consider"
-                  "passing render_mode in env_args in the task configuration")
-
+            _logger.warning("WARNING: Cannot render environment when render_mode is not 'human'. "
+                            "Consider passing render_mode in env_args in the task configuration")
         episode = 0
         while not self.__is_finished():
             episode += 1

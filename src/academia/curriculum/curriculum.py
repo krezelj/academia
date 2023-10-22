@@ -1,10 +1,14 @@
 import os
+import logging
 
 import yaml
 
 from . import Task
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable, Stopwatch
+
+
+_logger = logging.getLogger('academia.curriculum')
 
 
 class Curriculum(SavableLoadable):
@@ -19,19 +23,19 @@ class Curriculum(SavableLoadable):
         stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):
             if verbose > 0:
-                print(f'Running Task: {i + 1 if task.name is None else task.name}... ', end="")
+                _logger.info(f'Running Task: {i + 1 if task.name is None else task.name}... ')
             task.run(agent, render=render)
             total_episodes += len(task.episode_rewards)
             if verbose > 0:
-                print(f'finished after {len(task.episode_rewards)} episodes.')
+                _logger.info(f'finished after {len(task.episode_rewards)} episodes.')
                 wall_time, cpu_time = stopwatch.lap()
-                print(f'Elapsed task wall time: {wall_time:.2f} sec')
-                print(f'Elapsed task CPU time: {cpu_time:.2f} sec')
+                _logger.info(f'Elapsed task wall time: {wall_time:.2f} sec')
+                _logger.info(f'Elapsed task CPU time: {cpu_time:.2f} sec')
         if verbose > 0:
-            print(f'Curriculum finished after {total_episodes} episodes.')
+            _logger.info(f'Curriculum finished after {total_episodes} episodes.')
             wall_time, cpu_time = stopwatch.stop()
-            print(f'Elapsed total wall time: {wall_time:.2f} sec')
-            print(f'Elapsed total CPU time: {cpu_time:.2f} sec')
+            _logger.info(f'Elapsed total wall time: {wall_time:.2f} sec')
+            _logger.info(f'Elapsed total CPU time: {cpu_time:.2f} sec')
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
