@@ -2,6 +2,7 @@ import os
 import logging
 
 import yaml
+import numpy as np
 
 from . import LearningTask
 from academia.agents.base import Agent
@@ -22,6 +23,7 @@ class Curriculum(SavableLoadable):
         total_episodes = 0
         stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):
+            task: LearningTask
             if verbose > 0:
                 _logger.info(f'Running Task: {i + 1 if task.name is None else task.name}... ')
             task.run(agent, render=render)
@@ -31,6 +33,8 @@ class Curriculum(SavableLoadable):
                 wall_time, cpu_time = stopwatch.lap()
                 _logger.info(f'Elapsed task wall time: {wall_time:.2f} sec')
                 _logger.info(f'Elapsed task CPU time: {cpu_time:.2f} sec')
+                _logger.info(f'Average steps per episode: {np.mean(task.step_counts)}')
+                _logger.info(f'Average reward per episode: {np.mean(task.episode_rewards)}')
         if verbose > 0:
             _logger.info(f'Curriculum finished after {total_episodes} episodes.')
             wall_time, cpu_time = stopwatch.stop()

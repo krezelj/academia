@@ -18,7 +18,7 @@ class LearningTask(SavableLoadable):
     __slots__ = ['env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval',
                  'episode_rewards', 'agent_evaluations',
-                 'name']
+                 'step_counts', 'name']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, name: Optional[str] = None) -> None:
@@ -35,6 +35,7 @@ class LearningTask(SavableLoadable):
 
         self.agent_evaluations = np.array([])
         self.episode_rewards = np.array([])
+        self.step_counts = np.array([])
 
         self.name = name
 
@@ -49,15 +50,20 @@ class LearningTask(SavableLoadable):
         while not self.__is_finished():
             episode += 1
 
-            episode_reward = self.__run_episode(agent)
+            episode_reward, steps_count = self.__run_episode(agent)
             self.episode_rewards = np.append(self.episode_rewards, episode_reward)
+            self.step_counts = np.append(self.step_counts, steps_count)
 
             if episode % self.evaluation_interval == 0:
                 agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
                 self.agent_evaluations = np.append(self.agent_evaluations, agent_evaluation)
 
-    def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> float:
+    def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
+        """
+        :return: episode reward and total number of steps
+        """
         episode_reward = 0
+        steps_count = 0
         state = self.env.reset()
         done = False
         while not done:
@@ -71,7 +77,8 @@ class LearningTask(SavableLoadable):
 
             state = new_state
             episode_reward += reward
-        return episode_reward
+            steps_count += 1
+        return episode_reward, steps_count
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
@@ -86,6 +93,7 @@ class LearningTask(SavableLoadable):
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
+        self.step_counts = np.array([])
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
