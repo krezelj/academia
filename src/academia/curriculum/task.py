@@ -15,13 +15,13 @@ _logger = logging.getLogger('academia.curriculum')
 
 class LearningTask(SavableLoadable):
 
-    __slots__ = ['env_type', 'env_args', 'env',
-                 'stop_conditions', 'evaluation_interval',
-                 'episode_rewards', 'agent_evaluations',
-                 'step_counts', 'name']
+    __slots__ = ['name', 'env_type', 'env_args', 'env',
+                 'stop_conditions', 'evaluation_interval', 'evaluation_count',
+                 'episode_rewards', 'agent_evaluations', 'step_counts']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, name: Optional[str] = None) -> None:
+                 evaluation_interval: int = 100, evaluation_count: int = 5,
+                 name: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -32,6 +32,7 @@ class LearningTask(SavableLoadable):
             raise ValueError(msg)
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
+        self.evaluation_count = evaluation_count
 
         self.agent_evaluations = np.array([])
         self.episode_rewards = np.array([])
@@ -39,7 +40,7 @@ class LearningTask(SavableLoadable):
 
         self.name = name
 
-    def run(self, agent: Agent, render=False) -> None:
+    def run(self, agent: Agent, verbose=0, render=False) -> None:
         self.__reset()
         if render and self.env_args.get('render_mode') == 'human':
             self.env.render()
@@ -55,8 +56,11 @@ class LearningTask(SavableLoadable):
             self.step_counts = np.append(self.step_counts, steps_count)
 
             if episode % self.evaluation_interval == 0:
-                agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
-                self.agent_evaluations = np.append(self.agent_evaluations, agent_evaluation)
+                eval_rewards: list[float] = []
+                for _ in range(self.evaluation_count):
+                    eval_reward, _ = self.__run_episode(agent, evaluation_mode=True)
+                    eval_rewards.append(eval_reward)
+                self.agent_evaluations = np.append(self.agent_evaluations, np.mean(eval_rewards))
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
