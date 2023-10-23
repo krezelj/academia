@@ -23,23 +23,27 @@ class Curriculum(SavableLoadable):
         total_episodes = 0
         stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):
-            task: LearningTask
-            if verbose > 0:
-                _logger.info(f'Running Task: {i + 1 if task.name is None else task.name}... ')
-            task.run(agent, render=render)
+            if verbose >= 1:
+                _logger.info(f'Running Task {self.__get_task_id(i)}... ')
+            task.run(agent, verbose=verbose, render=render)
             total_episodes += len(task.episode_rewards)
-            if verbose > 0:
-                _logger.info(f'finished after {len(task.episode_rewards)} episodes.')
+            if verbose >= 1:
+                _logger.info(f'Task {self.__get_task_id(i)} finished after '
+                             f'{len(task.episode_rewards)} episodes.')
                 wall_time, cpu_time = stopwatch.lap()
                 _logger.info(f'Elapsed task wall time: {wall_time:.2f} sec')
                 _logger.info(f'Elapsed task CPU time: {cpu_time:.2f} sec')
-                _logger.info(f'Average steps per episode: {np.mean(task.step_counts)}')
-                _logger.info(f'Average reward per episode: {np.mean(task.episode_rewards)}')
-        if verbose > 0:
+                _logger.info(f'Average steps per episode: {np.mean(task.step_counts):.2f}')
+                _logger.info(f'Average reward per episode: {np.mean(task.episode_rewards):.2f}')
+        if verbose >= 1:
             _logger.info(f'Curriculum finished after {total_episodes} episodes.')
             wall_time, cpu_time = stopwatch.stop()
             _logger.info(f'Elapsed total wall time: {wall_time:.2f} sec')
             _logger.info(f'Elapsed total CPU time: {cpu_time:.2f} sec')
+
+    def __get_task_id(self, idx: int) -> str:
+        task = self.tasks[idx]
+        return str(idx + 1) if task.name is None else task.name
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':

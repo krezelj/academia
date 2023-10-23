@@ -37,6 +37,8 @@ class LearningTask(SavableLoadable):
         self.agent_evaluations = np.array([])
         self.episode_rewards = np.array([])
         self.step_counts = np.array([])
+        self.episode_rewards_moving_avg = np.array([])
+        self.step_counts_moving_avg = np.array([])
 
         self.name = name
 
@@ -52,8 +54,23 @@ class LearningTask(SavableLoadable):
             episode += 1
 
             episode_reward, steps_count = self.__run_episode(agent)
+
             self.episode_rewards = np.append(self.episode_rewards, episode_reward)
             self.step_counts = np.append(self.step_counts, steps_count)
+
+            episode_rewards_mvavg = np.mean(self.episode_rewards[-3:])
+            steps_count_mvavg = np.mean(self.step_counts[-3:])
+            self.episode_rewards_moving_avg = np.append(
+                self.episode_rewards, episode_rewards_mvavg)
+            self.step_counts_moving_avg = np.append(
+                self.step_counts, steps_count_mvavg)
+
+            if verbose >= 2:
+                _logger.info(f'Episode {episode} done.')
+                _logger.info(f'Reward: {episode_reward:.2f}')
+                _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
+                _logger.info(f'Steps count: {steps_count}')
+                _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
             if episode % self.evaluation_interval == 0:
                 eval_rewards: list[float] = []
