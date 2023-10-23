@@ -22,21 +22,11 @@ class PPOAgent(Agent):
     class PPOBuffer:
         # TODO Check if actions are neccessary to remember
 
-        __slots__ = ['buffer_size',
-                     '__update_count',
-                     '__episode_length_counter'
-                     'states', 
-                     'actions', 
-                     'actions_logits', 
-                     'rewards', 
-                     'rewards_to_go', 
-                     'episode_lengths',
-                     ]
+        # __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter''states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
 
         def __init__(self, buffer_size):
             self._reset()
             self.buffer_size = buffer_size
-            pass
 
         def _update(self, state, action, action_logits, reward, is_terminal) -> bool:
             self.__update_counter += 1
@@ -54,15 +44,38 @@ class PPOAgent(Agent):
             return self.__update_counter >= self.buffer_size
             
 
-        def _calculate_rewards_to_go(self):
+        def _calculate_rewards_to_go(self, gamma : float):
+            # t_offset = 0 
+            # for episode_length in self.episode_lengths:
+            #     # TODO currently I use `t_offset` to keep track of the index of the reward
+            #     # in memory['rewards'] however if I decide to use a separate class for PPOMemory
+            #     # it should probably keep track of stats for each episode in a separate list
+
+            #     # TODO
+            #     # This should ****NOT**** be here
+            #     # t_offset = 0 
+            #     discounted_reward = 0
+            #     for t in range(episode_length - 1, -1, -1):
+            #         # TODO XD I had += instead of = and it gave ma headache
+            #         discounted_reward = self.rewards[t + t_offset] + gamma * discounted_reward
+            #         self.rewards_to_go.insert(0, discounted_reward)
+            #     t_offset += episode_length
+            t_offset = 0 
             for episode_length in self.episode_lengths:
                 # TODO currently I use `t_offset` to keep track of the index of the reward
                 # in memory['rewards'] however if I decide to use a separate class for PPOMemory
                 # it should probably keep track of stats for each episode in a separate list
-                t_offset = 0 
+
+                # TODO
+                # This should ****NOT**** be here
+                # t_offset = 0 
                 discounted_reward = 0
-                for t in range(episode_length, -1, -1):
-                    discounted_reward += self.rewards[t + t_offset] + self.gamma * discounted_reward
+                discounted_rewards = []
+                for t in range(episode_length - 1, -1, -1):
+                    # TODO XD I had += instead of = and it gave ma headache
+                    discounted_reward = self.rewards[t + t_offset] + gamma * discounted_reward
+                    discounted_rewards.insert(0, discounted_reward)
+                self.rewards_to_go.extend(discounted_rewards)
                 t_offset += episode_length
 
         def _reset(self):
@@ -77,7 +90,12 @@ class PPOAgent(Agent):
             self.episode_lengths = []
 
         def _get_tensors(self):
-            return torch.tensor(self.states), torch.tensor(self.actions_logits), torch.tensor(self.rewards_to_go)
+            # TODO convert to numpy first and then to tensor
+            states_t = torch.tensor(self.states, dtype=torch.float)
+            actions_t = torch.tensor(self.actions, dtype=torch.float)
+            actions_logits_t = torch.tensor(self.actions_logits, dtype=torch.float)
+            rewards_to_go_t = torch.tensor(self.rewards_to_go, dtype=torch.float)
+            return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     __slots__ = ['n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
                  'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs']
@@ -89,7 +107,7 @@ class PPOAgent(Agent):
                  batch_size : int,
                  n_epochs: int,
                  n_actions: int,
-                 clip: float,
+                 clip: float = 0.2,
                  gamma: float = 0.99, 
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
@@ -111,28 +129,43 @@ class PPOAgent(Agent):
         self.actor = actor_architecture()
         self.critic = critic_architecture()
 
-        self.actor_optimiser = Adam(self.actor.parameters())
-        self.critic_optimiser = Adam(self.critic.parameters())
+        self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
+        self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
 
-    def __get_action_logits(self, states) -> npt.NDArray[np.float_]:
+    def __get_action_logits(self, states, greedy=False) -> npt.NDArray[np.float_]:
         # TODO move this somewhere else later
         cov_var = torch.full(size=(self.n_actions,), fill_value=0.5)
         cov_mat = torch.diag(cov_var)
 
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, cov_mat)
+        if greedy:
+            return mean.detach().numpy(), distribution.log_prob(mean).detach()
+
+        
         action = distribution.sample()
-        return action.detach().numpy, distribution.log_prob(action).detach()
-    
-    def __get_stochastic_action(self, states):
-        pass
+        return action.detach().numpy(), distribution.log_prob(action).detach()
 
-    def __evaluate(self, states) -> torch.Tensor:
-        return self.critic(states).squeeze()
+    def __evaluate(self, states, actions) -> torch.Tensor:
+        # TODO move this somewhere else later
+        cov_var = torch.full(size=(self.n_actions,), fill_value=0.5)
+        cov_mat = torch.diag(cov_var)
 
+        V = self.critic(states).squeeze()
+        mean = self.actor(states)
+        distribution = MultivariateNormal(mean, cov_mat)
+        actions_logits = distribution.log_prob(actions)
+
+        return V, actions_logits
+
+
+    last_action = None
+    last_action_logit = None
     def get_action(self, state, legal_mask=None, greedy=False): 
-        action, logits = self.__get_action_logits(state)
+        action, logit = self.__get_action_logits(state, greedy)
         # TODO Add caching logic
+        self.last_action = action
+        self.last_action_logit = logit
         return action
 
     def update(self, state, action, reward, new_state, is_terminal):
@@ -142,16 +175,17 @@ class PPOAgent(Agent):
         # we should probably cache the logits from the last time we called get_action
         # and check if the states match, if they do, use cached value otherwise recalculate
         _, action_logits = self.__get_action_logits(state)
-        buffer_full = self.memory._update(state, action, action_logits, reward, is_terminal)
+        buffer_full = self.memory._update(state, action, self.last_action_logit, reward, is_terminal)
 
         if buffer_full:
-            self.memory._calculate_rewards_to_go()
+            # TODO should gamma be an argument??
+            self.memory._calculate_rewards_to_go(self.gamma)
             self.__train()
             self.memory._reset()
 
     def __train(self):
-        states, actions_logits, rewards_to_go = self.memory._get_tensors()
-        V = self.__evaluate(states)
+        states, actions, actions_logits, rewards_to_go = self.memory._get_tensors()
+        V, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
 
         # TODO is this neccessary?
@@ -159,8 +193,8 @@ class PPOAgent(Agent):
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            current_V = self.__evaluate(states)
-            _, current_actions_logits = self.__get_action_logits(states)
+            current_V, current_actions_logits = self.__evaluate(states, actions)
+            # _, current_actions_logits = self.__get_action_logits(states)
 
             ratios = torch.exp(current_actions_logits - actions_logits)
 
