@@ -58,8 +58,8 @@ class LearningTask(SavableLoadable):
             self.episode_rewards = np.append(self.episode_rewards, episode_reward)
             self.step_counts = np.append(self.step_counts, steps_count)
 
-            episode_rewards_mvavg = np.mean(self.episode_rewards[-3:])
-            steps_count_mvavg = np.mean(self.step_counts[-3:])
+            episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
+            steps_count_mvavg = np.mean(self.step_counts[-5:])
             self.episode_rewards_moving_avg = np.append(
                 self.episode_rewards, episode_rewards_mvavg)
             self.step_counts_moving_avg = np.append(
