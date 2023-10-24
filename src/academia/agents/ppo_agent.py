@@ -5,7 +5,7 @@ import numpy.typing as npt
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from torch.distributions import MultivariateNormal
+from torch.distributions import MultivariateNormal, Categorical
 
 from .base import Agent
 
@@ -116,30 +116,66 @@ class PPOAgent(Agent):
 
     def __evaluate(self, states, actions) -> torch.Tensor:
         V = self.critic(states).squeeze()
-        mean = self.actor(states)
-        distribution = MultivariateNormal(mean, self.__covariance_matrix)
-        actions_logits = distribution.log_prob(actions)
+        # TODO move action logits assignment out of ifs (since it's shared)
+        if self.discrete:
+            pi = self.actor(states)
+            distribution = Categorical(pi)
+            actions_logits = distribution.log_prob(actions)
+        else:
+            mean = self.actor(states)
+            distribution = MultivariateNormal(mean, self.__covariance_matrix)
+            actions_logits = distribution.log_prob(actions)
         return V, actions_logits
 
 
-    # def __get_discrete_action_with_logits(self, states, greedy=False):
-
-
-    def __get_action_with_logits(self, states, greedy=False):
-        mean = self.actor(states)
-        distribution = MultivariateNormal(mean, self.__covariance_matrix)
+    def __get_discrete_action_with_logits(self, states, greedy=False):
+        pi = self.actor(states)
+        distribution = Categorical(pi)
         if greedy:
-            return mean.detach().numpy(), distribution.log_prob(mean).detach()
-        
+            action = torch.argmax(pi).detach().numpy().reshape(1,)
+            action_logit = torch.full((len(states),), fill_value=1.0)
+            return action, action_logit
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
 
-    def get_action(self, state, legal_mask=None, greedy=False): 
-        # PPOAgent currently doesn't support legal_masks 
+    def __get_continuous_action_with_logits(self, states, greedy=False):
+        mean = self.actor(states)
+        distribution = MultivariateNormal(mean, self.__covariance_matrix)
+        if greedy:
+            # TODO should log prob for greedy be all 1? (same as discrete)
+            return mean.detach().numpy(), distribution.log_prob(mean).detach()
+        action = distribution.sample()
+        return action.detach().numpy(), distribution.log_prob(action).detach()
+
+
+    def __get_action_with_logits(self, states, greedy=False):
+        with torch.no_grad():
+            if self.discrete:
+                return self.__get_discrete_action_with_logits(states, greedy)
+            else:
+                return self.__get_continuous_action_with_logits(states, greedy)
+
+
+    def get_action(self, state, legal_mask=None, greedy=False):
+        # PPOAgent currently doesn't support legal_masks TODO add warning to logger
+        
+        # in `get_action` we will always receive a single state
+        # but we prefer to operate on batches of states so we add one dimension
+        # to `state`` so that it behaves like a batch with single sample
+        state = torch.unsqueeze(torch.tensor(state), dim=0)
+
         action, action_logit = self.__get_action_with_logits(state, greedy)
-        # TODO add better caching logic
-        # so that we can check if the logit corresponds to the the same state
+
+        # however converting the state to a batch means we have to 'unbatch' action (and logits). 
+        # Otherwise gym environments return new states as batches which we try to unsqueeze again
+        # and this leads to shape errors during inference.
+        # TODO this logic should probably be rethinked but right now I have no idea
+        # how else we could deal with single sample inference with neural networks that end with softmax
+        action = action[0]
+        action_logit = action_logit[0]
+
+        # TODO add better caching logic so that we can check if the logit corresponds to the the same state
         self.__action_logit_cache = action_logit
         return action
 
@@ -190,8 +226,7 @@ class PPOAgent(Agent):
                 actor_loss.backward(retain_graph=True)
                 self.actor_optimiser.step()
 
-                # added typing since return type of MSELoss.__call__ is `Any`
-                critic_loss : torch.Tensor = nn.MSELoss()(current_V, batch_rewards_to_go)
+                critic_loss = nn.MSELoss()(current_V, batch_rewards_to_go)
                 self.critic_optimiser.zero_grad()    
                 critic_loss.backward()    
                 self.critic_optimiser.step()
