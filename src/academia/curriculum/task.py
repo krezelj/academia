@@ -1,3 +1,5 @@
+import sys
+import time
 from typing import Optional, Type
 import os
 import logging
@@ -15,13 +17,13 @@ _logger = logging.getLogger('academia.curriculum')
 
 class LearningTask(SavableLoadable):
 
-    __slots__ = ['name', 'env_type', 'env_args', 'env',
+    __slots__ = ['name', 'agent_save_path', 'env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval', 'evaluation_count',
                  'episode_rewards', 'agent_evaluations', 'step_counts']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5,
-                 name: Optional[str] = None) -> None:
+                 name: Optional[str] = None, agent_save_path: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -41,6 +43,7 @@ class LearningTask(SavableLoadable):
         self.step_counts_moving_avg = np.array([])
 
         self.name = name
+        self.agent_save_path = agent_save_path
 
     def run(self, agent: Agent, verbose=0, render=False) -> None:
         self.__reset()
@@ -49,6 +52,17 @@ class LearningTask(SavableLoadable):
         elif render:
             _logger.warning("WARNING: Cannot render environment when render_mode is not 'human'. "
                             "Consider passing render_mode in env_args in the task configuration")
+        try:
+            self.__train_agent(agent, verbose)
+        except KeyboardInterrupt:
+            _logger.info('Task interrupted.')
+            self.__handle_task_finished(agent)
+            sys.exit(130)
+        else:
+            _logger.info('Training finished.')
+            self.__handle_task_finished(agent)
+
+    def __train_agent(self, agent: Agent, verbose=0) -> None:
         episode = 0
         while not self.__is_finished():
             episode += 1
@@ -77,7 +91,8 @@ class LearningTask(SavableLoadable):
                 for _ in range(self.evaluation_count):
                     eval_reward, _ = self.__run_episode(agent, evaluation_mode=True)
                     eval_rewards.append(eval_reward)
-                self.agent_evaluations = np.append(self.agent_evaluations, np.mean(eval_rewards))
+                self.agent_evaluations = np.append(self.agent_evaluations,
+                                                   np.mean(eval_rewards))
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -100,6 +115,12 @@ class LearningTask(SavableLoadable):
             episode_reward += reward
             steps_count += 1
         return episode_reward, steps_count
+
+    def __handle_task_finished(self, agent: Agent) -> None:
+        if self.agent_save_path is not None:
+            os.makedirs(os.path.dirname(self.agent_save_path), exist_ok=True)
+            _logger.info(f"Saving agent's state to {self.agent_save_path}")
+            agent.save(self.agent_save_path)
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
