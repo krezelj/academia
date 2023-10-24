@@ -74,10 +74,11 @@ class PPOAgent(Agent):
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     __slots__ = ['n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
-                 'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs',
+                 'discrete', 'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs',
                  '__covariance_matrix', '__action_logit_cache']
 
     def __init__(self, 
+                 discrete: bool,
                  actor_architecture: Type[nn.Module],
                  critic_architecture: Type[nn.Module],
                  buffer_size : int,
@@ -89,9 +90,10 @@ class PPOAgent(Agent):
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
                  min_epsilon: float = 0.01,
-                 random_state = Optional[int]) -> None:
+                 random_state: Optional[int] = None) -> None:
         # TODO make network weights based on random state
         super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
+        self.discrete = discrete
         self.clip = clip
         self.batch_size = batch_size
         self.n_epochs = n_epochs
@@ -104,6 +106,7 @@ class PPOAgent(Agent):
 
     def __init_networks(self, actor_architecture : Type[nn.Module], critic_architecture : Type[nn.Module]):
         # TODO add parameter to control lr in optimisers
+        # TODO add lr scheduler   
         self.actor = actor_architecture()
         self.critic = critic_architecture()
 
@@ -119,7 +122,10 @@ class PPOAgent(Agent):
         return V, actions_logits
 
 
-    def __get_action_with_logits(self, states, greedy=False) -> npt.NDArray[np.float_]:
+    # def __get_discrete_action_with_logits(self, states, greedy=False):
+
+
+    def __get_action_with_logits(self, states, greedy=False):
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
@@ -153,31 +159,42 @@ class PPOAgent(Agent):
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            current_V, current_actions_logits = self.__evaluate(states, actions)
-            ratios = torch.exp(current_actions_logits - actions_logits)
+            idx_permutation = np.arange(self.memory.buffer_size)
+            np.random.shuffle(idx_permutation)
+            n_batches = np.ceil(self.memory.buffer_size / self.batch_size).astype(np.int32)
+            for batch_idx in range(n_batches):
+                idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
+                batch_states = states[idx_in_batch]
+                batch_actions = actions[idx_in_batch]
+                batch_actions_logits = actions_logits[idx_in_batch]
+                batch_A = A[idx_in_batch]
+                batch_rewards_to_go = rewards_to_go[idx_in_batch]
 
-            surrogate_1 = ratios * A
-            surrogate_2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
+                current_V, current_actions_logits = self.__evaluate(batch_states, batch_actions)
+                ratios = torch.exp(current_actions_logits - batch_actions_logits)
 
-            # negative sign since we are performing gradient **ascent**
-            actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
-            self.actor_optimiser.zero_grad()
+                surrogate_1 = ratios * batch_A
+                surrogate_2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * batch_A
 
-            # why retain_graph=True?
-            # good explanation: https://t.ly/NjM38 (stackoverflow)
-            # short explanation: if actor and critic models share paramets (i.e. layers) (not uncommon)
-            # and we perform backward pass on actor_loss we will lose the values from the forward pass 
-            # in the shared layers (default pytorch behaviour that saves memory)
-            # however this would result in an error being thrown when we perform 
-            # a backward pass on the critic_loss. 
-            actor_loss.backward(retain_graph=True)
-            self.actor_optimiser.step()
+                # negative sign since we are performing gradient **ascent**
+                actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
+                self.actor_optimiser.zero_grad()
 
-            # added typing since return type of MSELoss.__call__ is `Any`
-            critic_loss : torch.Tensor = nn.MSELoss()(current_V, rewards_to_go)
-            self.critic_optimiser.zero_grad()    
-            critic_loss.backward()    
-            self.critic_optimiser.step()
+                # why retain_graph=True?
+                # good explanation: https://t.ly/NjM38 (stackoverflow)
+                # short explanation: if actor and critic models share paramets (i.e. layers) (not uncommon)
+                # and we perform backward pass on actor_loss we will lose the values from the forward pass 
+                # in the shared layers (default pytorch behaviour that saves memory)
+                # however this would result in an error being thrown when we perform 
+                # a backward pass on the critic_loss. 
+                actor_loss.backward(retain_graph=True)
+                self.actor_optimiser.step()
+
+                # added typing since return type of MSELoss.__call__ is `Any`
+                critic_loss : torch.Tensor = nn.MSELoss()(current_V, batch_rewards_to_go)
+                self.critic_optimiser.zero_grad()    
+                critic_loss.backward()    
+                self.critic_optimiser.step()
 
 
     @classmethod
