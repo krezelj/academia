@@ -1,4 +1,4 @@
-from typing import Optional, Type
+from typing import Any, Optional, Tuple, Type, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,22 +9,29 @@ from torch.distributions import MultivariateNormal, Categorical
 
 from .base import Agent
 
-# TODO annotate all paramter types
-# TODO annotate all return types
-# TODO add documentation
+# TODO Add entropy
+# TODO Add KL estimation
+# TODO Add GAES
+# TODO Add lr scheduler
 
 class PPOAgent(Agent):
 
     class PPOBuffer:
 
-        __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter', 'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
+        __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter', 
+                     'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
 
-        def __init__(self, buffer_size):
+        def __init__(self, buffer_size : int) -> None:
             self._reset()
             self.buffer_size = buffer_size
 
 
-        def _update(self, state, action, action_logits, reward, is_terminal) -> bool:
+        def _update(self, 
+                    state : Any, 
+                    action : Any, 
+                    action_logits : float, 
+                    reward : float, 
+                    is_terminal : bool) -> bool:
             self.__update_counter += 1
             self.__episode_length_counter += 1
 
@@ -40,7 +47,7 @@ class PPOAgent(Agent):
             return self.__update_counter >= self.buffer_size
             
 
-        def _calculate_rewards_to_go(self, gamma : float):
+        def _calculate_rewards_to_go(self, gamma : float) -> None:
             t_offset = 0 
             for episode_length in self.episode_lengths:
                 discounted_reward = 0
@@ -52,7 +59,7 @@ class PPOAgent(Agent):
                 t_offset += episode_length
 
 
-        def _reset(self):
+        def _reset(self) -> None:
             self.__episode_length_counter = 0
             self.__update_counter = 0
 
@@ -64,9 +71,9 @@ class PPOAgent(Agent):
             self.episode_lengths = []
 
 
-        def _get_tensors(self):
-            # converting a list to a tensor is slow; pytorch suggests
-            # converting to numpy array first
+        def _get_tensors(self) \
+            -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+            # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
             states_t = torch.tensor(np.array(self.states), dtype=torch.float)
             actions_t = torch.tensor(np.array(self.actions), dtype=torch.float)
             actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float)
@@ -74,7 +81,7 @@ class PPOAgent(Agent):
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     __slots__ = ['n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
-                 'discrete', 'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs',
+                 'discrete', 'clip', 'actor', 'critic', 'buffer', 'batch_size', 'n_epochs',
                  '__covariance_matrix', '__action_logit_cache']
 
     def __init__(self, 
@@ -91,20 +98,22 @@ class PPOAgent(Agent):
                  epsilon_decay: float = 0.99,
                  min_epsilon: float = 0.01,
                  random_state: Optional[int] = None) -> None:
-        # TODO make network weights based on random state
         super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
         self.discrete = discrete
         self.clip = clip
         self.batch_size = batch_size
         self.n_epochs = n_epochs
 
-        self.memory = PPOAgent.PPOBuffer(buffer_size)
+        self.buffer = PPOAgent.PPOBuffer(buffer_size)
         self.__init_networks(actor_architecture, critic_architecture)
         # TODO parametrise `fill_value`
         self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
 
 
-    def __init_networks(self, actor_architecture : Type[nn.Module], critic_architecture : Type[nn.Module]):
+    def __init_networks(self, 
+                        actor_architecture : Type[nn.Module], 
+                        critic_architecture : Type[nn.Module]) -> None:
+        # TODO make network weights based on random state
         # TODO add parameter to control lr in optimisers
         # TODO add lr scheduler   
         self.actor = actor_architecture()
@@ -114,21 +123,22 @@ class PPOAgent(Agent):
         self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
 
 
-    def __evaluate(self, states, actions) -> torch.Tensor:
+    def __evaluate(self, states : torch.FloatTensor, actions : torch.FloatTensor) \
+        -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         V = self.critic(states).squeeze()
-        # TODO move action logits assignment out of ifs (since it's shared)
         if self.discrete:
             pi = self.actor(states)
             distribution = Categorical(pi)
-            actions_logits = distribution.log_prob(actions)
         else:
             mean = self.actor(states)
             distribution = MultivariateNormal(mean, self.__covariance_matrix)
-            actions_logits = distribution.log_prob(actions)
+
+        actions_logits = distribution.log_prob(actions)
         return V, actions_logits
 
 
-    def __get_discrete_action_with_logits(self, states, greedy=False):
+    def __get_discrete_action_with_logits(self, states : torch.FloatTensor, greedy=False) \
+        -> Tuple[npt.NDArray, torch.FloatTensor]:
         pi = self.actor(states)
         distribution = Categorical(pi)
         if greedy:
@@ -139,17 +149,18 @@ class PPOAgent(Agent):
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
 
-    def __get_continuous_action_with_logits(self, states, greedy=False):
+    def __get_continuous_action_with_logits(self, states : torch.FloatTensor, greedy=False) \
+        -> Tuple[npt.NDArray, torch.FloatTensor]:
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
-            # TODO should log prob for greedy be all 1? (same as discrete)
+            # NOTE should log prob for greedy be all 1? (same as discrete)
             return mean.detach().numpy(), distribution.log_prob(mean).detach()
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
 
-    def __get_action_with_logits(self, states, greedy=False):
+    def __get_action_with_logits(self, states : torch.FloatTensor, greedy=False):
         with torch.no_grad():
             if self.discrete:
                 return self.__get_discrete_action_with_logits(states, greedy)
@@ -157,21 +168,20 @@ class PPOAgent(Agent):
                 return self.__get_continuous_action_with_logits(states, greedy)
 
 
-    def get_action(self, state, legal_mask=None, greedy=False):
+    def get_action(self, state : Any, legal_mask=None, greedy=False) -> Union[float, int]:
         # PPOAgent currently doesn't support legal_masks TODO add warning to logger
         
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
         # to `state`` so that it behaves like a batch with single sample
         state = torch.unsqueeze(torch.tensor(state), dim=0)
-
         action, action_logit = self.__get_action_with_logits(state, greedy)
 
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
         # Otherwise gym environments return new states as batches which we try to unsqueeze again
         # and this leads to shape errors during inference.
         # TODO this logic should probably be rethinked but right now I have no idea
-        # how else we could deal with single sample inference with neural networks that end with softmax
+        # how else we could deal with single-sample inference with neural networks that end with softmax
         action = action[0]
         action_logit = action_logit[0]
 
@@ -180,24 +190,29 @@ class PPOAgent(Agent):
         return action
 
 
-    def update(self, state, action, reward, new_state, is_terminal):
-        buffer_full = self.memory._update(state, action, self.__action_logit_cache, reward, is_terminal)
+    def update(self, 
+               state : Any, 
+               action : Any, 
+               reward : float, 
+               new_state : Any, 
+               is_terminal : bool) -> None:
+        buffer_full = self.buffer._update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
-            self.memory._calculate_rewards_to_go(self.gamma)
+            self.buffer._calculate_rewards_to_go(self.gamma)
             self.__train()
-            self.memory._reset()
+            self.buffer._reset()
 
 
-    def __train(self):
-        states, actions, actions_logits, rewards_to_go = self.memory._get_tensors()
+    def __train(self) -> None:
+        states, actions, actions_logits, rewards_to_go = self.buffer._get_tensors()
         V, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            idx_permutation = np.arange(self.memory.buffer_size)
+            idx_permutation = np.arange(self.buffer.buffer_size)
             np.random.shuffle(idx_permutation)
-            n_batches = np.ceil(self.memory.buffer_size / self.batch_size).astype(np.int32)
+            n_batches = np.ceil(self.buffer.buffer_size / self.batch_size).astype(np.int32)
             for batch_idx in range(n_batches):
                 idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
                 batch_states = states[idx_in_batch]
