@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Optional, Type
 
 import numpy as np
 import numpy.typing as npt
@@ -9,24 +9,20 @@ from torch.distributions import MultivariateNormal
 
 from .base import Agent
 
-
-
-
-# TODO Things that will probably have to be implemented outside
-# `Task`
-#   early episode stop -- stop episode after a set number of steps
-
+# TODO annotate all paramter types
+# TODO annotate all return types
+# TODO add documentation
 
 class PPOAgent(Agent):
 
     class PPOBuffer:
-        # TODO Check if actions are neccessary to remember
 
-        # __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter''states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
+        __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter', 'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
 
         def __init__(self, buffer_size):
             self._reset()
             self.buffer_size = buffer_size
+
 
         def _update(self, state, action, action_logits, reward, is_terminal) -> bool:
             self.__update_counter += 1
@@ -45,38 +41,16 @@ class PPOAgent(Agent):
             
 
         def _calculate_rewards_to_go(self, gamma : float):
-            # t_offset = 0 
-            # for episode_length in self.episode_lengths:
-            #     # TODO currently I use `t_offset` to keep track of the index of the reward
-            #     # in memory['rewards'] however if I decide to use a separate class for PPOMemory
-            #     # it should probably keep track of stats for each episode in a separate list
-
-            #     # TODO
-            #     # This should ****NOT**** be here
-            #     # t_offset = 0 
-            #     discounted_reward = 0
-            #     for t in range(episode_length - 1, -1, -1):
-            #         # TODO XD I had += instead of = and it gave ma headache
-            #         discounted_reward = self.rewards[t + t_offset] + gamma * discounted_reward
-            #         self.rewards_to_go.insert(0, discounted_reward)
-            #     t_offset += episode_length
             t_offset = 0 
             for episode_length in self.episode_lengths:
-                # TODO currently I use `t_offset` to keep track of the index of the reward
-                # in memory['rewards'] however if I decide to use a separate class for PPOMemory
-                # it should probably keep track of stats for each episode in a separate list
-
-                # TODO
-                # This should ****NOT**** be here
-                # t_offset = 0 
                 discounted_reward = 0
                 discounted_rewards = []
                 for t in range(episode_length - 1, -1, -1):
-                    # TODO XD I had += instead of = and it gave ma headache
                     discounted_reward = self.rewards[t + t_offset] + gamma * discounted_reward
                     discounted_rewards.insert(0, discounted_reward)
                 self.rewards_to_go.extend(discounted_rewards)
                 t_offset += episode_length
+
 
         def _reset(self):
             self.__episode_length_counter = 0
@@ -89,16 +63,19 @@ class PPOAgent(Agent):
             self.rewards_to_go = []
             self.episode_lengths = []
 
+
         def _get_tensors(self):
-            # TODO convert to numpy first and then to tensor
-            states_t = torch.tensor(self.states, dtype=torch.float)
-            actions_t = torch.tensor(self.actions, dtype=torch.float)
-            actions_logits_t = torch.tensor(self.actions_logits, dtype=torch.float)
-            rewards_to_go_t = torch.tensor(self.rewards_to_go, dtype=torch.float)
+            # converting a list to a tensor is slow; pytorch suggests
+            # converting to numpy array first
+            states_t = torch.tensor(np.array(self.states), dtype=torch.float)
+            actions_t = torch.tensor(np.array(self.actions), dtype=torch.float)
+            actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float)
+            rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     __slots__ = ['n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
-                 'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs']
+                 'clip', 'actor', 'critic', 'memory', 'batch_size', 'n_epochs',
+                 '__covariance_matrix', '__action_logit_cache']
 
     def __init__(self, 
                  actor_architecture: Type[nn.Module],
@@ -111,118 +88,102 @@ class PPOAgent(Agent):
                  gamma: float = 0.99, 
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
-                 min_epsilon: float = 0.01) -> None:
-        super(PPOAgent, self).__init__(epsilon, min_epsilon, epsilon_decay)
-        self.n_actions = n_actions
-        self.gamma = gamma
+                 min_epsilon: float = 0.01,
+                 random_state = Optional[int]) -> None:
+        # TODO make network weights based on random state
+        super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
         self.clip = clip
         self.batch_size = batch_size
         self.n_epochs = n_epochs
 
-        self.__init_networks(actor_architecture, critic_architecture)
-
         self.memory = PPOAgent.PPOBuffer(buffer_size)
+        self.__init_networks(actor_architecture, critic_architecture)
+        # TODO parametrise `fill_value`
+        self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
+
 
     def __init_networks(self, actor_architecture : Type[nn.Module], critic_architecture : Type[nn.Module]):
         # TODO add parameter to control lr in optimisers
-
         self.actor = actor_architecture()
         self.critic = critic_architecture()
 
         self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
 
-    def __get_action_logits(self, states, greedy=False) -> npt.NDArray[np.float_]:
-        # TODO move this somewhere else later
-        cov_var = torch.full(size=(self.n_actions,), fill_value=0.5)
-        cov_mat = torch.diag(cov_var)
 
+    def __evaluate(self, states, actions) -> torch.Tensor:
+        V = self.critic(states).squeeze()
         mean = self.actor(states)
-        distribution = MultivariateNormal(mean, cov_mat)
+        distribution = MultivariateNormal(mean, self.__covariance_matrix)
+        actions_logits = distribution.log_prob(actions)
+        return V, actions_logits
+
+
+    def __get_action_with_logits(self, states, greedy=False) -> npt.NDArray[np.float_]:
+        mean = self.actor(states)
+        distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
             return mean.detach().numpy(), distribution.log_prob(mean).detach()
-
         
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
-    def __evaluate(self, states, actions) -> torch.Tensor:
-        # TODO move this somewhere else later
-        cov_var = torch.full(size=(self.n_actions,), fill_value=0.5)
-        cov_mat = torch.diag(cov_var)
 
-        V = self.critic(states).squeeze()
-        mean = self.actor(states)
-        distribution = MultivariateNormal(mean, cov_mat)
-        actions_logits = distribution.log_prob(actions)
-
-        return V, actions_logits
-
-
-    last_action = None
-    last_action_logit = None
     def get_action(self, state, legal_mask=None, greedy=False): 
-        action, logit = self.__get_action_logits(state, greedy)
-        # TODO Add caching logic
-        self.last_action = action
-        self.last_action_logit = logit
+        # PPOAgent currently doesn't support legal_masks 
+        action, action_logit = self.__get_action_with_logits(state, greedy)
+        # TODO add better caching logic
+        # so that we can check if the logit corresponds to the the same state
+        self.__action_logit_cache = action_logit
         return action
 
+
     def update(self, state, action, reward, new_state, is_terminal):
-        # TODO create issue to rename `remember` in DQN to `__update_memory`
-
-        # TODO This piece of code puts the actor network to work twice
-        # we should probably cache the logits from the last time we called get_action
-        # and check if the states match, if they do, use cached value otherwise recalculate
-        _, action_logits = self.__get_action_logits(state)
-        buffer_full = self.memory._update(state, action, self.last_action_logit, reward, is_terminal)
-
+        buffer_full = self.memory._update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
-            # TODO should gamma be an argument??
             self.memory._calculate_rewards_to_go(self.gamma)
             self.__train()
             self.memory._reset()
+
 
     def __train(self):
         states, actions, actions_logits, rewards_to_go = self.memory._get_tensors()
         V, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
-
-        # TODO is this neccessary?
-        # Normalize advantages
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
             current_V, current_actions_logits = self.__evaluate(states, actions)
-            # _, current_actions_logits = self.__get_action_logits(states)
-
             ratios = torch.exp(current_actions_logits - actions_logits)
 
-            # TODO !!!! Rename this!
-            surr1 = ratios * A
-            surr2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
+            surrogate_1 = ratios * A
+            surrogate_2 = torch.clamp(ratios, 1 - self.clip, 1 + self.clip) * A
 
-            # train actor
-            # negative sign as we are performing gradient **ascent**
-            actor_loss = (-torch.min(surr1, surr2)).mean()
+            # negative sign since we are performing gradient **ascent**
+            actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
             self.actor_optimiser.zero_grad()
 
-            # TODO read more about retain_graph, is it neccessary?
-            # perhaps it's only useful is actor and critic share parameters
+            # why retain_graph=True?
+            # good explanation: https://t.ly/NjM38 (stackoverflow)
+            # short explanation: if actor and critic models share paramets (i.e. layers) (not uncommon)
+            # and we perform backward pass on actor_loss we will lose the values from the forward pass 
+            # in the shared layers (default pytorch behaviour that saves memory)
+            # however this would result in an error being thrown when we perform 
+            # a backward pass on the critic_loss. 
             actor_loss.backward(retain_graph=True)
             self.actor_optimiser.step()
 
-            # train critic
-            # TODO should this typing be left here? intellisense doesn't seem
-            # to recognise it's a tensor (says it's of type 'any')
+            # added typing since return type of MSELoss.__call__ is `Any`
             critic_loss : torch.Tensor = nn.MSELoss()(current_V, rewards_to_go)
             self.critic_optimiser.zero_grad()    
             critic_loss.backward()    
             self.critic_optimiser.step()
 
+
     @classmethod
     def load(cls, path: str):
         pass
+
 
     def save(self, path: str) -> None:
         pass
