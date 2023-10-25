@@ -140,11 +140,6 @@ class LearningTask(SavableLoadable):
         if 'max_episodes' in self.stop_conditions:
             return len(self.episode_rewards) >= self.stop_conditions['max_episodes']
         
-        if 'predicate' in self.stop_conditions:
-            # custom predicate, value is a function that takes episode_rewards and agent_evaluations
-            # as arguments and returns True or False deciding whether the episode should stop or not
-            return self.stop_conditions['predicate'](self.episode_rewards, self.agent_evaluations)
-        
         if 'max_steps' in self.stop_conditions:
             return np.sum(self.step_counts) >= self.stop_conditions['max_steps']
         
