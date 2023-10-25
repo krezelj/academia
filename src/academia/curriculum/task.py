@@ -1,5 +1,4 @@
 import sys
-import time
 from typing import Optional, Type
 import os
 import logging

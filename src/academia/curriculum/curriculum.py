@@ -25,7 +25,6 @@ class Curriculum(SavableLoadable):
         total_episodes = 0
         stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):
-            task: LearningTask
             task_id = str(i + 1) if task.name is None else task.name
             if verbose >= 1:
                 _logger.info(f'Running Task {task_id}... ')
