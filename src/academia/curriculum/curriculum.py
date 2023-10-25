@@ -73,7 +73,7 @@ class Curriculum(SavableLoadable):
             tasks.append(task)
         return Curriculum(tasks)
 
-    def save(self, path: str) -> None:
+    def save(self, path: str) -> str:
         # dict preserves insertion order
         curr_data = {
             'order': list(range(len(self.tasks))),
@@ -85,3 +85,4 @@ class Curriculum(SavableLoadable):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(curr_data, file)
+        return os.path.abspath(path)

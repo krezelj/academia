@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import Optional
 
@@ -46,6 +47,7 @@ class TabularAgent(Agent):
             path += '.agent.yml'
         with open(path, 'w') as file:
             yaml.dump(dict(learner_state_dict), file)
+        return os.path.abspath(path)
 
     @classmethod
     def load(cls, path: str) -> 'TabularAgent':

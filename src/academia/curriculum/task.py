@@ -158,7 +158,7 @@ class LearningTask(SavableLoadable):
             task_data: dict = yaml.safe_load(file)
         return cls.from_dict(task_data)
 
-    def save(self, path: str) -> None:
+    def save(self, path: str) -> str:
         task_data = self.to_dict()
         # add file extension
         if not path.endswith('.yml'):
@@ -166,6 +166,7 @@ class LearningTask(SavableLoadable):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(task_data, file)
+        return os.path.abspath(path)
 
     @classmethod
     def from_dict(cls, task_data: dict) -> 'LearningTask':
