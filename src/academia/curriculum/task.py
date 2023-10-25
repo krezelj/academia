@@ -131,8 +131,9 @@ class LearningTask(SavableLoadable):
                 filename = f'backup_{filename}'
             os.makedirs(dirname, exist_ok=True)
             full_path = os.path.join(dirname, filename)
-            _logger.info(f"Saving agent's state to {full_path}")
-            agent.save(full_path)
+            _logger.info("Saving agent's state...")
+            save_path = agent.save(full_path)
+            _logger.info(f"Agent's state saved to {save_path}")
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
