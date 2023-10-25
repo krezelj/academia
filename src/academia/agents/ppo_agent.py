@@ -1,3 +1,6 @@
+import os
+import zipfile
+import tempfile
 from typing import Any, Optional, Tuple, Type, Union
 
 import numpy as np
@@ -6,6 +9,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.distributions import MultivariateNormal, Categorical
+import yaml
 
 from .base import Agent
 
@@ -19,7 +23,7 @@ class PPOAgent(Agent):
     class PPOBuffer:
 
         __slots__ = ['n_steps', 'n_episodes',
-                     '__steps_counter', '__episode_length_counter', '__episode_counter',
+                     '_steps_counter', '_episode_length_counter', '_episode_counter',
                      'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
 
         @property
@@ -39,9 +43,9 @@ class PPOAgent(Agent):
 
 
         def __is_full(self):
-            if self.n_episodes is not None and self.__episode_counter >= self.n_episodes:
+            if self.n_episodes is not None and self._episode_counter >= self.n_episodes:
                 return True
-            if self.n_steps is not None and self.__steps_counter >= self.n_steps:
+            if self.n_steps is not None and self._steps_counter >= self.n_steps:
                 return True
             return False
 
@@ -52,8 +56,8 @@ class PPOAgent(Agent):
                     action_logits : float, 
                     reward : float, 
                     is_terminal : bool) -> bool:
-            self.__steps_counter += 1
-            self.__episode_length_counter += 1
+            self._steps_counter += 1
+            self._episode_length_counter += 1
 
             self.states.append(state)
             self.actions.append(action)
@@ -61,9 +65,9 @@ class PPOAgent(Agent):
             self.rewards.append(reward)
 
             if is_terminal:
-                self.__episode_counter += 1
-                self.episode_lengths.append(self.__episode_length_counter)
-                self.__episode_length_counter = 0
+                self._episode_counter += 1
+                self.episode_lengths.append(self._episode_length_counter)
+                self._episode_length_counter = 0
 
             # we are also checking if the state is terminal to avoid updating the agent
             # before the end of the episode when using n_steps instead of n_episodes
@@ -83,9 +87,9 @@ class PPOAgent(Agent):
 
 
         def _reset(self) -> None:
-            self.__episode_length_counter = 0
-            self.__steps_counter = 0
-            self.__episode_counter = 0
+            self._episode_length_counter = 0
+            self._steps_counter = 0
+            self._episode_counter = 0
 
             self.states = []
             self.actions = []
@@ -104,8 +108,9 @@ class PPOAgent(Agent):
             rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
-    __slots__ = ['n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
-                 'discrete', 'clip', 'actor', 'critic', 'buffer', 'batch_size', 'n_epochs',
+    __slots__ = ['n_actions', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
+                 'discrete', 'clip', 'actor_architecture', 'critic_architecture',
+                 'actor', 'critic', 'buffer', 'batch_size', 'n_epochs',
                  '__covariance_matrix', '__action_logit_cache']
 
     def __init__(self, 
@@ -128,25 +133,22 @@ class PPOAgent(Agent):
         self.clip = clip
         self.batch_size = batch_size
         self.n_epochs = n_epochs
+        self.actor_architecture = actor_architecture
+        self.critic_architecture = critic_architecture
+        
 
         self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
-        self.__init_networks(actor_architecture, critic_architecture)
+
+        if random_state is not None:
+            torch.manual_seed(random_state)
+        self.__init_networks()
         # TODO parametrise `fill_value`
         self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
 
 
-    def __init_networks(self, 
-                        actor_architecture : Type[nn.Module], 
-                        critic_architecture : Type[nn.Module],
-                        random_state : Optional[int] = None) -> None:
-        
-        if random_state is None:
-            random_state = self._rng.integers(1_000_000_000)
-        torch.manual_seed(random_state)
-        self.actor = actor_architecture()
-
-        torch.manual_seed(random_state)
-        self.critic = critic_architecture()
+    def __init_networks(self) -> None:
+        self.actor = self.actor_architecture()
+        self.critic = self.critic_architecture()
 
         self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
@@ -212,7 +214,7 @@ class PPOAgent(Agent):
         # TODO this logic should probably be rethinked but right now I have no idea
         # how else we could deal with single-sample inference with neural networks that end with softmax
         action = action[0]
-        action_logit = action_logit[0]
+        action_logit = action_logit.item()
 
         # TODO add better caching logic so that we can check if the logit corresponds to the the same state
         self.__action_logit_cache = action_logit
@@ -277,9 +279,113 @@ class PPOAgent(Agent):
 
 
     @classmethod
-    def load(cls, path: str):
-        pass
+    def load(cls, path: str) -> 'PPOAgent':
+        if not path.endswith('.zip'):
+            path += '.agent.zip'
+        zf = zipfile.ZipFile(path)
+
+        with tempfile.TemporaryDirectory() as tempdir:
+            zf.extractall(tempdir)
+            
+            actor_params = torch.load(os.path.join(tempdir, 'actor.pth'))
+            critic_params = torch.load(os.path.join(tempdir, 'critic.pth'))
+            
+            with open(os.path.join(tempdir, 'config.agent.yml'), 'r') as file:
+                agent_state = yaml.safe_load(file)
+            agent_state : dict
+            buffer_state : dict = agent_state.pop('buffer')
+            actor_architecture = cls.get_type(agent_state.pop('actor_architecture'))
+            critic_architecture = cls.get_type(agent_state.pop('critic_architecture'))
+            rng_state = agent_state.pop('random_state')
+            covariance_matrix = torch.tensor(agent_state.pop('__covariance_matrix'))
+            action_logit_cache = agent_state.pop('__action_logit_cache')
+
+            del agent_state['actor']
+            del agent_state['critic']
+
+            agent = cls(
+                actor_architecture = actor_architecture,
+                critic_architecture = critic_architecture,
+                n_steps = buffer_state['n_steps'],
+                n_episodes = buffer_state['n_episodes'],
+                **agent_state
+            )
+
+            agent.actor.load_state_dict(actor_params)
+            agent.actor.eval()
+
+            agent.critic.load_state_dict(critic_params)
+            agent.critic.eval()
+
+            agent._rng.bit_generator.state = rng_state
+            agent.__covariance_matrix = covariance_matrix
+            agent.__action_logit_cache = action_logit_cache
+
+            agent.buffer.states = [torch.tensor(s) for s in buffer_state['states']]
+            del buffer_state['states']
+            for attribute_name, value in buffer_state.items():
+                setattr(agent.buffer, attribute_name, value)
+
+        return agent
 
 
-    def save(self, path: str) -> None:
-        pass
+    def save(self, path: str) -> str:
+        if not path.endswith('.zip'):
+            path += '.agent.zip'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with zipfile.ZipFile(path, 'w') as zf:
+            actor_temp = tempfile.NamedTemporaryFile(delete=False)
+            torch.save(self.actor.state_dict(), actor_temp)
+
+            critic_temp = tempfile.NamedTemporaryFile(delete=False)
+            torch.save(self.critic.state_dict(), critic_temp)
+
+            # save private and special attributes manually
+            agent_state = {
+                'actor_architecture': self.get_type_name_full(self.actor_architecture),
+                'critic_architecture': self.get_type_name_full(self.critic_architecture),
+                'random_state': self._rng.bit_generator.state,
+                '__covariance_matrix': self.__covariance_matrix.tolist(),
+                '__action_logit_cache': self.__action_logit_cache,
+                'epsilon': self.epsilon.item(),
+                'buffer': None,
+                'actor': None,
+                'critic': None,
+            }
+
+            # save standard attributes automatically
+            for attribute_name in self.__slots__:
+                if attribute_name not in agent_state:
+                    agent_state[attribute_name] = getattr(self, attribute_name)
+
+            # the state of the buffer should only be saved up to the last full episode
+            n_valid_steps = int(np.sum(self.buffer.episode_lengths).item())
+            buffer_state = {
+                'n_steps': self.buffer.n_steps,
+                'n_episodes': self.buffer.n_episodes,
+                '_steps_counter': n_valid_steps,
+                '_episode_length_counter': 0,
+                '_episode_counter': self.buffer._episode_counter,
+                'states': [state.tolist() for state in self.buffer.states[:n_valid_steps+1]],
+                'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps+1])],
+                'actions_logits': self.buffer.actions_logits[:n_valid_steps+1],
+                'rewards': [r.item() for r in np.array(self.buffer.rewards[:n_valid_steps+1])],
+                'rewards_to_go': self.buffer.rewards_to_go[:n_valid_steps+1],
+                'episode_lengths': self.buffer.episode_lengths
+            }
+
+            agent_state['buffer'] = buffer_state
+
+            agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
+            yaml.dump(agent_state, agent_temp)
+
+            zf.write(actor_temp.name, 'actor.pth')
+            zf.write(critic_temp.name, 'critic.pth')
+            zf.write(agent_temp.name, 'config.agent.yml')
+
+            actor_temp.close()
+            critic_temp.close()
+            agent_temp.close()
+
+        return os.path.abspath(path)
+            
