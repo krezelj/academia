@@ -106,6 +106,5 @@ class DoorKey(GenericMiniGridWrapper):
             self._door_status = 1
         elif self._door_status == 1 and 0 in door_array:
             self._door_status = 0
-
-        return *cells_flattened, direction, self._door_status
-    
+            
+        return np.array([*cells_flattened, direction, self._door_status])
