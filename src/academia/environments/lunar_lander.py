@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -32,3 +32,23 @@ class LunarLander(ScalableEnvironment):
         self._base_env = gymnasium.make('LunarLander-v2', **self.params)
         self._state = None
         self.reset()
+        
+    def step(self, action: int) -> tuple[Any, float, bool]:
+        new_state, reward, terminated, truncated, _ = self._base_env.step(action)
+        self._state = new_state
+        is_episode_end = terminated or truncated
+        return self.observe(), float(reward), is_episode_end
+    
+    def observe(self) -> Any:
+        return self._state
+    
+    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+        return np.array([1 for _ in range(self.N_ACTIONS)])
+    
+    def reset(self) -> Any:
+        self._state = self._base_env.reset()[0]
+        return self.observe()
+    
+    def render(self):
+        self._base_env.render()
+    
