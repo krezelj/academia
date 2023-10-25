@@ -32,7 +32,7 @@ class TabularAgent(Agent):
         else:
             return self._rng.integers(0, self.n_actions)
 
-    def save(self, path: str):
+    def save(self, path: str) -> str:
         learner_state_dict = {
             'n_actions': self.n_actions,
             'alpha': self.alpha,

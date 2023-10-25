@@ -7,14 +7,14 @@ class SavableLoadable(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, path: str) -> str:
-        """
-        :return: an absolute path where the object was saved
-        """
+    def load(cls, path: str):
         pass
 
     @abstractmethod
-    def save(self, path: str) -> None:
+    def save(self, path: str) -> str:
+        """
+        :return: an absolute path where the object was saved
+        """
         pass
 
     @staticmethod
