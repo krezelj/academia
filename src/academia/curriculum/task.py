@@ -131,8 +131,9 @@ class LearningTask(SavableLoadable):
                 filename = f'backup_{filename}'
             os.makedirs(dirname, exist_ok=True)
             full_path = os.path.join(dirname, filename)
-            _logger.info(f"Saving agent's state to {full_path}")
-            agent.save(full_path)
+            _logger.info("Saving agent's state...")
+            save_path = agent.save(full_path)
+            _logger.info(f"Agent's state saved to {save_path}")
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
@@ -158,7 +159,7 @@ class LearningTask(SavableLoadable):
             task_data: dict = yaml.safe_load(file)
         return cls.from_dict(task_data)
 
-    def save(self, path: str) -> None:
+    def save(self, path: str) -> str:
         task_data = self.to_dict()
         # add file extension
         if not path.endswith('.yml'):
@@ -166,6 +167,7 @@ class LearningTask(SavableLoadable):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(task_data, file)
+        return os.path.abspath(path)
 
     @classmethod
     def from_dict(cls, task_data: dict) -> 'LearningTask':

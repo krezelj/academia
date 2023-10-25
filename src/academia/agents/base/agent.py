@@ -26,12 +26,6 @@ class Agent(SavableLoadable):
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         pass
 
-    def save(self, path: str):
-        pass
-
-    def load(self, path: str):
-        pass
-
     def decay_epsilon(self):
         self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
 

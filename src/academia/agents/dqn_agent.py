@@ -360,7 +360,7 @@ class DQNAgent(Agent):
         targets = torch.stack(targets).to(device)
         return states, targets
 
-    def save(self, path: str):
+    def save(self, path: str) -> str:
         """
         Saves the state dictionary of the neural network model to the 
         specified file path.
@@ -408,6 +408,7 @@ class DQNAgent(Agent):
             # zip both
             zf.write(network_temp.name, 'network.pth')
             zf.write(agent_temp.name, 'config.agent.yml')
+        return os.path.abspath(path)
 
     @classmethod
     def load(cls, path: str) -> 'DQNAgent':

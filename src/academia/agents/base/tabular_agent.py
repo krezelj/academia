@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from typing import Optional
 
@@ -31,7 +32,7 @@ class TabularAgent(Agent):
         else:
             return self._rng.integers(0, self.n_actions)
 
-    def save(self, path: str):
+    def save(self, path: str) -> str:
         learner_state_dict = {
             'n_actions': self.n_actions,
             'alpha': self.alpha,
@@ -44,8 +45,10 @@ class TabularAgent(Agent):
         }
         if not path.endswith('.yml'):
             path += '.agent.yml'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(dict(learner_state_dict), file)
+        return os.path.abspath(path)
 
     @classmethod
     def load(cls, path: str) -> 'TabularAgent':
