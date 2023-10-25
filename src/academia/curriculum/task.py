@@ -68,23 +68,9 @@ class LearningTask(SavableLoadable):
             episode += 1
 
             episode_reward, steps_count = self.__run_episode(agent)
-
-            self.episode_rewards = np.append(self.episode_rewards, episode_reward)
-            self.step_counts = np.append(self.step_counts, steps_count)
-
-            episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
-            steps_count_mvavg = np.mean(self.step_counts[-5:])
-            self.episode_rewards_moving_avg = np.append(
-                self.episode_rewards_moving_avg, episode_rewards_mvavg)
-            self.step_counts_moving_avg = np.append(
-                self.step_counts_moving_avg, steps_count_mvavg)
-
             if verbose >= 2:
                 _logger.info(f'Episode {episode} done.')
-                _logger.info(f'Reward: {episode_reward:.2f}')
-                _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
-                _logger.info(f'Steps count: {steps_count}')
-                _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
+            self.__update_statistics(episode_reward, steps_count, verbose)
 
             if episode % self.evaluation_interval == 0:
                 eval_rewards: list[float] = []
@@ -115,6 +101,23 @@ class LearningTask(SavableLoadable):
             episode_reward += reward
             steps_count += 1
         return episode_reward, steps_count
+
+    def __update_statistics(self, episode_reward: float, steps_count: int, verbose=0) -> None:
+        self.episode_rewards = np.append(self.episode_rewards, episode_reward)
+        self.step_counts = np.append(self.step_counts, steps_count)
+
+        episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
+        steps_count_mvavg = np.mean(self.step_counts[-5:])
+        self.episode_rewards_moving_avg = np.append(
+            self.episode_rewards_moving_avg, episode_rewards_mvavg)
+        self.step_counts_moving_avg = np.append(
+            self.step_counts_moving_avg, steps_count_mvavg)
+
+        if verbose >= 2:
+            _logger.info(f'Reward: {episode_reward:.2f}')
+            _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
+            _logger.info(f'Steps count: {steps_count}')
+            _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
     def __handle_task_finished(self, agent: Agent) -> None:
         if self.agent_save_path is not None:
