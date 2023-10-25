@@ -13,7 +13,7 @@ class LunarLander(ScalableEnvironment):
     STATE_SIZE = 8
 
     __difficulty_params_map = {
-        0: {'enable_wind': False},
+        0: {'enable_wind': False, 'wind_power': 0.0, 'turbulence_power': 0.0},
         1: {'enable_wind': True, 'wind_power': 5.0, 'turbulence_power': 0.0},
         2: {'enable_wind': True, 'wind_power': 10.0, 'turbulence_power': 0.5},
         3: {'enable_wind': True, 'wind_power': 15.0, 'turbulence_power': 1.0},
@@ -32,5 +32,3 @@ class LunarLander(ScalableEnvironment):
         self._base_env = gymnasium.make('LunarLander-v2', **self.params)
         self._state = None
         self.reset()
-        
-    
