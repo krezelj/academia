@@ -240,7 +240,7 @@ class PPOAgent(Agent):
 
         for _ in range(self.n_epochs):
             idx_permutation = np.arange(self.buffer.buffer_size)
-            np.random.shuffle(idx_permutation)
+            self._rng.shuffle(idx_permutation)
             n_batches = np.ceil(self.buffer.buffer_size / self.batch_size).astype(np.int32)
             for batch_idx in range(n_batches):
                 idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
