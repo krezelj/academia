@@ -73,12 +73,12 @@ class LearningTask(SavableLoadable):
             self.__update_statistics(episode_reward, steps_count, verbose)
 
             if episode % self.evaluation_interval == 0:
-                eval_rewards: list[float] = []
+                evaluation_rewards: list[float] = []
                 for _ in range(self.evaluation_count):
-                    eval_reward, _ = self.__run_episode(agent, evaluation_mode=True)
-                    eval_rewards.append(eval_reward)
+                    evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
+                    evaluation_rewards.append(evaluation_reward)
                 self.agent_evaluations = np.append(self.agent_evaluations,
-                                                   np.mean(eval_rewards))
+                                                   np.mean(evaluation_rewards))
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
