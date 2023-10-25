@@ -45,6 +45,7 @@ class TabularAgent(Agent):
         }
         if not path.endswith('.yml'):
             path += '.agent.yml'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(dict(learner_state_dict), file)
         return os.path.abspath(path)
