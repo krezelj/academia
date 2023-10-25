@@ -99,4 +99,5 @@ class LavaCrossing(GenericMiniGridWrapper):
         cells_flattened = cells_obj_types.flatten()
         direction = self._state_raw['direction']
 
-        return *cells_flattened, direction
+        return np.array([*cells_flattened, direction])
+    
