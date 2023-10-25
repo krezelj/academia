@@ -139,11 +139,26 @@ class LearningTask(SavableLoadable):
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
         if 'max_episodes' in self.stop_conditions:
             return len(self.episode_rewards) >= self.stop_conditions['max_episodes']
+        
         if 'predicate' in self.stop_conditions:
             # custom predicate, value is a function that takes episode_rewards and agent_evaluations
             # as arguments and returns True or False deciding whether the episode should stop or not
             return self.stop_conditions['predicate'](self.episode_rewards, self.agent_evaluations)
+        
+        if 'max_steps' in self.stop_conditions:
+            return np.sum(self.step_counts) >= self.stop_conditions['max_steps']
+        
+        if 'min_avg_reward' in self.stop_conditions and len(self.episode_rewards_moving_avg) > 5:
+            # check if episode_rewards_moving_avg length is greater than because if not it is possibility that agent scored max reward in first episode
+            #and then it will stop training because it will think that it has reached min_avg_reward
+            return self.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
+        
+        if 'min_reward_std_dev' in self.stop_conditions and len(self.episode_rewards) > 10:
+            return np.std(self.episode_rewards[-10:]) <= self.stop_conditions['min_reward_std_dev']
 
+        if 'evaluation_score' in self.stop_conditions:
+            return np.mean(self.agent_evaluations[-5:]) >= self.stop_conditions['evaluation_score']
+        
     def __reset(self) -> None:
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
