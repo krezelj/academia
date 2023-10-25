@@ -1,5 +1,7 @@
+import sys
 from typing import Optional, Type
 import os
+import logging
 
 import numpy as np
 import yaml
@@ -9,43 +11,85 @@ from academia.agents.base import Agent
 from academia.utils import SavableLoadable
 
 
-# TODO Add docstrings to all methods
-# TODO Decide whether to pass env_type and env_args or an already instantiated environemnt
+_logger = logging.getLogger('academia.curriculum')
 
-class Task(SavableLoadable):
 
-    __slots__ = ['env_type', 'env_args', 'env',
-                 'stop_conditions', 'evaluation_interval',
-                 'episode_rewards', 'agent_evaluations',
-                 'name']
+class LearningTask(SavableLoadable):
+
+    __slots__ = ['name', 'agent_save_path', 'env_type', 'env_args', 'env',
+                 'stop_conditions', 'evaluation_interval', 'evaluation_count',
+                 'episode_rewards', 'agent_evaluations', 'step_counts']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, name: Optional[str] = None) -> None:
+                 evaluation_interval: int = 100, evaluation_count: int = 5,
+                 name: Optional[str] = None, agent_save_path: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
-        # TODO assert at least one stop condition is present (i.e. dict not empty)
+        if len(stop_conditions) == 0:
+            msg = ('stop_conditions dict must not be empty. '
+                   'Please provide at least one stop condition.')
+            _logger.error(msg)
+            raise ValueError(msg)
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
+        self.evaluation_count = evaluation_count
+
+        self.agent_evaluations = np.array([])
+        self.episode_rewards = np.array([])
+        self.step_counts = np.array([])
+        self.episode_rewards_moving_avg = np.array([])
+        self.step_counts_moving_avg = np.array([])
 
         self.name = name
+        self.agent_save_path = agent_save_path
 
-    def run(self, agent: Agent) -> None:
+    def run(self, agent: Agent, verbose=0, render=False) -> None:
         self.__reset()
+        if render and self.env_args.get('render_mode') == 'human':
+            self.env.render()
+        elif render:
+            _logger.warning("WARNING: Cannot render environment when render_mode is not 'human'. "
+                            "Consider passing render_mode in env_args in the task configuration")
+        try:
+            self.__train_agent(agent, verbose)
+        except KeyboardInterrupt:
+            _logger.info('Training interrupted.')
+            self.__handle_task_terminated(agent, interrupted=True)
+            sys.exit(130)
+        except Exception as e:
+            _logger.info('Training interrupted.')
+            _logger.exception(e)
+            self.__handle_task_terminated(agent, interrupted=True)
+            sys.exit(1)
+        else:
+            _logger.info('Training finished.')
+            self.__handle_task_terminated(agent)
 
+    def __train_agent(self, agent: Agent, verbose=0) -> None:
         episode = 0
         while not self.__is_finished():
             episode += 1
 
-            episode_reward = self.__run_episode(agent)
-            np.append(self.episode_rewards, episode_reward)
+            episode_reward, steps_count = self.__run_episode(agent)
+            if verbose >= 2:
+                _logger.info(f'Episode {episode} done.')
+            self.__update_statistics(episode_reward, steps_count, verbose)
 
             if episode % self.evaluation_interval == 0:
-                agent_evaluation = self.__run_episode(agent, evaluation_mode=True)
-                np.append(self.agent_evaluations, agent_evaluation)
+                evaluation_rewards: list[float] = []
+                for _ in range(self.evaluation_count):
+                    evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
+                    evaluation_rewards.append(evaluation_reward)
+                self.agent_evaluations = np.append(self.agent_evaluations,
+                                                   np.mean(evaluation_rewards))
 
-    def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> float:
+    def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
+        """
+        :return: episode reward and total number of steps
+        """
         episode_reward = 0
+        steps_count = 0
         state = self.env.reset()
         done = False
         while not done:
@@ -59,7 +103,36 @@ class Task(SavableLoadable):
 
             state = new_state
             episode_reward += reward
-        return episode_reward
+            steps_count += 1
+        return episode_reward, steps_count
+
+    def __update_statistics(self, episode_reward: float, steps_count: int, verbose=0) -> None:
+        self.episode_rewards = np.append(self.episode_rewards, episode_reward)
+        self.step_counts = np.append(self.step_counts, steps_count)
+
+        episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
+        steps_count_mvavg = np.mean(self.step_counts[-5:])
+        self.episode_rewards_moving_avg = np.append(
+            self.episode_rewards_moving_avg, episode_rewards_mvavg)
+        self.step_counts_moving_avg = np.append(
+            self.step_counts_moving_avg, steps_count_mvavg)
+
+        if verbose >= 2:
+            _logger.info(f'Reward: {episode_reward:.2f}')
+            _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
+            _logger.info(f'Steps count: {steps_count}')
+            _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
+
+    def __handle_task_terminated(self, agent: Agent, interrupted=False) -> None:
+        if self.agent_save_path is not None:
+            dirname, filename = os.path.split(self.agent_save_path)
+            if interrupted:
+                # prefix to let user know that the training has not been completed
+                filename = f'backup_{filename}'
+            os.makedirs(dirname, exist_ok=True)
+            full_path = os.path.join(dirname, filename)
+            _logger.info(f"Saving agent's state to {full_path}")
+            agent.save(full_path)
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
@@ -74,9 +147,13 @@ class Task(SavableLoadable):
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
         self.episode_rewards = np.array([])
         self.agent_evaluations = np.array([])
+        self.step_counts = np.array([])
 
     @classmethod
-    def load(cls, path: str) -> 'Task':
+    def load(cls, path: str) -> 'LearningTask':
+        # add file extension (consistency with save() method)
+        if not path.endswith('.yml'):
+            path += '.task.yml'
         with open(path, 'r') as file:
             task_data: dict = yaml.safe_load(file)
         return cls.from_dict(task_data)
@@ -84,14 +161,14 @@ class Task(SavableLoadable):
     def save(self, path: str) -> None:
         task_data = self.to_dict()
         # add file extension
-        if not path.endswith('.yml') and not path.endswith('.task'):
+        if not path.endswith('.yml'):
             path += '.task.yml'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
             yaml.dump(task_data, file)
 
     @classmethod
-    def from_dict(cls, task_data: dict) -> 'Task':
+    def from_dict(cls, task_data: dict) -> 'LearningTask':
         env_type = cls.get_type(task_data['env_type'])
         # delete env_type because it will be passed to contructor separately
         del task_data['env_type']
@@ -107,4 +184,3 @@ class Task(SavableLoadable):
         if self.name is not None:
             task_data['name'] = self.name
         return task_data
-
