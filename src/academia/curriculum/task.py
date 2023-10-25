@@ -55,12 +55,17 @@ class LearningTask(SavableLoadable):
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
-            _logger.info('Task interrupted.')
-            self.__handle_task_finished(agent)
+            _logger.info('Training interrupted.')
+            self.__handle_task_terminated(agent, interrupted=True)
             sys.exit(130)
+        except Exception as e:
+            _logger.info('Training interrupted.')
+            _logger.exception(e)
+            self.__handle_task_terminated(agent, interrupted=True)
+            sys.exit(1)
         else:
             _logger.info('Training finished.')
-            self.__handle_task_finished(agent)
+            self.__handle_task_terminated(agent)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
         episode = 0
@@ -119,11 +124,16 @@ class LearningTask(SavableLoadable):
             _logger.info(f'Steps count: {steps_count}')
             _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
-    def __handle_task_finished(self, agent: Agent) -> None:
+    def __handle_task_terminated(self, agent: Agent, interrupted=False) -> None:
         if self.agent_save_path is not None:
-            os.makedirs(os.path.dirname(self.agent_save_path), exist_ok=True)
-            _logger.info(f"Saving agent's state to {self.agent_save_path}")
-            agent.save(self.agent_save_path)
+            dirname, filename = os.path.split(self.agent_save_path)
+            if interrupted:
+                # prefix to let user know that the training has not been completed
+                filename = f'backup_{filename}'
+            os.makedirs(dirname, exist_ok=True)
+            full_path = os.path.join(dirname, filename)
+            _logger.info(f"Saving agent's state to {full_path}")
+            agent.save(full_path)
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
