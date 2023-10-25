@@ -137,11 +137,15 @@ class PPOAgent(Agent):
 
     def __init_networks(self, 
                         actor_architecture : Type[nn.Module], 
-                        critic_architecture : Type[nn.Module]) -> None:
-        # TODO make network weights based on random state
-        # TODO add parameter to control lr in optimisers
-        # TODO add lr scheduler   
+                        critic_architecture : Type[nn.Module],
+                        random_state : Optional[int] = None) -> None:
+        
+        if random_state is None:
+            random_state = self._rng.integers(1_000_000_000)
+        torch.manual_seed(random_state)
         self.actor = actor_architecture()
+
+        torch.manual_seed(random_state)
         self.critic = critic_architecture()
 
         self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
@@ -150,7 +154,7 @@ class PPOAgent(Agent):
 
     def __evaluate(self, states : torch.FloatTensor, actions : torch.FloatTensor) \
         -> Tuple[torch.FloatTensor, torch.FloatTensor]:
-        V = self.critic(states).squeeze()
+        V = self.critic(states).squeeze(dim=1)
         if self.discrete:
             pi = self.actor(states)
             distribution = Categorical(pi)
