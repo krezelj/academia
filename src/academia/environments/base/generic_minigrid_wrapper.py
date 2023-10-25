@@ -54,5 +54,5 @@ class GenericMiniGridWrapper(ScalableEnvironment):
 
     @property
     @abstractmethod
-    def _state(self) -> tuple[int, ...]:
+    def _state(self) -> npt.NDArray[int]:
         pass
