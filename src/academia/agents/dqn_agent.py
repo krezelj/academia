@@ -113,6 +113,9 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.update_counter = 0
         self.nn_architecture = nn_architecture
+        
+        if random_state is not None:
+            torch.manual_seed(random_state)
         self.__build_network()
 
     def __build_network(self):
