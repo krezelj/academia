@@ -18,12 +18,32 @@ class PPOAgent(Agent):
 
     class PPOBuffer:
 
-        __slots__ = ['buffer_size', '__update_counter', '__episode_length_counter', 
+        __slots__ = ['n_steps', 'n_episodes',
+                     '__steps_counter', '__episode_length_counter', '__episode_counter',
                      'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
 
-        def __init__(self, buffer_size : int) -> None:
+        @property
+        def buffer_size(self):
+            return len(self.rewards)
+
+        def __init__(self, 
+                     n_steps : Optional[int] = None, 
+                     n_episodes : Optional[int] = None) -> None:
+            if (n_steps is None and n_episodes is None)\
+                or (n_steps is not None and n_episodes is not None):
+                # TODO add logging
+                raise ValueError("Exactly one of n_steps and n_episodes must be not None")
             self._reset()
-            self.buffer_size = buffer_size
+            self.n_steps = n_steps
+            self.n_episodes = n_episodes
+
+
+        def __is_full(self):
+            if self.n_episodes is not None and self.__episode_counter >= self.n_episodes:
+                return True
+            if self.n_steps is not None and self.__steps_counter >= self.n_steps:
+                return True
+            return False
 
 
         def _update(self, 
@@ -32,19 +52,22 @@ class PPOAgent(Agent):
                     action_logits : float, 
                     reward : float, 
                     is_terminal : bool) -> bool:
-            self.__update_counter += 1
+            self.__steps_counter += 1
             self.__episode_length_counter += 1
 
             self.states.append(state)
             self.actions.append(action)
             self.actions_logits.append(action_logits)
             self.rewards.append(reward)
-            
-            if is_terminal or self.__update_counter >= self.buffer_size:
+
+            if is_terminal:
+                self.__episode_counter += 1
                 self.episode_lengths.append(self.__episode_length_counter)
                 self.__episode_length_counter = 0
 
-            return self.__update_counter >= self.buffer_size
+            # we are also checking if the state is terminal to avoid updating the agent
+            # before the end of the episode when using n_steps instead of n_episodes
+            return is_terminal and self.__is_full()
             
 
         def _calculate_rewards_to_go(self, gamma : float) -> None:
@@ -61,7 +84,8 @@ class PPOAgent(Agent):
 
         def _reset(self) -> None:
             self.__episode_length_counter = 0
-            self.__update_counter = 0
+            self.__steps_counter = 0
+            self.__episode_counter = 0
 
             self.states = []
             self.actions = []
@@ -88,10 +112,11 @@ class PPOAgent(Agent):
                  discrete: bool,
                  actor_architecture: Type[nn.Module],
                  critic_architecture: Type[nn.Module],
-                 buffer_size : int,
                  batch_size : int,
                  n_epochs: int,
                  n_actions: int,
+                 n_steps : Optional[int] = None,
+                 n_episodes: Optional[int] = None,
                  clip: float = 0.2,
                  gamma: float = 0.99, 
                  epsilon: float = 1.,
@@ -104,7 +129,7 @@ class PPOAgent(Agent):
         self.batch_size = batch_size
         self.n_epochs = n_epochs
 
-        self.buffer = PPOAgent.PPOBuffer(buffer_size)
+        self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
         self.__init_networks(actor_architecture, critic_architecture)
         # TODO parametrise `fill_value`
         self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
