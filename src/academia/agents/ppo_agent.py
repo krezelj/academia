@@ -165,7 +165,7 @@ class PPOAgent(Agent):
             distribution = MultivariateNormal(mean, self.__covariance_matrix)
 
         actions_logits = distribution.log_prob(actions)
-        return V, actions_logits
+        return V, actions_logits, distribution.entropy()
 
 
     def __get_discrete_action_with_logits(self, states : torch.FloatTensor, greedy=False) \
@@ -236,7 +236,7 @@ class PPOAgent(Agent):
 
     def __train(self) -> None:
         states, actions, actions_logits, rewards_to_go = self.buffer._get_tensors()
-        V, _ = self.__evaluate(states, actions)
+        V, _, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
         A = (A - A.mean()) / (A.std() + 1e-10)
 
@@ -252,7 +252,7 @@ class PPOAgent(Agent):
                 batch_A = A[idx_in_batch]
                 batch_rewards_to_go = rewards_to_go[idx_in_batch]
 
-                current_V, current_actions_logits = self.__evaluate(batch_states, batch_actions)
+                current_V, current_actions_logits, entropy = self.__evaluate(batch_states, batch_actions)
                 ratios = torch.exp(current_actions_logits - batch_actions_logits)
 
                 surrogate_1 = ratios * batch_A
@@ -260,6 +260,9 @@ class PPOAgent(Agent):
 
                 # negative sign since we are performing gradient **ascent**
                 actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
+                # TODO parametrise entropy coefficient
+                actor_loss -= 0.01 * entropy.mean()
+
                 self.actor_optimiser.zero_grad()
 
                 # why retain_graph=True?
