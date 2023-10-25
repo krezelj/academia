@@ -75,9 +75,9 @@ class LearningTask(SavableLoadable):
             episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
             steps_count_mvavg = np.mean(self.step_counts[-5:])
             self.episode_rewards_moving_avg = np.append(
-                self.episode_rewards, episode_rewards_mvavg)
+                self.episode_rewards_moving_avg, episode_rewards_mvavg)
             self.step_counts_moving_avg = np.append(
-                self.step_counts, steps_count_mvavg)
+                self.step_counts_moving_avg, steps_count_mvavg)
 
             if verbose >= 2:
                 _logger.info(f'Episode {episode} done.')
