@@ -117,6 +117,7 @@ class DQNAgent(Agent):
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__build_network()
+        self.optimizer = optim.Adam(self.network.parameters(), lr=5e-4)
 
     def __build_network(self):
         """
@@ -149,9 +150,7 @@ class DQNAgent(Agent):
         self.target_network = self.nn_architecture()
         self.target_network.to(device)
 
-        self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
         self.target_network.load_state_dict(self.network.state_dict())
-        self.target_network.eval()
 
     def __remember(self, state, action, reward, next_state, done):
         """
@@ -226,7 +225,11 @@ class DQNAgent(Agent):
             selection.
             - The `greedy` flag allows controlling the agent's exploration-exploitation behavior.
         """
-        q_val_act = self.network(torch.Tensor(state)).to(device)
+        self.network.eval()
+        with torch.no_grad():
+            q_val_act = self.network(torch.Tensor(state)).to(device)
+        self.network.train()
+
         if legal_mask is not None:
             q_val_act = (q_val_act - torch.min(q_val_act)) * torch.Tensor(
                 legal_mask) + torch.Tensor(legal_mask)
@@ -299,9 +302,10 @@ class DQNAgent(Agent):
                       done=is_terminal)
         if len(self.memory) >= self.batch_size:
             states, targets = self.__replay()
-            self.optimizer.zero_grad()
             q_values = self.network(states).to(device)
+
             loss = F.mse_loss(q_values, targets)
+            self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
         if is_terminal:
@@ -459,6 +463,5 @@ class DQNAgent(Agent):
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
-        agent.network.eval()
         agent.__update_target()
         return agent
