@@ -13,7 +13,6 @@ import yaml
 
 from .base import Agent
 
-# TODO Add entropy
 # TODO Add KL estimation
 # TODO Add GAES
 # TODO Add lr scheduler
@@ -31,16 +30,15 @@ class PPOAgent(Agent):
             return len(self.rewards)
 
         def __init__(self, 
-                     n_steps : Optional[int] = None, 
-                     n_episodes : Optional[int] = None) -> None:
+                     n_steps: Optional[int] = None, 
+                     n_episodes: Optional[int] = None) -> None:
             if (n_steps is None and n_episodes is None)\
-                or (n_steps is not None and n_episodes is not None):
+                    or (n_steps is not None and n_episodes is not None):
                 # TODO add logging
                 raise ValueError("Exactly one of n_steps and n_episodes must be not None")
             self._reset()
             self.n_steps = n_steps
             self.n_episodes = n_episodes
-
 
         def __is_full(self):
             if self.n_episodes is not None and self._episode_counter >= self.n_episodes:
@@ -49,13 +47,12 @@ class PPOAgent(Agent):
                 return True
             return False
 
-
         def _update(self, 
-                    state : Any, 
-                    action : Any, 
-                    action_logits : float, 
-                    reward : float, 
-                    is_terminal : bool) -> bool:
+                    state: Any, 
+                    action: Any, 
+                    action_logits: float, 
+                    reward: float, 
+                    is_terminal: bool) -> bool:
             self._steps_counter += 1
             self._episode_length_counter += 1
 
@@ -72,9 +69,8 @@ class PPOAgent(Agent):
             # we are also checking if the state is terminal to avoid updating the agent
             # before the end of the episode when using n_steps instead of n_episodes
             return is_terminal and self.__is_full()
-            
 
-        def _calculate_rewards_to_go(self, gamma : float) -> None:
+        def _calculate_rewards_to_go(self, gamma: float) -> None:
             t_offset = 0 
             for episode_length in self.episode_lengths:
                 discounted_reward = 0
@@ -84,7 +80,6 @@ class PPOAgent(Agent):
                     discounted_rewards.insert(0, discounted_reward)
                 self.rewards_to_go.extend(discounted_rewards)
                 t_offset += episode_length
-
 
         def _reset(self) -> None:
             self._episode_length_counter = 0
@@ -98,9 +93,8 @@ class PPOAgent(Agent):
             self.rewards_to_go = []
             self.episode_lengths = []
 
-
         def _get_tensors(self) \
-            -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+                -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
             states_t = torch.tensor(np.array(self.states), dtype=torch.float)
             actions_t = torch.tensor(np.array(self.actions), dtype=torch.float)
@@ -117,10 +111,10 @@ class PPOAgent(Agent):
                  discrete: bool,
                  actor_architecture: Type[nn.Module],
                  critic_architecture: Type[nn.Module],
-                 batch_size : int,
+                 batch_size: int,
                  n_epochs: int,
                  n_actions: int,
-                 n_steps : Optional[int] = None,
+                 n_steps: Optional[int] = None,
                  n_episodes: Optional[int] = None,
                  clip: float = 0.2,
                  gamma: float = 0.99, 
@@ -145,7 +139,6 @@ class PPOAgent(Agent):
         # TODO parametrise `fill_value`
         self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
 
-
     def __init_networks(self) -> None:
         self.actor = self.actor_architecture()
         self.critic = self.critic_architecture()
@@ -153,8 +146,7 @@ class PPOAgent(Agent):
         self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
 
-
-    def __evaluate(self, states : torch.FloatTensor, actions : torch.FloatTensor) \
+    def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
         -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         V = self.critic(states).squeeze(dim=1)
         if self.discrete:
@@ -167,10 +159,10 @@ class PPOAgent(Agent):
         actions_logits = distribution.log_prob(actions)
         return V, actions_logits, distribution.entropy()
 
-
-    def __get_discrete_action_with_logits(self, states : torch.FloatTensor, greedy=False) \
+    def __get_discrete_action_with_logits(self, states: torch.FloatTensor, legal_mask, greedy) \
         -> Tuple[npt.NDArray, torch.FloatTensor]:
         pi = self.actor(states)
+        # pi *= legal_mask
         distribution = Categorical(pi)
         if greedy:
             action = torch.argmax(pi).detach().numpy().reshape(1,)
@@ -179,8 +171,7 @@ class PPOAgent(Agent):
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
-
-    def __get_continuous_action_with_logits(self, states : torch.FloatTensor, greedy=False) \
+    def __get_continuous_action_with_logits(self, states: torch.FloatTensor, greedy) \
         -> Tuple[npt.NDArray, torch.FloatTensor]:
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
@@ -190,23 +181,21 @@ class PPOAgent(Agent):
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
-
-    def __get_action_with_logits(self, states : torch.FloatTensor, greedy=False):
+    def __get_action_with_logits(self, states: torch.FloatTensor, legal_mask=None, greedy=False):
         with torch.no_grad():
             if self.discrete:
-                return self.__get_discrete_action_with_logits(states, greedy)
+                return self.__get_discrete_action_with_logits(states, legal_mask, greedy)
             else:
                 return self.__get_continuous_action_with_logits(states, greedy)
 
-
-    def get_action(self, state : Any, legal_mask=None, greedy=False) -> Union[float, int]:
+    def get_action(self, state: Any, legal_mask=None, greedy=False) -> Union[float, int]:
         # PPOAgent currently doesn't support legal_masks TODO add warning to logger
         
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
         # to `state`` so that it behaves like a batch with single sample
         state = torch.unsqueeze(torch.tensor(state), dim=0)
-        action, action_logit = self.__get_action_with_logits(state, greedy)
+        action, action_logit = self.__get_action_with_logits(state, legal_mask, greedy)
 
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
         # Otherwise gym environments return new states as batches which we try to unsqueeze again
@@ -220,19 +209,17 @@ class PPOAgent(Agent):
         self.__action_logit_cache = action_logit
         return action
 
-
     def update(self, 
-               state : Any, 
-               action : Any, 
-               reward : float, 
-               new_state : Any, 
-               is_terminal : bool) -> None:
+               state: Any, 
+               action: Any, 
+               reward: float, 
+               new_state: Any, 
+               is_terminal: bool) -> None:
         buffer_full = self.buffer._update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
             self.buffer._calculate_rewards_to_go(self.gamma)
             self.__train()
             self.buffer._reset()
-
 
     def __train(self) -> None:
         states, actions, actions_logits, rewards_to_go = self.buffer._get_tensors()
@@ -280,7 +267,6 @@ class PPOAgent(Agent):
                 critic_loss.backward()    
                 self.critic_optimiser.step()
 
-
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
         if not path.endswith('.zip'):
@@ -295,8 +281,8 @@ class PPOAgent(Agent):
             
             with open(os.path.join(tempdir, 'config.agent.yml'), 'r') as file:
                 agent_state = yaml.safe_load(file)
-            agent_state : dict
-            buffer_state : dict = agent_state.pop('buffer')
+            agent_state: dict
+            buffer_state: dict = agent_state.pop('buffer')
             actor_architecture = cls.get_type(agent_state.pop('actor_architecture'))
             critic_architecture = cls.get_type(agent_state.pop('critic_architecture'))
             rng_state = agent_state.pop('random_state')
@@ -330,7 +316,6 @@ class PPOAgent(Agent):
                 setattr(agent.buffer, attribute_name, value)
 
         return agent
-
 
     def save(self, path: str) -> str:
         if not path.endswith('.zip'):
