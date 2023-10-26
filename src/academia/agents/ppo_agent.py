@@ -129,8 +129,6 @@ class PPOAgent(Agent):
         self.n_epochs = n_epochs
         self.actor_architecture = actor_architecture
         self.critic_architecture = critic_architecture
-        
-
         self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
 
         if random_state is not None:
@@ -138,6 +136,7 @@ class PPOAgent(Agent):
         self.__init_networks()
         # TODO parametrise `fill_value`
         self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
+        self.__action_logit_cache = 0
 
     def __init_networks(self) -> None:
         self.actor = self.actor_architecture()
@@ -335,7 +334,7 @@ class PPOAgent(Agent):
                 'random_state': self._rng.bit_generator.state,
                 '__covariance_matrix': self.__covariance_matrix.tolist(),
                 '__action_logit_cache': self.__action_logit_cache,
-                'epsilon': self.epsilon.item(),
+                'epsilon': self.epsilon if type(self.epsilon) is float else self.epsilon.item(),
                 'buffer': None,
                 'actor': None,
                 'critic': None,
