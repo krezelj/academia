@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any, Union, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -21,7 +21,7 @@ class LunarLander(ScalableEnvironment):
         5: {'enable_wind': True, 'wind_power': 25.0, 'turbulence_power': 2.0}, 
     }
 
-    def __init__(self, difficulty: int):
+    def __init__(self, difficulty: int, render_mode: Optional[str] = None):
         super().__init__(difficulty)
         try:
             self.params = LunarLander.__difficulty_params_map.get(difficulty, {})
@@ -29,7 +29,7 @@ class LunarLander(ScalableEnvironment):
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 5")
             raise ValueError(msg)
-        self._base_env = gymnasium.make('LunarLander-v2', **self.params)
+        self._base_env = gymnasium.make('LunarLander-v2', render_mode=render_mode,**self.params)
         self._state = None
         self.reset()
         
