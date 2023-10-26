@@ -8,6 +8,35 @@ from.base import ScalableEnvironment
 
 
 class LunarLander(ScalableEnvironment):
+    """
+    A class representing the Lunar Lander environment, which is a variant of the classic Lunar Lander game.
+    The goal of the game is to land a spacecraft on the moon's surface by controlling its thrusters.
+    The environment has a state size of 8 and 4 possible actions.
+    The difficulty of the environment can be set to an integer between 0 and 5, with higher values indicating 
+    more challenging conditions.
+    The environment can also be rendered in different modes.
+
+    Possible actions:
+
+    | Num   | Action             |
+    |-------|--------------------|
+    | 0     | Do nothing         |
+    | 1     | Fire left engine   |
+    | 2     | Fire down engine   |
+    | 3     | Fire right engine  |
+
+    Difficulty levels:
+
+    | Difficulty | Description                                   |
+    |------------|-----------------------------------------------|
+    | 0          | No wind, no turbulence                        |
+    | 1          | Weak wind, no turbulence                      |
+    | 2          | Moderate wind, weak turbulence                |
+    | 3          | Medium strong wind, moderate turbulence       |
+    | 4          | Strong wind, medium strong turbulence         |
+    | 5          | Very strong wind, strong turbulence           |
+    
+    """
 
     N_ACTIONS = 4
     STATE_SIZE = 8
@@ -22,6 +51,16 @@ class LunarLander(ScalableEnvironment):
     }
 
     def __init__(self, difficulty: int, render_mode: Optional[str] = None):
+        """
+        Initializes a new instance of the LunarLander class with the specified difficulty and render mode.
+
+        Parameters:
+        difficulty (int): The difficulty level of the environment, which should be an integer between 0 and 5.
+        render_mode (Optional[str]): The render mode to use for the environment, which can be None, 'human', or 'rgb_array'.
+
+        Raises:
+        ValueError: If the specified difficulty level is invalid.
+        """
         super().__init__(difficulty)
         try:
             self.params = LunarLander.__difficulty_params_map.get(difficulty, {})
@@ -34,21 +73,42 @@ class LunarLander(ScalableEnvironment):
         self.reset()
         
     def step(self, action: int) -> tuple[Any, float, bool]:
+        """
+        Advances the environment by one step, given the specified action.
+
+        Parameters:
+        action (int): The action to take, which should be an integer between 0 and 3.
+
+        Returns:
+        A tuple containing the new state of the environment, the reward received for the action, and a flag indicating whether the episode has ended.
+        """
         new_state, reward, terminated, truncated, _ = self._base_env.step(action)
         self._state = new_state
         is_episode_end = terminated or truncated
         return self.observe(), float(reward), is_episode_end
     
     def observe(self) -> Any:
+        """
+        Returns the current state of the environment.
+        """
         return self._state
     
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+        """
+        Returns a binary mask indicating which actions are legal in the current state of the environment.
+        """
         return np.array([1 for _ in range(self.N_ACTIONS)])
     
     def reset(self) -> Any:
+        """
+        Resets the environment to its initial state and returns the new state.
+        """
         self._state = self._base_env.reset()[0]
         return self.observe()
     
     def render(self):
+        """
+        Renders the environment in the current render mode.
+        """
         self._base_env.render()
     
