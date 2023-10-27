@@ -1,58 +1,70 @@
-import json
 import os
-from abc import ABC
 from collections import defaultdict
+from typing import Optional
 
+import yaml
 import numpy as np
 
 from .agent import Agent
 
 
-class TabularAgent(Agent, ABC):
+class TabularAgent(Agent):
 
     def __init__(self, n_actions, alpha=0.1, gamma=0.99, epsilon=1, epsilon_decay=0.999,
-                 min_epsilon=0.01) -> None:
-        super().__init__(epsilon, epsilon_decay, min_epsilon)
-        self.n_actions = n_actions
+                 min_epsilon=0.01, q_table=None, random_state: Optional[int] = None) -> None:
+        super().__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
+                         n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.alpha = alpha
-        self.gamma = gamma
-        self.q_table = defaultdict(lambda: np.zeros(n_actions))
+        if q_table is None:
+            self.q_table = defaultdict(lambda: np.zeros(n_actions))
+        else:
+            self.q_table = q_table
 
     def get_action(self, state, legal_mask=None, greedy=False):
         qs = self.q_table[state]
         if legal_mask is not None:
             qs = (qs - np.min(qs)) * legal_mask + legal_mask
             # add legal mask in case best action shares value with an illegal action
-        if greedy or np.random.uniform() > self.epsilon:
+        if greedy or self._rng.uniform() > self.epsilon:
             return np.argmax(qs)
         elif legal_mask is not None:
-            return np.random.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
+            return self._rng.choice(np.arange(0, self.n_actions), size=1, p=legal_mask/legal_mask.sum())[0]
         else:
-            return np.random.randint(0, self.n_actions)
+            return self._rng.integers(0, self.n_actions)
 
-    def to_json(self, name: str):
+    def save(self, path: str) -> str:
         learner_state_dict = {
             'n_actions': self.n_actions,
             'alpha': self.alpha,
             'gamma': self.gamma,
-            'q_table': dict(self.q_table),
+            'q_table': {str(key): value.tolist() for key, value in self.q_table.items()},
             'epsilon': self.epsilon,
             'epsilon_decay': self.epsilon_decay,
             'min_epsilon': self.min_epsilon,
+            'random_state': self._rng.bit_generator.state
         }
-        save_dir = './saved_agents/'
-        os.makedirs(save_dir, exist_ok=True)
-        with open(f'{save_dir}/TabularAgent-{name}.json', 'w') as file:
-            json.dump(learner_state_dict, file)
+        if not path.endswith('.yml'):
+            path += '.agent.yml'
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as file:
+            yaml.dump(dict(learner_state_dict), file)
+        return os.path.abspath(path)
 
-    def load_json(self, name: str):
-        save_dir = './saved_agents/'
-        with open(f'{save_dir}/TabularAgent-{name}.json', 'r') as file:
-            learner_state_dict = json.load(file)
-        self.n_actions = learner_state_dict['n_actions']
-        self.alpha = learner_state_dict['alpha']
-        self.gamma = learner_state_dict['gamma']
-        self.q_table = defaultdict(lambda: np.zeros(self.n_actions), learner_state_dict['q_table'])
-        self.epsilon = learner_state_dict['epsilon']
-        self.epsilon_decay = learner_state_dict['epsilon_decay']
-        self.min_epsilon = learner_state_dict['min_epsilon']
+    @classmethod
+    def load(cls, path: str) -> 'TabularAgent':
+        if not path.endswith('.yml'):
+            path += '.agent.yml'
+
+        with open(path, 'r') as file:
+            learner_state_dict = yaml.safe_load(file)
+
+        q_table = defaultdict(lambda: np.zeros(learner_state_dict['n_actions']))
+        for key, value in learner_state_dict['q_table'].items():
+            q_table[eval(key)] = np.array(value)
+        del learner_state_dict['q_table']
+        rng_state = learner_state_dict.pop('random_state')
+        agent = cls(q_table=q_table, **learner_state_dict)
+        agent._rng.bit_generator.state = rng_state
+        return agent
+
+    
