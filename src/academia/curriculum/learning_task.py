@@ -80,18 +80,18 @@ class LearningTask(SavableLoadable):
         except KeyboardInterrupt:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
-            self.__handle_task_terminated(agent, interrupted=True)
+            self.__handle_task_terminated(agent, verbose, interrupted=True)
             sys.exit(130)
         except Exception as e:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
             _logger.exception(e)
-            self.__handle_task_terminated(agent, interrupted=True)
+            self.__handle_task_terminated(agent, verbose, interrupted=True)
             sys.exit(1)
         else:
             if verbose >= 1:
                 _logger.info('Training finished.')
-            self.__handle_task_terminated(agent)
+            self.__handle_task_terminated(agent, verbose)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
         episode = 0
@@ -105,11 +105,18 @@ class LearningTask(SavableLoadable):
 
             if episode % self.evaluation_interval == 0:
                 evaluation_rewards: list[float] = []
-                for _ in range(self.evaluation_count):
+                for evaluation_no in range(self.evaluation_count):
                     evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
                     evaluation_rewards.append(evaluation_reward)
+                    if verbose >= 3:
+                        _logger.info(f'Evaluation {evaluation_no} after episode {episode}. '
+                                     f'Reward: {episode_reward}')
+                mean_evaluation = np.mean(evaluation_rewards)
+                if verbose >= 2:
+                    _logger.info(f'Evaluations after episode {episode} completed. '
+                                 f'Mean reward: {mean_evaluation}')
                 self.agent_evaluations = np.append(self.agent_evaluations,
-                                                   np.mean(evaluation_rewards))
+                                                   mean_evaluation)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -157,7 +164,7 @@ class LearningTask(SavableLoadable):
             _logger.info(f'Steps count: {steps_count}')
             _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
-    def __handle_task_terminated(self, agent: Agent, interrupted=False, verbose=0) -> None:
+    def __handle_task_terminated(self, agent: Agent, verbose: int, interrupted=False) -> None:
         # preserve agent's state
         if self.agent_save_path is not None:
             agent_save_path = self.__prep_save_file(self.agent_save_path, interrupted)
