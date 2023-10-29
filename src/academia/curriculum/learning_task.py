@@ -18,7 +18,8 @@ class LearningTask(SavableLoadable):
 
     __slots__ = ['name', 'agent_save_path', 'env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval', 'evaluation_count',
-                 'episode_rewards', 'agent_evaluations', 'step_counts']
+                 'episode_rewards', 'agent_evaluations', 'step_counts',
+                 'episode_wall_times', 'episode_cpu_times']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5,
@@ -40,6 +41,8 @@ class LearningTask(SavableLoadable):
         self.step_counts = np.array([])
         self.episode_rewards_moving_avg = np.array([])
         self.step_counts_moving_avg = np.array([])
+        self.episode_wall_times = np.array([])
+        self.episode_cpu_times = np.array([])
 
         self.name = name
         self.agent_save_path = agent_save_path
@@ -88,11 +91,7 @@ class LearningTask(SavableLoadable):
             stopwatch = Stopwatch()
             episode_reward, steps_count = self.__run_episode(agent)
             wall_time, cpu_time = stopwatch.stop()
-            if verbose >= 4:
-                _logger.info(f'Episode {episode} done.')
-                _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
-                _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
-            self.__update_statistics(episode_reward, steps_count, verbose)
+            self.__update_statistics(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
 
             if episode % self.evaluation_interval == 0:
                 evaluation_rewards: list[float] = []
@@ -124,7 +123,11 @@ class LearningTask(SavableLoadable):
             steps_count += 1
         return episode_reward, steps_count
 
-    def __update_statistics(self, episode_reward: float, steps_count: int, verbose=0) -> None:
+    def __update_statistics(self, episode_no: int, episode_reward: float, steps_count: int,
+                            wall_time: float, cpu_time: float, verbose=0) -> None:
+        self.episode_wall_times = np.append(self.episode_wall_times, wall_time)
+        self.episode_cpu_times = np.append(self.episode_cpu_times, cpu_time)
+
         self.episode_rewards = np.append(self.episode_rewards, episode_reward)
         self.step_counts = np.append(self.step_counts, steps_count)
 
@@ -136,6 +139,9 @@ class LearningTask(SavableLoadable):
             self.step_counts_moving_avg, steps_count_mvavg)
 
         if verbose >= 4:
+            _logger.info(f'Episode {episode_no} done.')
+            _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
+            _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
             _logger.info(f'Reward: {episode_reward:.2f}')
             _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
             _logger.info(f'Steps count: {steps_count}')
