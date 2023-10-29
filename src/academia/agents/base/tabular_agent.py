@@ -11,14 +11,11 @@ from .agent import Agent
 class TabularAgent(Agent):
 
     def __init__(self, n_actions, alpha=0.1, gamma=0.99, epsilon=1, epsilon_decay=0.999,
-                 min_epsilon=0.01, q_table=None, random_state: Optional[int] = None) -> None:
+                 min_epsilon=0.01, random_state: Optional[int] = None) -> None:
         super().__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
                          n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.alpha = alpha
-        if q_table is None:
-            self.q_table = defaultdict(lambda: np.zeros(n_actions))
-        else:
-            self.q_table = q_table
+        self.q_table = defaultdict(lambda: np.zeros(n_actions))
 
     def get_action(self, state, legal_mask=None, greedy=False):
         qs = self.q_table[state]
@@ -63,7 +60,8 @@ class TabularAgent(Agent):
             q_table[eval(key)] = np.array(value)
         del learner_state_dict['q_table']
         rng_state = learner_state_dict.pop('random_state')
-        agent = cls(q_table=q_table, **learner_state_dict)
+        agent = cls(**learner_state_dict)
+        agent.q_table = q_table
         agent._rng.bit_generator.state = rng_state
         return agent
 
