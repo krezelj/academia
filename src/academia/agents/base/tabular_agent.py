@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Optional, Any
 import numbers
 
-import yaml
+import json
 import numpy as np
 
 from .agent import Agent
@@ -46,19 +46,19 @@ class TabularAgent(Agent):
             'min_epsilon': self.min_epsilon,
             'random_state': self._rng.bit_generator.state
         }
-        if not path.endswith('.yml'):
-            path += '.agent.yml'
+        if not path.endswith('.json'):
+            path += '.agent.json'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
-            yaml.dump(learner_state_dict, file)
+            json.dump(learner_state_dict, file, indent=4)
         return os.path.abspath(path)
 
     @classmethod
     def load(cls, path: str) -> 'TabularAgent':
-        if not path.endswith('.yml'):
-            path += '.agent.yml'
+        if not path.endswith('.json'):
+            path += '.agent.json'
         with open(path, 'r') as file:
-            learner_state_dict = yaml.safe_load(file)
+            learner_state_dict = json.load(file)
 
         q_table_keys = learner_state_dict.pop('q_table_keys')
         if len(q_table_keys) > 0 and not TabularAgent._validate_state(q_table_keys[0]):
