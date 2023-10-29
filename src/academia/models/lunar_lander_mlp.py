@@ -15,3 +15,4 @@ class LunarLanderMLP(nn.Module):
 
     def forward(self, x) -> torch.Tensor:
         return self.network(x)
+        
