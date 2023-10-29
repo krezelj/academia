@@ -33,6 +33,14 @@ class LearningTask(SavableLoadable):
                    'Please provide at least one stop condition.')
             _logger.error(msg)
             raise ValueError(msg)
+        # temporary solution
+        available_stop_conditions = {'max_episodes', 'max_steps', 'min_avg_reward',
+                                     'min_reward_std_dev', 'evaluation_score'}
+        for sc in stop_conditions.keys():
+            if sc not in available_stop_conditions:
+                _logger.warning(f'"{sc}" is not a known stop condition. '
+                                f'Available stop conditions: {available_stop_conditions}')
+
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
         self.evaluation_count = evaluation_count
