@@ -13,7 +13,7 @@ class ScalableEnvironment(ABC):
     """A constant denoting the dimension of the state representation"""
 
     @abstractmethod
-    def __init__(self, difficulty: int):
+    def __init__(self, difficulty: int, **kwargs):
         """
         :param difficulty: Difficulty level. Higher values indicate more
                            difficult environments
