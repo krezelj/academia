@@ -2,8 +2,8 @@ import os
 from collections import defaultdict
 from typing import Optional, Any
 import numbers
-
 import json
+
 import numpy as np
 
 from .agent import Agent
