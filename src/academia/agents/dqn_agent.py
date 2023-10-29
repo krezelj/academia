@@ -410,7 +410,7 @@ class DQNAgent(Agent):
                 json.dump(dict(learner_state_dict), file, indent=4)
             # zip both
             zf.write(network_temp.name, 'network.pth')
-            zf.write(agent_temp.name, 'config.agent.json')
+            zf.write(agent_temp.name, 'state.agent.json')
         return os.path.abspath(path)
 
     @classmethod
@@ -450,7 +450,7 @@ class DQNAgent(Agent):
             # network state
             network_params = torch.load(os.path.join(tempdir, 'network.pth'))
             # agent config
-            with open(os.path.join(tempdir, 'config.agent.json'), 'r') as file:
+            with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 params = json.load(file)
 
         nn_architecture = cls.get_type(params['nn_architecture'])

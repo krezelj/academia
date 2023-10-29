@@ -278,7 +278,7 @@ class PPOAgent(Agent):
             actor_params = torch.load(os.path.join(tempdir, 'actor.pth'))
             critic_params = torch.load(os.path.join(tempdir, 'critic.pth'))
             
-            with open(os.path.join(tempdir, 'config.agent.json'), 'r') as file:
+            with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 agent_state = json.load(file)
             agent_state: dict
             buffer_state: dict = agent_state.pop('buffer')
@@ -369,7 +369,7 @@ class PPOAgent(Agent):
 
             zf.write(actor_temp.name, 'actor.pth')
             zf.write(critic_temp.name, 'critic.pth')
-            zf.write(agent_temp.name, 'config.agent.json')
+            zf.write(agent_temp.name, 'state.agent.json')
 
             actor_temp.close()
             critic_temp.close()
