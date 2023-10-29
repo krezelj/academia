@@ -144,8 +144,9 @@ class LearningTask(SavableLoadable):
             return np.sum(self.step_counts) >= self.stop_conditions['max_steps']
         
         if 'min_avg_reward' in self.stop_conditions and len(self.episode_rewards_moving_avg) > 5:
-            # check if episode_rewards_moving_avg length is greater than because if not it is possibility that agent scored max reward in first episode
-            #and then it will stop training because it will think that it has reached min_avg_reward
+            # check if episode_rewards_moving_avg length is greater than because if not it is possibility
+            # that agent scored max reward in first episode
+            # and then it will stop training because it will think that it has reached min_avg_reward
             return self.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
         
         if 'min_reward_std_dev' in self.stop_conditions and len(self.episode_rewards) > 10:
