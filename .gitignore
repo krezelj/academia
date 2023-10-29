@@ -2,3 +2,4 @@ __pycache__
 my_notebooks
 venv/
 .idea/
+*.log
