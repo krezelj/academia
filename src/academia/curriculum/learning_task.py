@@ -16,14 +16,15 @@ _logger = logging.getLogger('academia.curriculum')
 
 class LearningTask(SavableLoadable):
 
-    __slots__ = ['name', 'agent_save_path', 'env_type', 'env_args', 'env',
+    __slots__ = ['name', 'agent_save_path', 'stats_save_path', 'env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval', 'evaluation_count',
                  'episode_rewards', 'agent_evaluations', 'step_counts',
                  'episode_wall_times', 'episode_cpu_times']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5,
-                 name: Optional[str] = None, agent_save_path: Optional[str] = None) -> None:
+                 name: Optional[str] = None, agent_save_path: Optional[str] = None,
+                 stats_save_path: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -46,6 +47,7 @@ class LearningTask(SavableLoadable):
 
         self.name = name
         self.agent_save_path = agent_save_path
+        self.stats_save_path = stats_save_path
 
     def run(self, agent: Agent, verbose=0, render=False) -> None:
         """
@@ -148,18 +150,45 @@ class LearningTask(SavableLoadable):
             _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
     def __handle_task_terminated(self, agent: Agent, interrupted=False, verbose=0) -> None:
+        # preserve agent's state
         if self.agent_save_path is not None:
-            dirname, filename = os.path.split(self.agent_save_path)
-            if interrupted:
-                # prefix to let user know that the training has not been completed
-                filename = f'backup_{filename}'
-            os.makedirs(dirname, exist_ok=True)
-            full_path = os.path.join(dirname, filename)
+            agent_save_path = self.__prep_save_file(self.agent_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving agent's state...")
-            save_path = agent.save(full_path)
+            final_save_path = agent.save(agent_save_path)
             if verbose >= 1:
-                _logger.info(f"Agent's state saved to {save_path}")
+                _logger.info(f"Agent's state saved to {final_save_path}")
+
+        # save task statistics
+        if self.stats_save_path is not None:
+            stats_save_path = self.__prep_save_file(self.stats_save_path, interrupted)
+            if not stats_save_path.endswith('.yml'):
+                stats_save_path += '.yml'
+            if verbose >= 1:
+                _logger.info("Saving task's stats...")
+            with open(stats_save_path, 'w') as file:
+                data = {
+                    'episode_rewards': self.episode_rewards.tolist(),
+                    'step_counts': self.step_counts.tolist(),
+                    'episode_rewards_moving_avg': self.episode_rewards_moving_avg.tolist(),
+                    'step_counts_moving_avg': self.step_counts_moving_avg.tolist(),
+                    'agent_evaluations': self.agent_evaluations.tolist(),
+                    'episode_wall_times': self.episode_wall_times.tolist(),
+                    'episode_cpu_times': self.episode_cpu_times.tolist(),
+                }
+                yaml.dump(data, file)
+            if verbose >= 1:
+                _logger.info(f"Task's stats saved to {stats_save_path}")
+
+    @staticmethod
+    def __prep_save_file(specified_path: str, interrupted: bool) -> str:
+        dirname, filename = os.path.split(specified_path)
+        if interrupted:
+            # prefix to let user know that the training has not been completed
+            filename = f'backup_{filename}'
+        os.makedirs(dirname, exist_ok=True)
+        full_path = os.path.join(dirname, filename)
+        return full_path
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
