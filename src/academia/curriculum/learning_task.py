@@ -8,7 +8,7 @@ import yaml
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
-from academia.utils import SavableLoadable
+from academia.utils import SavableLoadable, Stopwatch
 
 
 _logger = logging.getLogger('academia.curriculum')
@@ -16,13 +16,15 @@ _logger = logging.getLogger('academia.curriculum')
 
 class LearningTask(SavableLoadable):
 
-    __slots__ = ['name', 'agent_save_path', 'env_type', 'env_args', 'env',
+    __slots__ = ['name', 'agent_save_path', 'stats_save_path', 'env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval', 'evaluation_count',
-                 'episode_rewards', 'agent_evaluations', 'step_counts']
+                 'episode_rewards', 'agent_evaluations', 'step_counts',
+                 'episode_wall_times', 'episode_cpu_times']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5,
-                 name: Optional[str] = None, agent_save_path: Optional[str] = None) -> None:
+                 name: Optional[str] = None, agent_save_path: Optional[str] = None,
+                 stats_save_path: Optional[str] = None) -> None:
         self.env_type = env_type
         self.env_args = env_args
 
@@ -31,6 +33,14 @@ class LearningTask(SavableLoadable):
                    'Please provide at least one stop condition.')
             _logger.error(msg)
             raise ValueError(msg)
+        # temporary solution
+        available_stop_conditions = {'max_episodes', 'max_steps', 'min_avg_reward',
+                                     'min_reward_std_dev', 'evaluation_score'}
+        for sc in stop_conditions.keys():
+            if sc not in available_stop_conditions:
+                _logger.warning(f'"{sc}" is not a known stop condition. '
+                                f'Available stop conditions: {available_stop_conditions}')
+
         self.stop_conditions = stop_conditions
         self.evaluation_interval = evaluation_interval
         self.evaluation_count = evaluation_count
@@ -40,49 +50,73 @@ class LearningTask(SavableLoadable):
         self.step_counts = np.array([])
         self.episode_rewards_moving_avg = np.array([])
         self.step_counts_moving_avg = np.array([])
+        self.episode_wall_times = np.array([])
+        self.episode_cpu_times = np.array([])
 
         self.name = name
         self.agent_save_path = agent_save_path
+        self.stats_save_path = stats_save_path
 
     def run(self, agent: Agent, verbose=0, render=False) -> None:
+        """
+        Args:
+            agent (Agent): An agent to train
+            verbose (int): Verbosity level.
+                - 0 - no logging (except for errors);
+                - 1 - Task finished/Task interrupted + warnings;
+                - 2 - Mean evaluation score at each iteration;
+                - 3 - Each evaluation is logged;
+                - 4 - Each episode is logged.
+            render (bool): Whether or not to render the environment
+        """
         self.__reset()
         if render and self.env_args.get('render_mode') == 'human':
             self.env.render()
-        elif render:
-            _logger.warning("WARNING: Cannot render environment when render_mode is not 'human'. "
+        elif render and verbose >= 1:
+            _logger.warning("Cannot render environment when render_mode is not 'human'. "
                             "Consider passing render_mode in env_args in the task configuration")
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
-            _logger.info('Training interrupted.')
-            self.__handle_task_terminated(agent, interrupted=True)
+            if verbose >= 1:
+                _logger.info('Training interrupted.')
+            self.__handle_task_terminated(agent, verbose, interrupted=True)
             sys.exit(130)
         except Exception as e:
-            _logger.info('Training interrupted.')
+            if verbose >= 1:
+                _logger.info('Training interrupted.')
             _logger.exception(e)
-            self.__handle_task_terminated(agent, interrupted=True)
+            self.__handle_task_terminated(agent, verbose, interrupted=True)
             sys.exit(1)
         else:
-            _logger.info('Training finished.')
-            self.__handle_task_terminated(agent)
+            if verbose >= 1:
+                _logger.info('Training finished.')
+            self.__handle_task_terminated(agent, verbose)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
         episode = 0
         while not self.__is_finished():
             episode += 1
 
+            stopwatch = Stopwatch()
             episode_reward, steps_count = self.__run_episode(agent)
-            if verbose >= 2:
-                _logger.info(f'Episode {episode} done.')
-            self.__update_statistics(episode_reward, steps_count, verbose)
+            wall_time, cpu_time = stopwatch.stop()
+            self.__update_statistics(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
 
             if episode % self.evaluation_interval == 0:
                 evaluation_rewards: list[float] = []
-                for _ in range(self.evaluation_count):
+                for evaluation_no in range(self.evaluation_count):
                     evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
                     evaluation_rewards.append(evaluation_reward)
+                    if verbose >= 3:
+                        _logger.info(f'Evaluation {evaluation_no} after episode {episode}. '
+                                     f'Reward: {episode_reward}')
+                mean_evaluation = np.mean(evaluation_rewards)
+                if verbose >= 2:
+                    _logger.info(f'Evaluations after episode {episode} completed. '
+                                 f'Mean reward: {mean_evaluation}')
                 self.agent_evaluations = np.append(self.agent_evaluations,
-                                                   np.mean(evaluation_rewards))
+                                                   mean_evaluation)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -106,7 +140,11 @@ class LearningTask(SavableLoadable):
             steps_count += 1
         return episode_reward, steps_count
 
-    def __update_statistics(self, episode_reward: float, steps_count: int, verbose=0) -> None:
+    def __update_statistics(self, episode_no: int, episode_reward: float, steps_count: int,
+                            wall_time: float, cpu_time: float, verbose=0) -> None:
+        self.episode_wall_times = np.append(self.episode_wall_times, wall_time)
+        self.episode_cpu_times = np.append(self.episode_cpu_times, cpu_time)
+
         self.episode_rewards = np.append(self.episode_rewards, episode_reward)
         self.step_counts = np.append(self.step_counts, steps_count)
 
@@ -117,23 +155,55 @@ class LearningTask(SavableLoadable):
         self.step_counts_moving_avg = np.append(
             self.step_counts_moving_avg, steps_count_mvavg)
 
-        if verbose >= 2:
+        if verbose >= 4:
+            _logger.info(f'Episode {episode_no} done.')
+            _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
+            _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
             _logger.info(f'Reward: {episode_reward:.2f}')
             _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
             _logger.info(f'Steps count: {steps_count}')
             _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
-    def __handle_task_terminated(self, agent: Agent, interrupted=False) -> None:
+    def __handle_task_terminated(self, agent: Agent, verbose: int, interrupted=False) -> None:
+        # preserve agent's state
         if self.agent_save_path is not None:
-            dirname, filename = os.path.split(self.agent_save_path)
-            if interrupted:
-                # prefix to let user know that the training has not been completed
-                filename = f'backup_{filename}'
-            os.makedirs(dirname, exist_ok=True)
-            full_path = os.path.join(dirname, filename)
-            _logger.info("Saving agent's state...")
-            save_path = agent.save(full_path)
-            _logger.info(f"Agent's state saved to {save_path}")
+            agent_save_path = self.__prep_save_file(self.agent_save_path, interrupted)
+            if verbose >= 1:
+                _logger.info("Saving agent's state...")
+            final_save_path = agent.save(agent_save_path)
+            if verbose >= 1:
+                _logger.info(f"Agent's state saved to {final_save_path}")
+
+        # save task statistics
+        if self.stats_save_path is not None:
+            stats_save_path = self.__prep_save_file(self.stats_save_path, interrupted)
+            if not stats_save_path.endswith('.yml'):
+                stats_save_path += '.yml'
+            if verbose >= 1:
+                _logger.info("Saving task's stats...")
+            with open(stats_save_path, 'w') as file:
+                data = {
+                    'episode_rewards': self.episode_rewards.tolist(),
+                    'step_counts': self.step_counts.tolist(),
+                    'episode_rewards_moving_avg': self.episode_rewards_moving_avg.tolist(),
+                    'step_counts_moving_avg': self.step_counts_moving_avg.tolist(),
+                    'agent_evaluations': self.agent_evaluations.tolist(),
+                    'episode_wall_times': self.episode_wall_times.tolist(),
+                    'episode_cpu_times': self.episode_cpu_times.tolist(),
+                }
+                yaml.dump(data, file)
+            if verbose >= 1:
+                _logger.info(f"Task's stats saved to {stats_save_path}")
+
+    @staticmethod
+    def __prep_save_file(specified_path: str, interrupted: bool) -> str:
+        dirname, filename = os.path.split(specified_path)
+        if interrupted:
+            # prefix to let user know that the training has not been completed
+            filename = f'backup_{filename}'
+        os.makedirs(dirname, exist_ok=True)
+        full_path = os.path.join(dirname, filename)
+        return full_path
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
@@ -144,8 +214,9 @@ class LearningTask(SavableLoadable):
             return np.sum(self.step_counts) >= self.stop_conditions['max_steps']
         
         if 'min_avg_reward' in self.stop_conditions and len(self.episode_rewards_moving_avg) > 5:
-            # check if episode_rewards_moving_avg length is greater than because if not it is possibility that agent scored max reward in first episode
-            #and then it will stop training because it will think that it has reached min_avg_reward
+            # check if episode_rewards_moving_avg length is greater than because if not it is possibility
+            # that agent scored max reward in first episode
+            # and then it will stop training because it will think that it has reached min_avg_reward
             return self.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
         
         if 'min_reward_std_dev' in self.stop_conditions and len(self.episode_rewards) > 10:

@@ -1,4 +1,4 @@
-from .task import LearningTask
+from .learning_task import LearningTask
 from .curriculum import Curriculum
 
 __all__ = [
