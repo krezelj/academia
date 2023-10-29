@@ -52,8 +52,8 @@ class LearningTask(SavableLoadable):
         Args:
             agent (Agent): An agent to train
             verbose (int): Verbosity level.
-                - 0 - no logging;
-                - 1 - Task finished/Task interrupted;
+                - 0 - no logging (except for errors);
+                - 1 - Task finished/Task interrupted + warnings;
                 - 2 - Mean evaluation score at each iteration;
                 - 3 - Each evaluation is logged;
                 - 4 - Each episode is logged.
@@ -75,7 +75,7 @@ class LearningTask(SavableLoadable):
         except Exception as e:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
-                _logger.exception(e)
+            _logger.exception(e)
             self.__handle_task_terminated(agent, interrupted=True)
             sys.exit(1)
         else:

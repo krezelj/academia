@@ -26,8 +26,8 @@ class Curriculum(SavableLoadable):
         Args:
             agent (Agent): An agent to train
             verbose (int): Verbosity level.
-                - 0 - no logging;
-                - 1 - Task finished/Task interrupted;
+                - 0 - no logging (except for errors);
+                - 1 - Task finished/Task interrupted + warnings;
                 - 2 - Mean evaluation score at each iteration;
                 - 3 - Each evaluation is logged;
                 - 4 - Each episode is logged.
