@@ -22,6 +22,17 @@ class Curriculum(SavableLoadable):
         self.agents_save_dir = agents_save_dir
 
     def run(self, agent: Agent, verbose=0, render=False):
+        """
+        Args:
+            agent (Agent): An agent to train
+            verbose (int): Verbosity level.
+                - 0 - no logging;
+                - 1 - Task finished/Task interrupted;
+                - 2 - Mean evaluation score at each iteration;
+                - 3 - Each evaluation is logged;
+                - 4 - Each episode is logged.
+            render (bool): Whether or not to render the environment
+        """
         total_episodes = 0
         stopwatch = Stopwatch()
         for i, task in enumerate(self.tasks):

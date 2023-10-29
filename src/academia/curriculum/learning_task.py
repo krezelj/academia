@@ -8,7 +8,7 @@ import yaml
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
-from academia.utils import SavableLoadable
+from academia.utils import SavableLoadable, Stopwatch
 
 
 _logger = logging.getLogger('academia.curriculum')
@@ -45,25 +45,39 @@ class LearningTask(SavableLoadable):
         self.agent_save_path = agent_save_path
 
     def run(self, agent: Agent, verbose=0, render=False) -> None:
+        """
+        Args:
+            agent (Agent): An agent to train
+            verbose (int): Verbosity level.
+                - 0 - no logging;
+                - 1 - Task finished/Task interrupted;
+                - 2 - Mean evaluation score at each iteration;
+                - 3 - Each evaluation is logged;
+                - 4 - Each episode is logged.
+            render (bool): Whether or not to render the environment
+        """
         self.__reset()
         if render and self.env_args.get('render_mode') == 'human':
             self.env.render()
-        elif render:
-            _logger.warning("WARNING: Cannot render environment when render_mode is not 'human'. "
+        elif render and verbose >= 1:
+            _logger.warning("Cannot render environment when render_mode is not 'human'. "
                             "Consider passing render_mode in env_args in the task configuration")
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
-            _logger.info('Training interrupted.')
+            if verbose >= 1:
+                _logger.info('Training interrupted.')
             self.__handle_task_terminated(agent, interrupted=True)
             sys.exit(130)
         except Exception as e:
-            _logger.info('Training interrupted.')
-            _logger.exception(e)
+            if verbose >= 1:
+                _logger.info('Training interrupted.')
+                _logger.exception(e)
             self.__handle_task_terminated(agent, interrupted=True)
             sys.exit(1)
         else:
-            _logger.info('Training finished.')
+            if verbose >= 1:
+                _logger.info('Training finished.')
             self.__handle_task_terminated(agent)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
@@ -71,9 +85,13 @@ class LearningTask(SavableLoadable):
         while not self.__is_finished():
             episode += 1
 
+            stopwatch = Stopwatch()
             episode_reward, steps_count = self.__run_episode(agent)
-            if verbose >= 2:
+            wall_time, cpu_time = stopwatch.stop()
+            if verbose >= 4:
                 _logger.info(f'Episode {episode} done.')
+                _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
+                _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
             self.__update_statistics(episode_reward, steps_count, verbose)
 
             if episode % self.evaluation_interval == 0:
@@ -117,13 +135,13 @@ class LearningTask(SavableLoadable):
         self.step_counts_moving_avg = np.append(
             self.step_counts_moving_avg, steps_count_mvavg)
 
-        if verbose >= 2:
+        if verbose >= 4:
             _logger.info(f'Reward: {episode_reward:.2f}')
             _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
             _logger.info(f'Steps count: {steps_count}')
             _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
-    def __handle_task_terminated(self, agent: Agent, interrupted=False) -> None:
+    def __handle_task_terminated(self, agent: Agent, interrupted=False, verbose=0) -> None:
         if self.agent_save_path is not None:
             dirname, filename = os.path.split(self.agent_save_path)
             if interrupted:
@@ -131,9 +149,11 @@ class LearningTask(SavableLoadable):
                 filename = f'backup_{filename}'
             os.makedirs(dirname, exist_ok=True)
             full_path = os.path.join(dirname, filename)
-            _logger.info("Saving agent's state...")
+            if verbose >= 1:
+                _logger.info("Saving agent's state...")
             save_path = agent.save(full_path)
-            _logger.info(f"Agent's state saved to {save_path}")
+            if verbose >= 1:
+                _logger.info(f"Agent's state saved to {save_path}")
 
     def __is_finished(self) -> bool:
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
