@@ -7,7 +7,7 @@ import numpy as np
 
 from . import LearningTask
 from academia.agents.base import Agent
-from academia.utils import SavableLoadable, Stopwatch
+from academia.utils import SavableLoadable
 
 
 _logger = logging.getLogger('academia.curriculum')
