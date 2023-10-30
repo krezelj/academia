@@ -86,7 +86,9 @@ class Curriculum(SavableLoadable):
                 )
                 task = LearningTask.load(task_path_abs)
             tasks.append(task)
-        return Curriculum(tasks)
+        del curriculum_data['order']
+        del curriculum_data['tasks']
+        return Curriculum(tasks, **curriculum_data)
 
     def save(self, path: str) -> str:
         # dict preserves insertion order
