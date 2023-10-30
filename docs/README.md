@@ -12,17 +12,17 @@ for an example.
 *Note: [`sphinx_rtd_theme`](https://github.com/readthedocs/sphinx_rtd_theme) 
 needs to be installed for this to work.*
 
-Run these commands from the project's root folder:
-
-For Linux:
+For Unix:
 ```bash
-sphinx-apidoc -f -o docs/source src/
 cd docs
 make html
 ```
 
 For Windows:
-(Someone using Windows please put here a similar instruction for Windows)
+```commandline
+dir docs
+make.bat html
+```
 
 ## Guidelines
 
