@@ -23,6 +23,12 @@ class Curriculum(SavableLoadable):
             task's completion or interruption. If set to ``None``, agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
+    Attributes:
+        tasks: Tasks to be run. Tasks are run one by one so their order matters.
+        agents_save_dir: A path to a file where the agent states and training stats will be saved upon each
+            task's completion or interruption. If set to ``None``, agent's state or training stats will not
+            be saved at any point, unless relevant paths are specified for any of the tasks directly.
+
     Examples:
         Initialisation using class contructor:
 
