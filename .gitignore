@@ -5,5 +5,4 @@ venv/
 *.log
 
 # Sphinx
-docs/source/
 docs/_build/
