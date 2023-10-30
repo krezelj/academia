@@ -3,8 +3,8 @@ from typing import Type, Optional
 import os
 import zipfile
 import tempfile
+import json
 
-import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -407,10 +407,10 @@ class DQNAgent(Agent):
                 'random_state': self._rng.bit_generator.state
             }
             with open(agent_temp.name, 'w') as file:
-                yaml.dump(dict(learner_state_dict), file)
+                json.dump(dict(learner_state_dict), file, indent=4)
             # zip both
             zf.write(network_temp.name, 'network.pth')
-            zf.write(agent_temp.name, 'config.agent.yml')
+            zf.write(agent_temp.name, 'state.agent.json')
         return os.path.abspath(path)
 
     @classmethod
@@ -450,8 +450,8 @@ class DQNAgent(Agent):
             # network state
             network_params = torch.load(os.path.join(tempdir, 'network.pth'))
             # agent config
-            with open(os.path.join(tempdir, 'config.agent.yml'), 'r') as file:
-                params = yaml.safe_load(file)
+            with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
+                params = json.load(file)
 
         nn_architecture = cls.get_type(params['nn_architecture'])
         del params['nn_architecture']

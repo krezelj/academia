@@ -2,6 +2,7 @@ import sys
 from typing import Optional, Type
 import os
 import logging
+import json
 
 import numpy as np
 import yaml
@@ -177,8 +178,8 @@ class LearningTask(SavableLoadable):
         # save task statistics
         if self.stats_save_path is not None:
             stats_save_path = self.__prep_save_file(self.stats_save_path, interrupted)
-            if not stats_save_path.endswith('.yml'):
-                stats_save_path += '.yml'
+            if not stats_save_path.endswith('.json'):
+                stats_save_path += '.json'
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
             with open(stats_save_path, 'w') as file:
@@ -191,7 +192,7 @@ class LearningTask(SavableLoadable):
                     'episode_wall_times': self.episode_wall_times.tolist(),
                     'episode_cpu_times': self.episode_cpu_times.tolist(),
                 }
-                yaml.dump(data, file)
+                json.dump(data, file, indent=4)
             if verbose >= 1:
                 _logger.info(f"Task's stats saved to {stats_save_path}")
 

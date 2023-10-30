@@ -27,7 +27,7 @@ class Agent(SavableLoadable):
         pass
 
     def decay_epsilon(self):
-        self.epsilon = np.maximum(self.min_epsilon, self.epsilon * self.epsilon_decay)
+        self.epsilon = float(np.max([self.min_epsilon, self.epsilon * self.epsilon_decay]))
 
     def reset_epsilon(self, epsilon=1):
         self.epsilon = epsilon

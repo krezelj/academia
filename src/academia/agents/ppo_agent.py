@@ -2,6 +2,7 @@ import os
 import zipfile
 import tempfile
 from typing import Any, Optional, Tuple, Type, Union
+import json
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +10,6 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.distributions import MultivariateNormal, Categorical
-import yaml
 
 from .base import Agent
 
@@ -278,8 +278,8 @@ class PPOAgent(Agent):
             actor_params = torch.load(os.path.join(tempdir, 'actor.pth'))
             critic_params = torch.load(os.path.join(tempdir, 'critic.pth'))
             
-            with open(os.path.join(tempdir, 'config.agent.yml'), 'r') as file:
-                agent_state = yaml.safe_load(file)
+            with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
+                agent_state = json.load(file)
             agent_state: dict
             buffer_state: dict = agent_state.pop('buffer')
             actor_architecture = cls.get_type(agent_state.pop('actor_architecture'))
@@ -364,11 +364,12 @@ class PPOAgent(Agent):
             agent_state['buffer'] = buffer_state
 
             agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
-            yaml.dump(agent_state, agent_temp)
+            json.dump(agent_state, agent_temp, indent=4)
+            agent_temp.flush()  # otherwise file is empty
 
             zf.write(actor_temp.name, 'actor.pth')
             zf.write(critic_temp.name, 'critic.pth')
-            zf.write(agent_temp.name, 'config.agent.yml')
+            zf.write(agent_temp.name, 'state.agent.json')
 
             actor_temp.close()
             critic_temp.close()

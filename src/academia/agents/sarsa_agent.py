@@ -8,5 +8,5 @@ class SarsaAgent(TabularAgent):
     def update(self, state, action, reward, new_state, is_terminal):
         policy_next_action = self.get_action(state)
         self.q_table[state][action] = \
-            (1 - self.alpha) * self.q_table[state][action] + \
-            self.alpha * (reward + self.gamma * self.q_table[new_state][policy_next_action])
+            (1 - self.alpha) * self.q_table[state][action] \
+            + self.alpha * (reward + self.gamma * self.q_table[new_state][policy_next_action])
