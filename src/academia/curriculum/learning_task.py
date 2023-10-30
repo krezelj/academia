@@ -79,7 +79,7 @@ class LearningTask(SavableLoadable):
         >>>     nn_architecture=LavaCrossingMLP,
         >>>     random_state=123,
         >>> )
-        >>> task.run(agent, render=True)
+        >>> task.run(agent, verbose=4, render=True)
     """
 
     __slots__ = ['name', 'agent_save_path', 'stats_save_path', 'env_type', 'env_args', 'env',
