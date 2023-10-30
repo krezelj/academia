@@ -1,3 +1,12 @@
+"""
+This module contains utilities for agents training. It basically controls interactions between agents
+and environments.
+
+Exported classes:
+
+- :class:`LearningTask`
+- :class:`Curriculum`
+"""
 from .learning_task import LearningTask
 from .curriculum import Curriculum
 
