@@ -12,8 +12,6 @@ Welcome to academia's documentation!
 
    modules
 
-
-
 Indices and tables
 ==================
 
