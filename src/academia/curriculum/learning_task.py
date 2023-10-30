@@ -19,6 +19,30 @@ class LearningTask(SavableLoadable):
     """
     A class used to control agents' training.
 
+    Args:
+        env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
+            be trained on. This should be a class, not an instantiated object.
+        env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
+            argument).
+        stop_conditions: Conditions deciding when to end the training process. Available conditions:
+            ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
+            ``'evaluation_score'``.
+        evaluation_interval: Controls how often evaluations are conducted.
+        evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
+            Final agent evaluation will be the mean of these individual evaluations.
+        name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
+            Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
+            :class:`LearningTask` is run through the :class:`academia.curriculum.Curriculum` object.
+        agent_save_path: A path to a file where the agent's state will be saved after the training is
+            completed or if it is interrupted. If set to ``None``, agent's state will not be saved at
+            any point.
+        stats_save_path: A path to a file where the statistics gathered during training process will be
+            saved after the training is completed or if it is interrupted. If set to ``None``, agent's
+            state will not be saved at any point.
+
+    Raises:
+        ValueError: If `stop_conditions` is empty
+
     Examples:
         Initialisation using class contructor:
 
@@ -67,31 +91,6 @@ class LearningTask(SavableLoadable):
                  evaluation_interval: int = 100, evaluation_count: int = 5,
                  name: Optional[str] = None, agent_save_path: Optional[str] = None,
                  stats_save_path: Optional[str] = None) -> None:
-        """
-        Args:
-            env_type: A subclass of :class:`ScalableEnvironment` that the agent will be trained on. This
-                should be a class, not an instantiated object.
-            env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
-                argument).
-            stop_conditions: Conditions deciding when to end the training process. Available conditions:
-                ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
-                ``'evaluation_score'``.
-            evaluation_interval: Controls how often evaluations are conducted.
-            evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
-                Final agent evaluation will be the mean of these individual evaluations.
-            name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
-                Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-                :class:`LearningTask` is run through the :class:`Curriculum` object.
-            agent_save_path: A path to a file where the agent's state will be saved after the training is
-                completed or if it is interrupted. If set to ``None``, agent's state will not be saved at
-                any point.
-            stats_save_path: A path to a file where the statistics gathered during training process will be
-                saved after the training is completed or if it is interrupted. If set to ``None``, agent's
-                state will not be saved at any point.
-
-        Raises:
-            ValueError: If `stop_conditions` is empty
-        """
         self.env_type = env_type
         self.env_args = env_args
 
@@ -372,7 +371,8 @@ class LearningTask(SavableLoadable):
 
     def save(self, path: str) -> str:
         """
-        Saves this :class:`LearningTask`'s configuration to the file. Configuration is stored in a YAML format.
+        Saves this :class:`LearningTask`'s configuration to the file.
+        Configuration is stored in a YAML format.
 
         Args:
             path: Path where a configuration file will be created. If the extension is not provided, it will
@@ -395,7 +395,7 @@ class LearningTask(SavableLoadable):
         """
         Creates a task based on a configuration stored in a dictionary.
 
-        This is a helper method used by the :class:`Curriculum` class and it is not
+        This is a helper method used by the :class:`academia.curriculum.Curriculum` class and it is not
         useful for the end user.
 
         Args:
@@ -413,7 +413,7 @@ class LearningTask(SavableLoadable):
         """
         Puts this :class:`LearningTask`'s configuration to a dictionary.
 
-        This is a helper method used by the :class:`Curriculum` class and it is not
+        This is a helper method used by the :class:`academia.curriculum.Curriculum` class and it is not
         useful for the end user.
 
         Returns:
