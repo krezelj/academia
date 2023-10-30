@@ -17,7 +17,7 @@ _logger = logging.getLogger('academia.curriculum')
 
 class LearningTask(SavableLoadable):
     """
-    A class used to control agents' training.
+    Controls agent's training.
 
     Args:
         env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
@@ -42,6 +42,45 @@ class LearningTask(SavableLoadable):
 
     Raises:
         ValueError: If `stop_conditions` is empty
+
+    Attributes:
+        env (ScalableEnvironment): An environment that an agent can interact with.
+            It is of a type ``env_type``, initialised with parameters from ``env_args``.
+        episode_rewards (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+            episode (excluding evaluations).
+        agent_evaluations (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+            evaluation.
+        step_counts (:obj:`numpy.ndarray`): An array of integers which stores step counts for each episode
+            (excluding evaluations).
+        episode_rewards_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+            of total rewards for each episode (excluding evaluations). Each average is calculated from 5
+            observations.
+        step_counts_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+            of step counts for each episode (excluding evaluations). Each average is calculated from 5
+            observations.
+        episode_wall_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed wall times for
+            each episode (excluding evaluations).
+        episode_cpu_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed CPU times for
+            each episode (excluding evaluations).
+        env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
+            be trained on. This should be a class, not an instantiated object.
+        env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
+            argument).
+        stop_conditions: Conditions deciding when to end the training process. Available conditions:
+            ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
+            ``'evaluation_score'``.
+        evaluation_interval: Controls how often evaluations are conducted.
+        evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
+            Final agent evaluation will be the mean of these individual evaluations.
+        name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
+            Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
+            :class:`LearningTask` is run through the :class:`academia.curriculum.Curriculum` object.
+        agent_save_path: A path to a file where the agent's state will be saved after the training is
+            completed or if it is interrupted. If set to ``None``, agent's state will not be saved at
+            any point.
+        stats_save_path: A path to a file where the statistics gathered during training process will be
+            saved after the training is completed or if it is interrupted. If set to ``None``, agent's
+            state will not be saved at any point.
 
     Examples:
         Initialisation using class contructor:
@@ -85,6 +124,7 @@ class LearningTask(SavableLoadable):
     __slots__ = ['name', 'agent_save_path', 'stats_save_path', 'env_type', 'env_args', 'env',
                  'stop_conditions', 'evaluation_interval', 'evaluation_count',
                  'episode_rewards', 'agent_evaluations', 'step_counts',
+                 'episode_rewards_moving_avg', 'step_counts_moving_avg',
                  'episode_wall_times', 'episode_cpu_times']
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
@@ -131,12 +171,9 @@ class LearningTask(SavableLoadable):
 
         Args:
             agent: An agent to train
-            verbose: Verbosity level.
-                - 0 - no logging (except for errors);
-                - 1 - Task finished/Task interrupted + warnings;
-                - 2 - Mean evaluation score at each iteration;
-                - 3 - Each evaluation is logged;
-                - 4 - Each episode is logged.
+            verbose: Verbosity level. Possible values: 0 - no logging (except for errors);
+                1 - Task finished/Task interrupted + warnings; 2 - Mean evaluation score at each iteration;
+                3 - Each evaluation is logged; 4 - Each episode is logged.
             render: Whether or not to render the environment
         """
         self.__reset()
@@ -344,7 +381,9 @@ class LearningTask(SavableLoadable):
         Loads a task configuration from the specified file.
 
         A configuration file should be in YAML format. Properties names should be identical to the arguments
-        of the :class:`LearningTask` constructor. An example task configuration file::
+        of the :class:`LearningTask` constructor.
+
+        An example task configuration file::
 
             # my_config.task.yaml
             env_type: academia.environments.LavaCrossing
