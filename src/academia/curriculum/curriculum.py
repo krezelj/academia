@@ -43,6 +43,8 @@ class Curriculum(SavableLoadable):
 
             if task.agent_save_path is None and self.agents_save_dir is not None:
                 task.agent_save_path = os.path.join(self.agents_save_dir, task_id)
+            if task.stats_save_path is None and self.agents_save_dir is not None:
+                task.stats_save_path = os.path.join(self.agents_save_dir, f'{task_id}.json')
 
             task.run(agent, verbose=verbose, render=render)
             total_episodes += len(task.episode_rewards)
