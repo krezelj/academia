@@ -63,7 +63,7 @@ class LunarLander(ScalableEnvironment):
         """
         super().__init__(difficulty, **kwargs)
         try:
-            self.params = LunarLander.__difficulty_params_map.get(difficulty, {})
+            self.params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 5")
