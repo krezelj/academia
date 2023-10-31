@@ -15,7 +15,7 @@ _logger = logging.getLogger('academia.curriculum')
 
 class Curriculum(SavableLoadable):
     """
-    Groups and executes instances of :class:`academia.curriculum.LearningTask` in the specified updorder.
+    Groups and executes instances of :class:`academia.curriculum.LearningTask` in the specified order.
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
