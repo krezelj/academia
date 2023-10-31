@@ -63,12 +63,12 @@ class LunarLander(ScalableEnvironment):
         """
         super().__init__(difficulty, **kwargs)
         try:
-            self.params = LunarLander.__difficulty_params_map[difficulty]
+            self.difficulty_params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 5")
             raise ValueError(msg)
-        self._base_env = gymnasium.make('LunarLander-v2', render_mode=render_mode,**self.params)
+        self._base_env = gymnasium.make('LunarLander-v2', render_mode=render_mode, **self.difficulty_params, **kwargs)
         self._state = None
         self.reset()
         
