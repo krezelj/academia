@@ -3,3 +3,6 @@ my_notebooks
 venv/
 .idea/
 *.log
+
+# Sphinx
+docs/_build/

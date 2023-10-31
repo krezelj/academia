@@ -119,6 +119,7 @@ class DQNAgent(Agent):
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__build_network()
+        self.optimizer = optim.Adam(self.network.parameters(), lr=5e-4)
 
     def __build_network(self):
         """
@@ -362,7 +363,8 @@ class DQNAgent(Agent):
         states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(device)
         actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(device)
         rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None]))\
+            .float().to(device)
         dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(device)
         return (states, actions, rewards, next_states, dones)
 

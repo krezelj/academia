@@ -56,7 +56,7 @@ class LavaCrossing(GenericMiniGridWrapper):
     @property
     def _state(self) -> tuple[int, ...]:
         """
-        This property takes the raw state representation (self.__state) returned
+        This property takes the raw state representation (self._state_raw) returned
         by the base environment and transforms it so that it is compatible
         with the agent API provided by this package.
 
@@ -91,7 +91,7 @@ class LavaCrossing(GenericMiniGridWrapper):
         but once the environment is initialised this position will not change
         no matter the direction the agent is facing or its location on the grid.
 
-        :return: a tuple of object types of every grid cell concatenated with
+        :return: an array of object types of every grid cell concatenated with
                  the direction which the agent is facing.
         """
 
