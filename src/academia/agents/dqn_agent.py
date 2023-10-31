@@ -15,7 +15,7 @@ from academia.agents.base import Agent
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
-#poprawić p
+
 
 class DQNAgent(Agent):
     """
@@ -83,7 +83,7 @@ class DQNAgent(Agent):
 
     REPLAY_MEMORY_SIZE = 100000
     LR = 0.0005
-    TAU = 0.001 #interpolation parameter
+    TAU = 0.001  # interpolation parameter
     UPDATE_EVERY = 3
 
     def __init__(self, nn_architecture: Type[nn.Module],
@@ -312,7 +312,7 @@ class DQNAgent(Agent):
             if len(self.memory) >= self.batch_size:
                 states, actions, rewards, next_states, dones = self.__replay()
                 q_targets_next = self.target_network(next_states).detach().max(1)[0].unsqueeze(1)
-                #bellman equation
+                # bellman equation
                 q_targets = rewards + self.gamma * q_targets_next * (1 - dones)
                 q_expected = self.network(states).gather(1, actions)
                 loss = F.mse_loss(q_expected, q_targets)
