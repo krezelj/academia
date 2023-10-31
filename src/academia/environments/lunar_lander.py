@@ -50,7 +50,7 @@ class LunarLander(ScalableEnvironment):
         5: {'enable_wind': True, 'wind_power': 25.0, 'turbulence_power': 2.0}, 
     }
 
-    def __init__(self, difficulty: int, render_mode: Optional[str] = None):
+    def __init__(self, difficulty: int, render_mode: Optional[str] = None, **kwargs):
         """
         Initializes a new instance of the LunarLander class with the specified difficulty and render mode.
 
@@ -61,7 +61,7 @@ class LunarLander(ScalableEnvironment):
         Raises:
         ValueError: If the specified difficulty level is invalid.
         """
-        super().__init__(difficulty)
+        super().__init__(difficulty, **kwargs)
         try:
             self.params = LunarLander.__difficulty_params_map.get(difficulty, {})
         except KeyError:
