@@ -1,4 +1,4 @@
-from collections import deque
+from collections import deque, namedtuple
 from typing import Type, Optional
 import os
 import zipfile
@@ -15,7 +15,7 @@ from academia.agents.base import Agent
 
 USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
-
+#poprawić p
 
 class DQNAgent(Agent):
     """
@@ -25,7 +25,6 @@ class DQNAgent(Agent):
 
     Attributes:
         - `REPLAY_MEMORY_SIZE`: Maximum size of the replay memory.
-        - `UPDATE_TARGET_FREQ`: Frequency of updating the target network.
         - `nn_architecture (Type[nn.Module])`: Type of neural network architecture to be used.
         - `n_actions (int)`: Number of possible actions in the environment.
         - `gamma (float)`: Discount factor for future rewards.
@@ -33,7 +32,6 @@ class DQNAgent(Agent):
         - `epsilon_decay (float)`: Decay factor for epsilon over time.
         - `min_epsilon (float)`: Minimum epsilon value to ensure exploration.
         - `batch_size (int)`: Size of the batch used for training the DQN.
-        - `update_counter (int)`: Counter to keep track of when to update the target network.
         - `network (nn.Module)`: Main DQN neural network used for estimating Q-values.
         - `target_network (nn.Module)`: Target DQN neural network used for computing target Q-values.
         - `optimizer (torch.optim)`: Optimizer used for training the neural network.
@@ -83,13 +81,15 @@ class DQNAgent(Agent):
 
     """
 
-    REPLAY_MEMORY_SIZE = 50000
-    UPDATE_TARGET_FREQ = 10
+    REPLAY_MEMORY_SIZE = 100000
+    LR = 0.0005
+    TAU = 0.001 #interpolation parameter
+    UPDATE_EVERY = 3
 
     def __init__(self, nn_architecture: Type[nn.Module],
                  n_actions: int,
                  gamma: float = 0.99, epsilon: float = 1.,
-                 epsilon_decay: float = 0.99,
+                 epsilon_decay: float = 0.995,
                  min_epsilon: float = 0.01,
                  batch_size: int = 64, random_state: Optional[int] = None
                  ):
@@ -111,8 +111,10 @@ class DQNAgent(Agent):
                                        n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
         self.batch_size = batch_size
-        self.update_counter = 0
         self.nn_architecture = nn_architecture
+        self.experience = namedtuple("Experience", field_names=["state","action",
+                                                                "reward", "next_state", "done"])
+        self.train_step = 0
         
         if random_state is not None:
             torch.manual_seed(random_state)
@@ -149,9 +151,7 @@ class DQNAgent(Agent):
         self.target_network = self.nn_architecture()
         self.target_network.to(device)
 
-        self.optimizer = optim.Adam(self.network.parameters(), lr=0.001)
-        self.target_network.load_state_dict(self.network.state_dict())
-        self.target_network.eval()
+        self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
     def __remember(self, state, action, reward, next_state, done):
         """
@@ -188,9 +188,8 @@ class DQNAgent(Agent):
             (`True`) or not (`False`).
 
         """
-        self.memory.append((state, action, reward, next_state, done))
-        if len(self.memory) > self.REPLAY_MEMORY_SIZE:
-            self.memory = self.memory[1:]
+        e = self.experience(state, action, reward, next_state, done)
+        self.memory.append(e)
 
     def get_action(self, state, legal_mask=None, greedy=False) -> int:
         """
@@ -226,20 +225,29 @@ class DQNAgent(Agent):
             selection.
             - The `greedy` flag allows controlling the agent's exploration-exploitation behavior.
         """
-        q_val_act = self.network(torch.Tensor(state)).to(device)
+        state = torch.from_numpy(state).float().to(device)
+        self.network.eval()
+
+        with torch.no_grad():
+            q_val_act = self.network(state).to(device)
+        self.network.train()
+
         if legal_mask is not None:
-            q_val_act = (q_val_act - torch.min(q_val_act)) * torch.Tensor(
-                legal_mask) + torch.Tensor(legal_mask)
+            legal_mask = torch.from_numpy(legal_mask).float().to(device)
+            q_val_act = (q_val_act - torch.min(q_val_act)) * legal_mask \
+                + legal_mask
+            
         if self._rng.uniform() > self.epsilon or greedy:
             return torch.argmax(q_val_act).item()
+        
         elif legal_mask is not None:
             return \
-            self._rng.choice(np.arange(0, self.n_actions), size=1, p=legal_mask / legal_mask.sum())[
+            self._rng.choice(np.arange(0, self.n_actions), size=1)[
                 0]
         else:
             return self._rng.integers(0, self.n_actions)
 
-    def __update_target(self):
+    def __soft_update_target(self):
         """
         Updates the target network's weights with the main network's weights.
 
@@ -262,7 +270,10 @@ class DQNAgent(Agent):
             of the DQN agent.
 
         """
-        self.target_network.load_state_dict(self.network.state_dict())
+        for network_params, target_params in zip(self.network.parameters(), 
+                                                 self.target_network.parameters()):
+            target_params.data.copy_(self.TAU * network_params.data \
+                                     + (1.0 - self.TAU) * target_params.data)
 
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         """
@@ -292,23 +303,22 @@ class DQNAgent(Agent):
             before calling this function.
             - The function performs an update only if the replay memory size reaches the specified
             batch size (`batch_size`).
-            - The target network is updated periodically based on the `UPDATE_TARGET_FREQ`
-            parameter.
         """
         self.__remember(state=state, action=action, reward=reward, next_state=new_state,
                       done=is_terminal)
-        if len(self.memory) >= self.batch_size:
-            states, targets = self.__replay()
-            self.optimizer.zero_grad()
-            q_values = self.network(states).to(device)
-            loss = F.mse_loss(q_values, targets)
-            loss.backward()
-            self.optimizer.step()
-        if is_terminal:
-            self.update_counter += 1
-        if self.update_counter > self.UPDATE_TARGET_FREQ:
-            self.__update_target()
-            self.update_counter = 0
+        self.train_step = (self.train_step + 1) % self.UPDATE_EVERY
+        if self.train_step == 0:
+            if len(self.memory) >= self.batch_size:
+                states, actions, rewards, next_states, dones = self.__replay()
+                q_targets_next = self.target_network(next_states).detach().max(1)[0].unsqueeze(1)
+                #bellman equation
+                q_targets = rewards + self.gamma * q_targets_next * (1 - dones)
+                q_expected = self.network(states).gather(1, actions)
+                loss = F.mse_loss(q_expected, q_targets)
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+                self.__soft_update_target()
 
     def __replay(self) -> (torch.Tensor, torch.Tensor):
         """
@@ -348,20 +358,12 @@ class DQNAgent(Agent):
         """
         batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
-        states, targets = [], []
-        for state, action, reward, next_state, done in batch:
-            target = reward
-            if not done:
-                target = reward + self.gamma * torch.max(
-                    self.target_network(torch.Tensor(next_state)))
-            target_value = self.network(torch.Tensor(state)).to(device)
-            target_value[action] = target
-            states.append(state)
-            targets.append(target_value)
-        # To allow faster transformation to tensor is preffered numpy array
-        states = torch.Tensor(np.array(states)).to(device)
-        targets = torch.stack(targets).to(device)
-        return states, targets
+        states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(device)
+        actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None])).float().to(device)
+        dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(device)
+        return (states, actions, rewards, next_states, dones)
 
     def save(self, path: str) -> str:
         """
@@ -460,5 +462,5 @@ class DQNAgent(Agent):
         agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
         agent.network.eval()
-        agent.__update_target()
+        agent.__soft_update_target()
         return agent
