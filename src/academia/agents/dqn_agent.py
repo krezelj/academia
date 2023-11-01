@@ -243,9 +243,9 @@ class DQNAgent(Agent):
         
         elif legal_mask is not None:
             legal_mask_cpu = torch.Tensor.cpu(legal_mask)
-            return \
-            self._rng.choice(np.arange(0, self.n_actions), size=1, p=legal_mask_cpu/legal_mask_cpu.sum())[
-                0]
+            # convert to numpy array to avoid ValueError
+            proba = np.array(legal_mask_cpu/legal_mask_cpu.sum())
+            return self._rng.choice(np.arange(0, self.n_actions), size=1, p=proba)[0]
         else:
             return self._rng.integers(0, self.n_actions)
 
