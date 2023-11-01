@@ -12,6 +12,21 @@ class Agent(SavableLoadable):
 
     This class serves as the base class for various reinforcement learning agents.
     It defines common attributes and methods necessary for interacting with environments.
+
+    Args:
+        n_actions: Number of possible actions in the environment.
+        epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
+        epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
+        min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
+        gamma: Discount factor. Defaults to 0.99.
+        random_state: Seed for the random number generator. Defaults to None.
+
+    Attributes:
+        epsilon (float): Exploration-exploitation trade-off parameter.
+        min_epsilon (float): Minimum value for epsilon during exploration.
+        epsilon_decay (float): Decay rate for epsilon.
+        n_actions (int): Number of possible actions in the environment.
+        gamma (float): Discount factor.
     """
 
     def __init__(self, n_actions: int, epsilon: float = 1.,
@@ -19,14 +34,6 @@ class Agent(SavableLoadable):
                  gamma: float = 0.99, random_state: Optional[int] = None):
         """
         Initializes a generic reinforcement learning agent.
-
-        Args:
-            n_actions: Number of possible actions in the environment.
-            epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
-            epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
-            min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
-            gamma: Discount factor. Defaults to 0.99.
-            random_state: Seed for the random number generator. Defaults to None.
         """
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
