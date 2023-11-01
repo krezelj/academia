@@ -5,7 +5,7 @@ from typing import Optional
 import yaml
 import numpy as np
 
-from . import LearningTask
+from . import LearningTask, LearningStats
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable
 
@@ -111,7 +111,7 @@ class Curriculum(SavableLoadable):
         total_wall_time = 0
         total_cpu_time = 0
         for i, task in enumerate(self.tasks):
-            task_id = str(i + 1) if task.name is None else task.name
+            task_id = self.__get_task_id(i)
             if verbose >= 1:
                 _logger.info(f'Running Task {task_id}... ')
 
@@ -139,6 +139,20 @@ class Curriculum(SavableLoadable):
             _logger.info(f'Curriculum finished after {total_episodes} episodes.')
             _logger.info(f'Elapsed total wall time: {total_wall_time:.2f} sec')
             _logger.info(f'Elapsed total CPU time: {total_cpu_time:.2f} sec')
+
+    @property
+    def stats(self) -> dict[str, LearningStats]:
+        """
+        Returns:
+            A dictionary that maps task name/index to task statistics for every task in this curriculum
+        """
+        return {self.__get_task_id(i): task.stats for i, task in enumerate(self.tasks)}
+
+    def __get_task_id(self, task_idx: int) -> str:
+        """Task name or task's index in self.tasks if the task has no name"""
+        task = self.tasks[task_idx]
+        task_id = str(task_idx + 1) if task.name is None else task.name
+        return task_id
 
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
