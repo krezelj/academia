@@ -35,29 +35,52 @@ class DQNAgent(Agent):
         min_epsilon: Minimum epsilon value to ensure exploration (default: 0.01).
         batch_size: Size of the mini-batch used for training (default: 64).
         random_state: Seed for random number generation (default: None).
+    
+    Attributes:
+        nn_architecture (Type[nn.Module]): Type of neural network architecture to be used.
+        epsilon (float): Exploration-exploitation trade-off parameter.
+        min_epsilon (float): Minimum value for epsilon during exploration.
+        epsilon_decay (float): Decay rate for epsilon.
+        n_actions (int): Number of possible actions in the environment.
+        gamma (float): Discount factor.
+        random_state (int): Seed for the random number generator.
+        memory (deque): Replay memory used to store experiences for training.
+        batch_size (int): Size of the mini-batch used for training.
+        network (nn.Module): Neural network used to approximate Q-values.
+        target_network (nn.Module): Target network used to stabilize training.
+        optimizer (optim.Optimizer): Optimizer used for training.
+        experience (namedtuple): Named tuple representing an experience tuple which stores state, action, 
+            reward, next_state, and done.
+        train_step (int): Counter for the number of training steps performed.
+        REPLAY_MEMORY_SIZE (int): Maximum size of the replay memory.
+        LR (float): Learning rate for the optimizer.
+        TAU (float): Interpolation parameter for target network soft updates.
+        UPDATE_EVERY (int): Frequency of network updates.
 
     Examples:
-        ```python
-        # Example Usage of DQNAgent
+        >>> from models import CartPoleMLP  # Import custom neural network architecture
+        
+        >>> # Create an instance of the DQNAgent class with custom neural network architecture
+        >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
+        >>>                     epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
+        >>> # Training loop: Update the agent using experiences (state, action, reward, next_state, done)
+        >>> for episode in range(num_episodes):
+        >>>    state = env.reset()
+        >>>    done = False
+        >>>    while not done:
+        >>>        action = dqn_agent.get_action(state)
+        >>>        next_state, reward, terminated, truncated, info = env.step(action)
+        >>>        if terminated or truncated:
+        >>>            done = True 
+        >>>        dqn_agent.update(state, action, reward, next_state, done)
+        >>>        state = next_state
 
-        from models import CartPoleMLP  # Import custom neural network architecture
-        
-        # Create an instance of the DQNAgent class with custom neural network architecture
-        dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
-                             epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
-        
-        # Training loop: Update the agent using experiences (state, action, reward, next_state, done)
-        for episode in range(num_episodes):
-            state = env.reset()
-            done = False
-            while not done:
-                action = dqn_agent.get_action(state)
-                next_state, reward, terminated, truncated, info = env.step(action)
-                if terminated or truncated:
-                    done = True 
-                dqn_agent.update(state, action, reward, next_state, done)
-                state = next_state
-        ```
+        >>> # Save the agent's state dictionary to a file
+        >>> dqn_agent.save('dqn_agent')
+
+        >>> # Load the agent's state dictionary from a file
+        >>> dqn_agent = DQNAgent.load('dqn_agent')
+
     Note:
         - Ensure that the custom neural network architecture passed to the constructor inherits 
           from torch.nn.Module and is appropriate for the task.
@@ -68,13 +91,9 @@ class DQNAgent(Agent):
           based on the specific task and environment.
     """
     REPLAY_MEMORY_SIZE:int = 100000
-    """Maximum size of the replay memory."""
     LR:float = 0.0005
-    """Learning rate for the optimizer."""
     TAU:float = 0.001  # interpolation parameter
-    """Interpolation parameter for target network updates."""
     UPDATE_EVERY:int = 3
-    """Frequency of target network updates."""
 
     def __init__(self, nn_architecture: Type[nn.Module],
                  n_actions: int,
@@ -85,16 +104,6 @@ class DQNAgent(Agent):
                  ):
         """
         Initializes a new instance of the DQNAgent class.
-
-        Args:
-            nn_architecture: Type of neural network architecture to be used.
-            n_actions: Number of possible actions in the environment.
-            gamma: Discount factor for future rewards (default: 0.99).
-            epsilon: Initial exploration-exploitation trade-off parameter (default: 1.0).
-            epsilon_decay: Decay factor for epsilon over time (default: 0.995).
-            min_epsilon: Minimum epsilon value to ensure exploration (default: 0.01).
-            batch_size: Size of the mini-batch used for training (default: 64).
-            random_state: Seed for random number generation (default: None).
         """
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
@@ -102,8 +111,8 @@ class DQNAgent(Agent):
         self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
         self.batch_size = batch_size
         self.nn_architecture = nn_architecture
-        self.experience = namedtuple("Experience", field_names=["state","action",
-                                                                "reward", "next_state", "done"])
+        self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
+                                                                "next_state", "done"])
         self.train_step = 0
         
         if random_state is not None:
@@ -281,8 +290,8 @@ class DQNAgent(Agent):
         """
         Loads the state dictionary of the neural network model from the specified file path. 
 
-        Parameters:
-            - path: The file path from which to load the model's state dictionary.
+        Args:
+            path: The file path from which to load the model's state dictionary.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
