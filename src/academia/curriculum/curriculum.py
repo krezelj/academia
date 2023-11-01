@@ -19,13 +19,13 @@ class Curriculum(SavableLoadable):
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        agents_save_dir: A path to a file where the agent states and training stats will be saved upon each
+        output_dir: A path to a file where the agent states and training stats will be saved upon each
             task's completion or interruption. If set to ``None``, agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Attributes:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        agents_save_dir: A path to a file where the agent states and training stats will be saved upon each
+        output_dir: A path to a file where the agent states and training stats will be saved upon each
             task's completion or interruption. If set to ``None``, agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
@@ -46,7 +46,7 @@ class Curriculum(SavableLoadable):
         >>> )
         >>> curriculum = Curriculum(
         >>>     tasks=[task1, task2],
-        >>>     agents_save_dir='./my_curriculum/',
+        >>>     output_dir='./my_curriculum/',
         >>> )
 
         Initialisaton using a config file:
@@ -56,7 +56,7 @@ class Curriculum(SavableLoadable):
 
         ``./my_config.curriculum.yml``::
 
-            agents_save_dir: './my_curriculum/'
+            output_dir: './my_curriculum/'
             order:
             - 0
             - 1
@@ -90,9 +90,9 @@ class Curriculum(SavableLoadable):
         >>> curriculum.run(agent, verbose=4, render=True)
     """
 
-    def __init__(self, tasks: list[LearningTask], agents_save_dir: Optional[str] = None) -> None:
+    def __init__(self, tasks: list[LearningTask], output_dir: Optional[str] = None) -> None:
         self.tasks = tasks
-        self.agents_save_dir = agents_save_dir
+        self.output_dir = output_dir
 
     def run(self, agent: Agent, verbose=0, render=False):
         """
@@ -115,10 +115,10 @@ class Curriculum(SavableLoadable):
             if verbose >= 1:
                 _logger.info(f'Running Task {task_id}... ')
 
-            if task.agent_save_path is None and self.agents_save_dir is not None:
-                task.agent_save_path = os.path.join(self.agents_save_dir, task_id)
-            if task.stats_save_path is None and self.agents_save_dir is not None:
-                task.stats_save_path = os.path.join(self.agents_save_dir, f'{task_id}_stats')
+            if task.agent_save_path is None and self.output_dir is not None:
+                task.agent_save_path = os.path.join(self.output_dir, task_id)
+            if task.stats_save_path is None and self.output_dir is not None:
+                task.stats_save_path = os.path.join(self.output_dir, f'{task_id}_stats')
 
             task.run(agent, verbose=verbose, render=render)
             total_episodes += len(task.episode_rewards)
