@@ -46,22 +46,8 @@ class LearningTask(SavableLoadable):
     Attributes:
         env (ScalableEnvironment): An environment that an agent can interact with.
             It is of a type ``env_type``, initialised with parameters from ``env_args``.
-        episode_rewards (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
-            episode (excluding evaluations).
-        agent_evaluations (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
-            evaluation.
-        step_counts (:obj:`numpy.ndarray`): An array of integers which stores step counts for each episode
-            (excluding evaluations).
-        episode_rewards_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
-            of total rewards for each episode (excluding evaluations). Each average is calculated from 5
-            observations.
-        step_counts_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
-            of step counts for each episode (excluding evaluations). Each average is calculated from 5
-            observations.
-        episode_wall_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed wall times for
-            each episode (excluding evaluations).
-        episode_cpu_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed CPU times for
-            each episode (excluding evaluations).
+        stats (LearningStats): Learning statistics. For more detailed description of their contents see
+            :class:`LearningStats`.
         env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
             be trained on. This should be a class, not an instantiated object.
         env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
@@ -145,13 +131,7 @@ class LearningTask(SavableLoadable):
         self.evaluation_interval = evaluation_interval
         self.evaluation_count = evaluation_count
 
-        self.agent_evaluations = np.array([])
-        self.episode_rewards = np.array([])
-        self.step_counts = np.array([])
-        self.episode_rewards_moving_avg = np.array([])
-        self.step_counts_moving_avg = np.array([])
-        self.episode_wall_times = np.array([])
-        self.episode_cpu_times = np.array([])
+        self.stats = LearningStats()
 
         self.name = name
         self.agent_save_path = agent_save_path
@@ -219,8 +199,8 @@ class LearningTask(SavableLoadable):
                 if verbose >= 2:
                     _logger.info(f'Evaluations after episode {episode} completed. '
                                  f'Mean reward: {mean_evaluation}')
-                self.agent_evaluations = np.append(self.agent_evaluations,
-                                                   mean_evaluation)
+                self.stats.agent_evaluations = np.append(
+                    self.stats.agent_evaluations, mean_evaluation)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -256,18 +236,18 @@ class LearningTask(SavableLoadable):
         """
         Updates and logs training statistics
         """
-        self.episode_wall_times = np.append(self.episode_wall_times, wall_time)
-        self.episode_cpu_times = np.append(self.episode_cpu_times, cpu_time)
+        self.stats.episode_wall_times = np.append(self.stats.episode_wall_times, wall_time)
+        self.stats.episode_cpu_times = np.append(self.stats.episode_cpu_times, cpu_time)
 
-        self.episode_rewards = np.append(self.episode_rewards, episode_reward)
-        self.step_counts = np.append(self.step_counts, steps_count)
+        self.stats.episode_rewards = np.append(self.stats.episode_rewards, episode_reward)
+        self.stats.step_counts = np.append(self.stats.step_counts, steps_count)
 
-        episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
-        steps_count_mvavg = np.mean(self.step_counts[-5:])
-        self.episode_rewards_moving_avg = np.append(
-            self.episode_rewards_moving_avg, episode_rewards_mvavg)
-        self.step_counts_moving_avg = np.append(
-            self.step_counts_moving_avg, steps_count_mvavg)
+        episode_rewards_mvavg = np.mean(self.stats.episode_rewards[-5:])
+        steps_count_mvavg = np.mean(self.stats.step_counts[-5:])
+        self.stats.episode_rewards_moving_avg = np.append(
+            self.stats.episode_rewards_moving_avg, episode_rewards_mvavg)
+        self.stats.step_counts_moving_avg = np.append(
+            self.stats.step_counts_moving_avg, steps_count_mvavg)
 
         if verbose >= 4:
             _logger.info(f'Episode {episode_no} done.')
@@ -298,21 +278,9 @@ class LearningTask(SavableLoadable):
         # save task statistics
         if self.stats_save_path is not None:
             stats_save_path = self.__prep_save_file(self.stats_save_path, interrupted)
-            if not stats_save_path.endswith('.json'):
-                stats_save_path += '.json'
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
-            with open(stats_save_path, 'w') as file:
-                data = {
-                    'episode_rewards': self.episode_rewards.tolist(),
-                    'step_counts': self.step_counts.tolist(),
-                    'episode_rewards_moving_avg': self.episode_rewards_moving_avg.tolist(),
-                    'step_counts_moving_avg': self.step_counts_moving_avg.tolist(),
-                    'agent_evaluations': self.agent_evaluations.tolist(),
-                    'episode_wall_times': self.episode_wall_times.tolist(),
-                    'episode_cpu_times': self.episode_cpu_times.tolist(),
-                }
-                json.dump(data, file, indent=4)
+            self.stats.save(stats_save_path)
             if verbose >= 1:
                 _logger.info(f"Task's stats saved to {stats_save_path}")
 
@@ -343,31 +311,29 @@ class LearningTask(SavableLoadable):
         """
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
         if 'max_episodes' in self.stop_conditions:
-            return len(self.episode_rewards) >= self.stop_conditions['max_episodes']
+            return len(self.stats.episode_rewards) >= self.stop_conditions['max_episodes']
         
         if 'max_steps' in self.stop_conditions:
-            return np.sum(self.step_counts) >= self.stop_conditions['max_steps']
+            return np.sum(self.stats.step_counts) >= self.stop_conditions['max_steps']
         
-        if 'min_avg_reward' in self.stop_conditions and len(self.episode_rewards_moving_avg) > 5:
+        if 'min_avg_reward' in self.stop_conditions and len(self.stats.episode_rewards_moving_avg) > 5:
             # check if episode_rewards_moving_avg length is greater than because if not it is possibility
             # that agent scored max reward in first episode
             # and then it will stop training because it will think that it has reached min_avg_reward
-            return self.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
+            return self.stats.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
         
         if 'min_reward_std_dev' in self.stop_conditions and len(self.episode_rewards) > 10:
-            return np.std(self.episode_rewards[-10:]) <= self.stop_conditions['min_reward_std_dev']
+            return np.std(self.stats.episode_rewards[-10:]) <= self.stop_conditions['min_reward_std_dev']
 
         if 'evaluation_score' in self.stop_conditions:
-            return np.mean(self.agent_evaluations[-5:]) >= self.stop_conditions['evaluation_score']
+            return np.mean(self.stats.agent_evaluations[-5:]) >= self.stop_conditions['evaluation_score']
         
     def __reset(self) -> None:
         """
         Resets environment and statistics.
         """
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
-        self.episode_rewards = np.array([])
-        self.agent_evaluations = np.array([])
-        self.step_counts = np.array([])
+        self.stats = LearningStats()
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
@@ -461,3 +427,68 @@ class LearningTask(SavableLoadable):
         if self.name is not None:
             task_data['name'] = self.name
         return task_data
+
+
+class LearningStats(SavableLoadable):
+    """
+    Container for training statistics from LearningTask
+
+    Attributes:
+        episode_rewards (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+            episode (excluding evaluations).
+        agent_evaluations (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+            evaluation.
+        step_counts (:obj:`numpy.ndarray`): An array of integers which stores step counts for each episode
+            (excluding evaluations).
+        episode_rewards_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+            of total rewards for each episode (excluding evaluations). Each average is calculated from 5
+            observations.
+        step_counts_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+            of step counts for each episode (excluding evaluations). Each average is calculated from 5
+            observations.
+        episode_wall_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed wall times for
+            each episode (excluding evaluations).
+        episode_cpu_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed CPU times for
+            each episode (excluding evaluations).
+    """
+
+    def __init__(self):
+        self.agent_evaluations = np.array([])
+        self.episode_rewards = np.array([])
+        self.step_counts = np.array([])
+        self.episode_rewards_moving_avg = np.array([])
+        self.step_counts_moving_avg = np.array([])
+        self.episode_wall_times = np.array([])
+        self.episode_cpu_times = np.array([])
+
+    @classmethod
+    def load(cls, path: str):
+        if not path.endswith('.stats.json'):
+            path += '.stats.json'
+        with open(path, 'r') as file:
+            stats_dict = json.load(file)
+        stats_obj = cls()
+        stats_obj.episode_rewards = np.array(stats_dict['episode_rewards'])
+        stats_obj.step_counts = np.array(stats_dict['step_counts'])
+        stats_obj.episode_rewards_moving_avg = np.array(stats_dict['episode_rewards_moving_avg'])
+        stats_obj.step_counts_moving_avg = np.array(stats_dict['step_counts_moving_avg'])
+        stats_obj.agent_evaluations = np.array(stats_dict['agent_evaluations'])
+        stats_obj.episode_wall_times = np.array(stats_dict['episode_wall_times'])
+        stats_obj.episode_cpu_times = np.array(stats_dict['episode_cpu_times'])
+        return stats_obj
+
+    def save(self, path: str) -> str:
+        if not path.endswith('.stats.json'):
+            path += '.stats.json'
+        with open(path, 'w') as file:
+            data = {
+                'episode_rewards': self.episode_rewards.tolist(),
+                'step_counts': self.step_counts.tolist(),
+                'episode_rewards_moving_avg': self.episode_rewards_moving_avg.tolist(),
+                'step_counts_moving_avg': self.step_counts_moving_avg.tolist(),
+                'agent_evaluations': self.agent_evaluations.tolist(),
+                'episode_wall_times': self.episode_wall_times.tolist(),
+                'episode_cpu_times': self.episode_cpu_times.tolist(),
+            }
+            json.dump(data, file, indent=4)
+        return path

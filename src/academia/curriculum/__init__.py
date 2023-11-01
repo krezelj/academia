@@ -7,10 +7,11 @@ Exported classes:
 - :class:`LearningTask`
 - :class:`Curriculum`
 """
-from .learning_task import LearningTask
+from .learning_task import LearningTask, LearningStats
 from .curriculum import Curriculum
 
 __all__ = [
     'LearningTask',
     'Curriculum',
+    'LearningStats',
 ]
