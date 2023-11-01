@@ -121,12 +121,6 @@ class LearningTask(SavableLoadable):
         >>> task.run(agent, verbose=4, render=True)
     """
 
-    __slots__ = ['name', 'agent_save_path', 'stats_save_path', 'env_type', 'env_args', 'env',
-                 'stop_conditions', 'evaluation_interval', 'evaluation_count',
-                 'episode_rewards', 'agent_evaluations', 'step_counts',
-                 'episode_rewards_moving_avg', 'step_counts_moving_avg',
-                 'episode_wall_times', 'episode_cpu_times']
-
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5,
                  name: Optional[str] = None, agent_save_path: Optional[str] = None,

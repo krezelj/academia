@@ -90,8 +90,6 @@ class Curriculum(SavableLoadable):
         >>> curriculum.run(agent, verbose=4, render=True)
     """
 
-    __slots__ = ['tasks', 'agents_save_dir']
-
     def __init__(self, tasks: list[LearningTask], agents_save_dir: Optional[str] = None) -> None:
         self.tasks = tasks
         self.agents_save_dir = agents_save_dir
