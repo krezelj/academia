@@ -27,18 +27,17 @@ class LearningTask(SavableLoadable):
         stop_conditions: Conditions deciding when to end the training process. Available conditions:
             ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
             ``'evaluation_score'``.
-        evaluation_interval: Controls how often evaluations are conducted.
+        evaluation_interval: Controls how often evaluations are conducted. Defaults to 100.
         evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
-            Final agent evaluation will be the mean of these individual evaluations.
+            Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
         name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
             :class:`LearningTask` is run through the :class:`academia.curriculum.Curriculum` object.
         agent_save_path: A path to a file where the agent's state will be saved after the training is
-            completed or if it is interrupted. If set to ``None``, agent's state will not be saved at
-            any point.
+            completed or if it is interrupted. If not set, agent's state will not be saved at any point.
         stats_save_path: A path to a file where the statistics gathered during training process will be
-            saved after the training is completed or if it is interrupted. If set to ``None``, agent's
-            state will not be saved at any point.
+            saved after the training is completed or if it is interrupted. If not set, agent's state will
+            not be saved at any point.
 
     Raises:
         ValueError: If `stop_conditions` is empty
@@ -50,7 +49,7 @@ class LearningTask(SavableLoadable):
             :class:`LearningStats`.
         env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
             be trained on. This should be a class, not an instantiated object.
-        env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
+        env_args: Arguments passed to the constructor of the environment class (passed as ``env_type``
             argument).
         stop_conditions: Conditions deciding when to end the training process. Available conditions:
             ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
@@ -370,7 +369,7 @@ class LearningTask(SavableLoadable):
 
     def save(self, path: str) -> str:
         """
-        Saves this :class:`LearningTask`'s configuration to the file.
+        Saves this :class:`LearningTask`'s configuration to a file.
         Configuration is stored in a YAML format.
 
         Args:
@@ -463,6 +462,39 @@ class LearningStats(SavableLoadable):
 
     @classmethod
     def load(cls, path: str):
+        """
+        Loads learning statistics from the specified file.
+
+        Specified file should be in JSON format. Example file::
+
+            {
+                "episode_rewards": [1, 0, 0, 1],
+                "step_counts": [250, 250, 250, 250],
+                "episode_rewards_moving_avg": [1, 0.5, 0.33, 0.5],
+                "step_counts_moving_avg": [250, 250, 250, 250],
+                "agent_evaluations": [0, 0],
+                "episode_wall_times": [
+                    0.5392518779990496,
+                    0.5948321321360364,
+                    0.6083159360059653,
+                    0.5948852870060364
+                ],
+                "episode_cpu_times": [
+                    2.1462997890000004,
+                    2.3829500180000007,
+                    2.4324373569999995,
+                    2.3217381230000001
+                ]
+            }
+
+        Args:
+            path: Path to a stats file. If the specified file does not end with '.stats.json' extension,
+                this extension will be appended to the specified path (for consistency with ``save()``
+                method).
+
+        Returns:
+            A :class:`LearningStats` instance with statistics from the specified file.
+        """
         if not path.endswith('.stats.json'):
             path += '.stats.json'
         with open(path, 'r') as file:
@@ -478,6 +510,16 @@ class LearningStats(SavableLoadable):
         return stats_obj
 
     def save(self, path: str) -> str:
+        """
+        Saves this :class:`LearningStats`'s contents to a file. Stats are stored in JSON format.
+
+        Args:
+            path: Path where a statistics file will be created. If the extension is not provided, it will
+                 will be automatically appended ('.stats.json') to the specified path.
+
+        Returns:
+            A final (i.e. with an extension), absolute path where the configuration was saved.
+        """
         if not path.endswith('.stats.json'):
             path += '.stats.json'
         with open(path, 'w') as file:
