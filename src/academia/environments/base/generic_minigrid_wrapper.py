@@ -14,12 +14,10 @@ class GenericMiniGridWrapper(ScalableEnvironment):
     A wrapper for MiniGrid environments that makes them scalable.
     """
 
-    def __init__(self, difficulty: int, difficulty_envid_map: dict, render_mode: Optional[str] = None,
-                 n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, difficulty_envid_map: dict, n_frames_stacked: int = 1, **kwargs):
         """
         :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
                             and 3 is the hardest
-        :param render_mode: render_mode value passed to gymnasium.make
         """
         
         super().__init__(difficulty, n_frames_stacked, **kwargs)
@@ -30,7 +28,7 @@ class GenericMiniGridWrapper(ScalableEnvironment):
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 3")
             raise ValueError(msg)
-        self._base_env = gymnasium.make(env_id, render_mode=render_mode, **kwargs)
+        self._base_env = gymnasium.make(env_id, **kwargs)
         self._state_raw = None  # will be set inside self.reset()
         self._past_n_states = deque()  # will be properly set inside self.reset()
         self.reset()

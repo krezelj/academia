@@ -53,14 +53,14 @@ class LunarLander(ScalableEnvironment):
         5: {'enable_wind': True, 'wind_power': 25.0, 'turbulence_power': 2.0}, 
     }
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, render_mode: Optional[str] = None,
-                 **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
         """
         Initializes a new instance of the LunarLander class with the specified difficulty and render mode.
         
         Args:
             difficulty: The difficulty level of the environment (0 to 5).
-            render_mode: The render mode ('human', 'rgb_array', or None).
+            n_frames_stacked: How many most recent states should be stacked together to form a final state
+                representation.
 
         Raises:
             ValueError: If the specified difficulty level is invalid.
@@ -68,7 +68,6 @@ class LunarLander(ScalableEnvironment):
         super().__init__(
             difficulty=difficulty,
             n_frames_stacked=n_frames_stacked,
-            render_mode=render_mode,
             **kwargs,
         )
         try:
@@ -77,7 +76,7 @@ class LunarLander(ScalableEnvironment):
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 5")
             raise ValueError(msg)
-        self._base_env = gymnasium.make('LunarLander-v2', render_mode=render_mode, **self.difficulty_params, **kwargs)
+        self._base_env = gymnasium.make('LunarLander-v2', **self.difficulty_params, **kwargs)
         self._state = None
         self._past_n_states = deque()
         self.reset()

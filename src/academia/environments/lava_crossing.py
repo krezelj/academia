@@ -41,19 +41,16 @@ class LavaCrossing(GenericMiniGridWrapper):
     }
     """A dictionary that maps difficulty levels to environment ids"""
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, render_mode: Optional[str] = None,
-                 **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
         """
         :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
                             and 3 is the hardest
-        :param render_mode: render_mode value passed to gymnasium.make
         """
         
         super().__init__(
             difficulty=difficulty,
             difficulty_envid_map=LavaCrossing.__difficulty_envid_map,
             n_frames_stacked=n_frames_stacked,
-            render_mode=render_mode,
             **kwargs,
         )
 
