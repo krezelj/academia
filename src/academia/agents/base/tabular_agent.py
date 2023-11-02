@@ -40,9 +40,6 @@ class TabularAgent(Agent):
     """
     def __init__(self, n_actions, alpha=0.1, gamma=0.99, epsilon=1, epsilon_decay=0.999,
                  min_epsilon=0.01, random_state: Optional[int] = None) -> None:
-        """
-        Initializes a TabularAgent for reinforcement learning.
-        """
         super().__init__(epsilon=epsilon, min_epsilon=min_epsilon, epsilon_decay=epsilon_decay, 
                          n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.alpha = alpha
