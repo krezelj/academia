@@ -1,11 +1,12 @@
 from collections import deque, namedtuple
-from typing import Type, Optional
+from typing import Type, Optional, Any
 import os
 import zipfile
 import tempfile
 import json
 
 import numpy as np
+import numpy.typing as npt
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -19,72 +20,81 @@ device = torch.device("cuda" if USE_CUDA else "cpu")
 
 class DQNAgent(Agent):
     """
-    Class: DQNAgent
+    Class representing a Deep Q-Network (DQN) agent for reinforcement learning tasks.
 
-    This class represents a Deep Q-Network (DQN) agent used for reinforcement learning tasks.
+    The DQNAgent class implements the Deep Q-Network (DQN) algorithm for reinforcement learning tasks.
+    It uses a neural network to approximate the Q-values of actions in a given environment. The agent
+    learns from experiences stored in a replay memory and performs updates to its Q-values during
+    training episodes. The target network is soft updated to stabilize training.
 
+    Args:
+        nn_architecture: Type of neural network architecture to be used.
+        n_actions: Number of possible actions in the environment.
+        gamma: Discount factor for future rewards. Defaults to 0.99.
+        epsilon: Initial exploration-exploitation trade-off parameter. Defaults to 1.0.
+        epsilon_decay: Decay factor for epsilon over time. Defaults to 0.995.
+        min_epsilon: Minimum epsilon value to ensure exploration. Defaults to 0.01.
+        batch_size: Size of the mini-batch used for training. Defaults to 64.
+        random_state: Seed for random number generation. Defaults to ``None``.
+    
     Attributes:
-        - `REPLAY_MEMORY_SIZE`: Maximum size of the replay memory.
-        - `nn_architecture (Type[nn.Module])`: Type of neural network architecture to be used.
-        - `n_actions (int)`: Number of possible actions in the environment.
-        - `gamma (float)`: Discount factor for future rewards.
-        - `epsilon (float)`: Exploration-exploitation trade-off parameter.
-        - `epsilon_decay (float)`: Decay factor for epsilon over time.
-        - `min_epsilon (float)`: Minimum epsilon value to ensure exploration.
-        - `batch_size (int)`: Size of the batch used for training the DQN.
-        - `network (nn.Module)`: Main DQN neural network used for estimating Q-values.
-        - `target_network (nn.Module)`: Target DQN neural network used for computing target Q-values.
-        - `optimizer (torch.optim)`: Optimizer used for training the neural network.
-        - `memory (deque)`: Replay memory to store experiences for training. From there batches are
-        sampled.
+        nn_architecture (Type[nn.Module]): Type of neural network architecture to be used.
+        epsilon (float): Exploration-exploitation trade-off parameter.
+        min_epsilon (float): Minimum value for epsilon during exploration.
+        epsilon_decay (float): Decay rate for epsilon.
+        n_actions (int): Number of possible actions in the environment.
+        gamma (float): Discount factor.
+        random_state (int): Seed for the random number generator.
+        memory (deque): Replay memory used to store experiences for training.
+        batch_size (int): Size of the mini-batch used for training.
+        network (nn.Module): Neural network used to approximate Q-values.
+        target_network (nn.Module): Target network used to stabilize training.
+        optimizer (optim.Optimizer): Optimizer used for training.
+        experience (namedtuple): Named tuple representing an experience tuple which stores state, action, 
+            reward, next_state, and done.
+        train_step (int): Counter for the number of training steps performed.
+        REPLAY_MEMORY_SIZE (int): Maximum size of the replay memory.
+        LR (float): Learning rate for the optimizer.
+        TAU (float): Interpolation parameter for target network soft updates.
+        UPDATE_EVERY (int): Frequency of network updates.
 
-    Usage:
-        ```python
-        # Example Usage of DQNAgent
-
-        from models import CartPoleMLP  # Import custom neural network architecture
+    Examples:
+        >>> from models import CartPoleMLP  # Import custom neural network architecture
         
-        # Create an instance of the DQNAgent class with custom neural network architecture
+        >>> # Create an instance of the DQNAgent class with custom neural network architecture
+        >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
+        >>>                     epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
+        >>> # Training loop: Update the agent using experiences (state, action, reward, next_state, done)
+        >>> for episode in range(num_episodes):
+        >>>    state = env.reset()
+        >>>    done = False
+        >>>    while not done:
+        >>>        action = dqn_agent.get_action(state)
+        >>>        next_state, reward, terminated, truncated, info = env.step(action)
+        >>>        if terminated or truncated:
+        >>>            done = True 
+        >>>        dqn_agent.update(state, action, reward, next_state, done)
+        >>>        state = next_state
 
-        dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
-                             epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
-        
-        # Training loop: Update the agent using experiences (state, action, reward, next_state, done)
-        for episode in range(num_episodes):
-            state = env.reset()
-            done = False
-            while not done:
-                action = dqn_agent.get_action(state)
-                next_state, reward, terminated, truncated, info = env.step(action)
-                if terminated or truncated:
-                    done = True 
-                dqn_agent.update(state, action, reward, next_state, done)
-                state = next_state
-        ```
-        
-    Description:
-        The `DQNAgent` class implements the Deep Q-Network (DQN) algorithm 
-        for reinforcement learning tasks. It uses a neural network to 
-        approximate the Q-values of actions in a given environment. 
-        The agent learns from experiences stored in a replay memory 
-        and performs updates to its Q-values during training episodes. 
-        The target network is periodically updated to stabilize training.
+        >>> # Save the agent's state dictionary to a file
+        >>> dqn_agent.save('dqn_agent')
 
-    Notes:
+        >>> # Load the agent's state dictionary from a file
+        >>> dqn_agent = DQNAgent.load('dqn_agent')
+
+    Note:
         - Ensure that the custom neural network architecture passed to the constructor inherits 
-        from `torch.nn.Module` and is appropriate for the task.
+          from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
-        - The `update_target` method updates the target network weights from the main network's
-        weights.
-        - It is recommended to adjust hyperparameters such as `gamma`, `epsilon`, `epsilon_decay`
-        and `batch_size` based on the specific task and environment.
-
+        - The __soft_update_target method updates the target network weights from the main network's weights
+        based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
+        - It is recommended to adjust hyperparameters such as gamma, epsilon, epsilon_decay, and batch_size
+          based on the specific task and environment.
     """
-
-    REPLAY_MEMORY_SIZE = 100000
-    LR = 0.0005
-    TAU = 0.001  # interpolation parameter
-    UPDATE_EVERY = 3
+    REPLAY_MEMORY_SIZE:int = 100000
+    LR:float = 0.0005
+    TAU:float = 0.001  # interpolation parameter
+    UPDATE_EVERY:int = 3
 
     def __init__(self, nn_architecture: Type[nn.Module],
                  n_actions: int,
@@ -93,27 +103,14 @@ class DQNAgent(Agent):
                  min_epsilon: float = 0.01,
                  batch_size: int = 64, random_state: Optional[int] = None
                  ):
-        """
-        Constructor method initializing the DQNAgent.
-
-        Parameters:
-            - `nn_architecture (Type[nn.Module])`: Type of neural network architecture to be used.
-            - `n_actions (int)`: Number of possible actions in the environment.
-            - `gamma (float)`: Discount factor for future rewards (default: 0.99).
-            - `epsilon (float)`: Initial exploration-exploitation trade-off parameter (default: 1.0).
-            - `epsilon_decay (float)`: Decay factor for epsilon over time (default: 0.99).
-            - `min_epsilon (float)`: Minimum epsilon value to ensure exploration (default: 0.01).
-            - `batch_size (int)`: Size of the mini-batch used for training the DQN (default: 64).
-
-        """
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
                                        n_actions=n_actions, gamma=gamma, random_state=random_state)
         self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
         self.batch_size = batch_size
         self.nn_architecture = nn_architecture
-        self.experience = namedtuple("Experience", field_names=["state","action",
-                                                                "reward", "next_state", "done"])
+        self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
+                                                                "next_state", "done"])
         self.train_step = 0
         
         if random_state is not None:
@@ -125,26 +122,14 @@ class DQNAgent(Agent):
         """
         Builds the neural network architectures for both the main and target networks.
 
-        Parameters:
-            None
-        
-        Returns:
-            None
+        The method creates instances of the neural network specified by nn_architecture and
+        initializes the optimizer with the Adam optimizer. It also initializes the target
+        network with the same architecture and loads its initial weights from the main
+        network. The target network is set to evaluation mode during training.
 
-        Description:
-             The method creates instances of the neural network specified by `nn_architecture` and
-             initializes the optimizer with the Adam optimizer. It also initializes the target
-             network with the same architecture and loads its initial weights from the main
-             network. The target network is set to evaluation mode during training.
-
-        Notes:
-            - The neural networks are moved to the appropriate device (CPU or CUDA) using the
-            `to(device)` method.
-            - The target network is initialized with the same architecture as the main network and
-            its weights are loaded from the main network using `load_state_dict`.
-            - The target network is set to evaluation mode (`eval()`) to ensure consistent target
-            Q-value computations during training.
-
+        Note:
+            - The neural networks are moved to the appropriate device (CPU or CUDA) using the to(device) method.
+            - The target network is initialized with the same architecture as the main network with same weights.
         """
         self.network = self.nn_architecture()
         self.network.to(device)
@@ -154,77 +139,33 @@ class DQNAgent(Agent):
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
-    def __remember(self, state, action, reward, next_state, done):
+    def __remember(self, state: Any, action: int, reward: float, next_state: Any, done: bool):
         """
-        Function: remember
+        Stores an experience tuple in the replay memory.
 
-        This function stores an experience tuple in the replay memory of the DQNAgent.
-
-        Parameters:
-            - `state`: Current state of the agent in the environment.
-            - `action`: Action taken by the agent in the current state.
-            - `reward`: Reward received by the agent after taking the action.
-            - `next_state`: Next state of the agent after taking the action.
-            - `done`: A boolean flag indicating if the episode has terminated or truncated after
-            the action.
-
-        Returns:
-            None
-
-        Description:
-            The `remember` function appends the experience tuple `(state, action, reward,
-            next_state, done)` to the replay memory of the DQNAgent. The replay memory is a data
-            structure used to store and sample past experiences, allowing the agent to learn from
-            previous interactions with the environment. If the replay memory exceeds its maximum
-            size (`REPLAY_MEMORY_SIZE`), the function removes the oldest experience to make room
-            for the new one.
-
-        Notes:
-            - `state` and `next_state` should be representations of the agent's observations in the
-            environment.
-            - `action` represents the action taken by the agent based on the current state.
-            - `reward` is the numerical reward received by the agent after taking the specified
-            action.
-            - `done` is a boolean flag indicating whether the episode has terminated or truncated
-            (`True`) or not (`False`).
-
+        Args:
+            state: Current state of the agent in the environment.
+            action: Action taken by the agent in the current state.
+            reward: Reward received by the agent after taking the action.
+            next_state: Next state of the agent after taking the action.
+            done: A boolean flag indicating if the episode has terminated or truncated after the action.
         """
         e = self.experience(state, action, reward, next_state, done)
         self.memory.append(e)
 
-    def get_action(self, state, legal_mask=None, greedy=False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
         """
-        This function selects an action based on the current state using the epsilon-greedy strategy.
+        Selects an action based on the current state using the epsilon-greedy strategy.
 
-        Parameters:
-            - `state (array-like)`: The current state representation used to make the action
-            selection decision.
-            - `legal_mask (array-like, optional)`: A binary mask indicating the legality of actions.
-            If provided, restricts the agent's choices to legal actions.
-            - `greedy (bool, optional)`: A boolean flag indicating whether to force a greedy action
-            selection. If True, the function always chooses the action with the highest Q-value,
-            ignoring exploration.
+        Args:
+            state: The current state representation used to make the action selection decision.
+            legal_mask: A binary mask indicating the legality of actions.
+                If provided, restricts the agent's choices to legal actions.
+            greedy: A boolean flag indicating whether to force a greedy action selection.
+                If True, the function always chooses the action with the highest Q-value, ignoring exploration.
 
         Returns:
-            - `int`: The index of the selected action.
-
-        Description:
-            The `get_action` function selects an action for the agent based on the current state
-            using the epsilon-greedy strategy. If the `legal_mask` is provided, it restricts the
-            agent's choices to legal actions, ensuring that illegal actions are not considered.
-            The `greedy` flag allows forcing a purely exploitative behavior, where the action with
-            the highest Q-value is always chosen, ignoring exploration. If `greedy` is False or the
-            exploration condition is met (based on epsilon value), the function chooses a random
-            action with a probability of epsilon or explores other legal actions based on the
-            provided `legal_mask`. If no legal mask is provided, the function considers all
-            possible actions.
-
-        Notes:
-            - Ensure that the `state` input is compatible with the input size expected by the
-            agent's neural network.
-            - If the `legal_mask` is not provided, all actions are considered during action
-            selection.
-            - The `greedy` flag allows controlling the agent's exploration-exploitation behavior.
+            The index of the selected action.
         """
         state = torch.from_numpy(state).float().to(device)
         self.network.eval()
@@ -253,58 +194,24 @@ class DQNAgent(Agent):
         """
         Updates the target network's weights with the main network's weights.
 
-        Parameters:
-             None
-         
-        Returns:
-             None
-
-        Description:
-            Updates the target network's weights with the main network's weights. This function
-            synchronizes the parameters of the target network to match those of the main network,
-            ensuring consistency between the two networks during the training process. It is called
-            periodically to stabilize the training of the DQNAgent.
-
-        Note:
-            It is essential to call this function periodically, especially after a certain number of
-            training steps, to ensure that the target network's weights are in line with the main
-            network. Keeping the target network updated is crucial for stable and effective training
-            of the DQN agent.
-
+        It uses soft max strategy so target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
+        Small value of Tau still covers the statement that target values supposed to be fixed to prevent moving target problem
         """
         for network_params, target_params in zip(self.network.parameters(), 
                                                  self.target_network.parameters()):
             target_params.data.copy_(self.TAU * network_params.data \
                                      + (1.0 - self.TAU) * target_params.data)
 
-    def update(self, state, action, reward: float, new_state, is_terminal: bool):
+    def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
-        Parameters:
-            - `state`: Current state of the environment.
-            - `action`: Action taken in the current state.
-            - `reward (float)`: Reward received after taking the action.
-            - `new_state`: Next state of the environment after taking the action.
-            - `is_terminal (bool)`: A flag indicating whether the new state is a terminal state.
+        Updates the DQN network weights to better estimate Q-values of every action.
 
-        Returns:
-            None
-
-        Description:
-            The `update` function is responsible for updating the DQN agent's Q-values based on the
-            provided experience tuple. It adds the experience to the replay memory and performs a
-            mini-batch update if the replay memory size reaches the specified batch size. The agent
-            uses the Mean Squared Error (MSE) loss between predicted Q-values and target Q-values
-            to update its neural network weights.
-
-            If the `is_terminal` flag is `True`, the function increments the update counter and
-            checks if it's time to update the target network weights. The target network is updated
-            periodically to stabilize the learning process.
-
-        Notes:
-            - Ensure that the DQN agent has been properly initialized with the necessary parameters
-            before calling this function.
-            - The function performs an update only if the replay memory size reaches the specified
-            batch size (`batch_size`).
+        Args:
+            state: Current state of the environment.
+            action: Action taken in the current state.
+            reward: Reward received after taking the action.
+            new_state: Next state of the environment after taking the action.
+            is_terminal: A flag indicating whether the new state is a terminal state.
         """
         self.__remember(state=state, action=action, reward=reward, next_state=new_state,
                       done=is_terminal)
@@ -322,41 +229,13 @@ class DQNAgent(Agent):
                 self.optimizer.step()
                 self.__soft_update_target()
 
-    def __replay(self) -> (torch.Tensor, torch.Tensor):
+    def __replay(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        This function samples a mini-batch from the replay memory and prepares states and
-        corresponding target Q-values for optimization.
+        Samples a mini-batch from the replay memory and prepares states, actions, rewards, next_states
+        casting them to tensors with appropriate type values and adding to device.
 
         Returns:
-            - `states (torch.Tensor)`: Tensor containing the states sampled from the replay memory.
-                Shape: (batch_size, state_features)
-            - `targets (torch.Tensor)`: Tensor containing the corresponding target Q-values for the
-            sampled states and actions.
-                Shape: (batch_size, num_actions)
-
-        Description:
-            The `replay` function is responsible for generating a mini-batch of experiences from the
-            replay memory and computing target Q-values for each state-action pair. For each sampled
-            experience tuple (state, action, reward, next_state, done), it calculates the target
-            Q-value as follows:
-                - If the episode is not done, the target Q-value is computed as the sum of the
-                immediate reward and the discounted maximum Q-value of the next state according
-                to the target network.
-                - If the episode is done, the target Q-value is set equal to the immediate reward.
-
-            After computing the target Q-values, the function constructs tensors of states and
-            target Q-values, both of which are moved to the appropriate device (CPU or CUDA)
-            for optimization. The states tensor represents the sampled states, and the targets
-            tensor contains the corresponding target Q-values.
-
-        Notes:
-            - Ensure that the `replay` function is called when the replay memory contains enough
-            experiences to form a mini-batch (i.e., when `len(self.memory) >= self.batch_size`).
-            - The function constructs tensors from the sampled states and target Q-values, which
-            can be directly used for training the neural network.
-            - The `target_network` is used to estimate the maximum Q-value for the next state during
-            target computation.
-
+            Tuple containing tensors of states, actions, rewards, next_states, and dones.
         """
         batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
@@ -370,27 +249,13 @@ class DQNAgent(Agent):
 
     def save(self, path: str) -> str:
         """
-        Saves the state dictionary of the neural network model to the 
-        specified file path.
+        Saves the state dictionary of the neural network model to the specified file path.
 
-        Parameters:
-            - `path (str)`: The file path (including filename and extension) where the model's
-            state dictionary will be saved.
+        Args:
+            path: The file path (including filename and extension) where the model's state dictionary will be saved.
 
         Returns:
-            None
-
-        Description:
-              This method allows the user to save the learned
-              parameters of the model, enabling later use or further training without 
-              the need to retrain the network from scratch.
-
-        Notes:
-            - Ensure that the file path provided in `save_path` is writable and has appropriate
-            permissions.
-            - The saved file can be loaded later using the 'load' method to restore the model's
-            state for inference or further training.
-
+            Absolute path to the saved file.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
@@ -421,31 +286,10 @@ class DQNAgent(Agent):
     @classmethod
     def load(cls, path: str) -> 'DQNAgent':
         """
-        Loads the state dictionary of the neural network model from the specified file path. After
-        loading the model, it sets the network to evaluation mode (`eval()`) to disable gradient
-        computation, making the model ready for inference.
+        Loads the state dictionary of the neural network model from the specified file path. 
 
-        Parameters:
-            - `path (str)`: The file path from which to load the model's state dictionary.
-
-        Returns:
-            None
-
-        Description:
-            The `load` method allows loading a pre-trained neural network model's state dictionary
-            from a specified file path. This method is particularly useful when you want to continue
-            training from a pre-trained model or use a pre-trained model for making predictions in a
-            real-time environment. After loading the model, it is set to evaluation mode, ensuring
-            that gradients are not computed during inference, which reduces memory consumption and
-            computation time.
-
-        Notes:
-            - Ensure that the `model_path` parameter points to a valid saved model file with the
-            appropriate model architecture and state dictionary.
-            - The method assumes that the model architecture and structure match the one used during
-            the initial training.
-            - It's recommended to call this method after initializing an instance of the `DQNAgent`
-            class to load pre-trained weights before using the agent for inference or further training.
+        Args:
+            path: The file path from which to load the model's state dictionary.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
@@ -464,6 +308,5 @@ class DQNAgent(Agent):
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
-        agent.network.eval()
-        agent.__soft_update_target()
+        agent.target_network.load_state_dict(network_params)
         return agent
