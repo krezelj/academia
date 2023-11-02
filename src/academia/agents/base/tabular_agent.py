@@ -5,6 +5,7 @@ import numbers
 import json
 
 import numpy as np
+import numpy.typing as npt
 
 from .agent import Agent
 
@@ -46,14 +47,14 @@ class TabularAgent(Agent):
         self.alpha = alpha
         self.q_table = defaultdict(lambda: np.zeros(n_actions))
 
-    def get_action(self, state, legal_mask=None, greedy=False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
         """
         Get an action for the given state using epsilon-greedy policy.
 
         Args:
-            state (hashable object eg. tuple): Current state in the environment.
-            legal_mask (numpy.ndarray, optional): A mask representing legal actions in the current state.
-            greedy (bool, optional): Whether to choose the greedy action. Defaults to False.
+            state: Current state in the environment.
+            legal_mask: A mask representing legal actions in the current state.
+            greedy: Whether to choose the greedy action. Defaults to False.
 
         Returns:
             int: Action to be taken in the given state.
@@ -135,7 +136,7 @@ class TabularAgent(Agent):
         Checks whether a state is compatible with TabularAgent.
 
         Args:
-            A state to validate.
+            state: a state to validate.
 
         Returns:
             True if this type of state is supported, False otherwise.
