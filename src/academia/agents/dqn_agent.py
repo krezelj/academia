@@ -29,12 +29,12 @@ class DQNAgent(Agent):
     Args:
         nn_architecture: Type of neural network architecture to be used.
         n_actions: Number of possible actions in the environment.
-        gamma: Discount factor for future rewards (default: 0.99).
-        epsilon: Initial exploration-exploitation trade-off parameter (default: 1.0).
-        epsilon_decay: Decay factor for epsilon over time (default: 0.995).
-        min_epsilon: Minimum epsilon value to ensure exploration (default: 0.01).
-        batch_size: Size of the mini-batch used for training (default: 64).
-        random_state: Seed for random number generation (default: None).
+        gamma: Discount factor for future rewards. Defaults to 0.99.
+        epsilon: Initial exploration-exploitation trade-off parameter. Defaults to 1.0.
+        epsilon_decay: Decay factor for epsilon over time. Defaults to 0.995.
+        min_epsilon: Minimum epsilon value to ensure exploration. Defaults to 0.01.
+        batch_size: Size of the mini-batch used for training. Defaults to 64.
+        random_state: Seed for random number generation. Defaults to ``None``.
     
     Attributes:
         nn_architecture (Type[nn.Module]): Type of neural network architecture to be used.
