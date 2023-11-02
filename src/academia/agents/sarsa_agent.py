@@ -1,3 +1,5 @@
+from typing import Any
+
 from .base import TabularAgent
 
 
@@ -18,7 +20,7 @@ class SarsaAgent(TabularAgent):
         epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
         epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
         min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
-        random_state (int): Seed for the random number generator.
+        random_state: Seed for the random number generator.
 
     Raises:
         ValueError: If the given state is not supported.
@@ -35,17 +37,17 @@ class SarsaAgent(TabularAgent):
     __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon', 
                  'random_state']
 
-    def update(self, state, action, reward, new_state, is_terminal):
+    def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
-        Update the Q-value for the given state-action pair based on the observed reward,
+        Updates the Q-value for the given state-action pair based on the observed reward,
         new state, and the action taken in the new state.
 
         Args:
-            state (hashable object eg. tuple): Current state in the environment.
-            action (int): Action taken in the current state.
-            reward (float): Reward received after taking the action.
-            new_state (hashable object eg. tuple): New state observed after taking the action.
-            is_terminal (bool): Whether the new state is a terminal state or not.
+            state: Current state in the environment.
+            action: Action taken in the current state.
+            reward: Reward received after taking the action.
+            new_state: New state observed after taking the action.
+            is_terminal: Whether the new state is a terminal state or not.
         """
         policy_next_action = self.get_action(state)
         self.q_table[state][action] = \
