@@ -84,7 +84,7 @@ class DQNAgent(Agent):
 
     Note:
         - Ensure that the custom neural network architecture passed to the constructor inherits 
-          from torch.nn.Module and is appropriate for the task.
+          from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
         - The __soft_update_target method updates the target network weights from the main network's weights
         based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
