@@ -80,4 +80,4 @@ class LunarLander(GenericGymnasiumWrapper):
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         # raw state returned by lunar lander is already a numpy array
         raw_state: np.ndarray
-        return raw_state.astype(np.float32)
+        return np.array([*raw_state, self.step_count], dtype=np.float32)

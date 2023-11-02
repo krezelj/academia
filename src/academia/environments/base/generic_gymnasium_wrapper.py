@@ -31,6 +31,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
             n_frames_stacked=n_frames_stacked,
         )
         self._base_env = gymnasium.make(environment_id, **kwargs)
+        self.step_count = 0
         self._state = None  # properly set in self.reset()
         """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
 
@@ -50,6 +51,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         """
         action_transformed = self._transform_action(action)
         new_state, reward, terminated, truncated, _ = self._base_env.step(action_transformed)
+        self.step_count += 1
         self._state = self._transform_state(new_state)
 
         # frame stacking
@@ -91,6 +93,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         """
         self._state = self._transform_state(self._base_env.reset()[0])
         self._past_n_states = deque([self._state])
+        self.step_count = 0
         # after resetting there's only one state so it doesn't make any difference
         # whether self.observe() or self._state is returned.
         return self._state

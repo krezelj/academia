@@ -1,12 +1,13 @@
 import torch.nn as nn
 import torch
 
+
 class LavaCrossingMLP(nn.Module):
 
     def __init__(self):
         super(LavaCrossingMLP, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(50, 160),
+            nn.Linear(51, 160),
             nn.ReLU(),
             nn.Linear(160, 80),
             nn.ReLU(),
