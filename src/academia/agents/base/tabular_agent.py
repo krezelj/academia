@@ -24,7 +24,7 @@ class TabularAgent(Agent):
         epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
         epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
         min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
-        random_state: Seed for the random number generator. Defaults to None.
+        random_state: Seed for the random number generator. Defaults to ``None``.
 
     Raises:
         ValueError: If the given state is not supported.
