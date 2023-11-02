@@ -13,12 +13,13 @@ class ScalableEnvironment(ABC):
     """A constant denoting the dimension of the state representation"""
 
     @abstractmethod
-    def __init__(self, difficulty: int, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
         """
         :param difficulty: Difficulty level. Higher values indicate more
                            difficult environments
         """
         self.difficulty = difficulty
+        self.n_frames_stacked = n_frames_stacked
 
     @abstractmethod
     def step(self, action: int) -> tuple[Any, float, bool]:

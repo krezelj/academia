@@ -1,10 +1,11 @@
 from typing import Any, Union, Optional
+from collections import deque
 
 import numpy as np
 import numpy.typing as npt
 import gymnasium
 
-from.base import ScalableEnvironment
+from .base import ScalableEnvironment
 
 
 class LunarLander(ScalableEnvironment):
@@ -52,7 +53,8 @@ class LunarLander(ScalableEnvironment):
         5: {'enable_wind': True, 'wind_power': 25.0, 'turbulence_power': 2.0}, 
     }
 
-    def __init__(self, difficulty: int, render_mode: Optional[str] = None, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, render_mode: Optional[str] = None,
+                 **kwargs):
         """
         Initializes a new instance of the LunarLander class with the specified difficulty and render mode.
         
@@ -63,7 +65,12 @@ class LunarLander(ScalableEnvironment):
         Raises:
             ValueError: If the specified difficulty level is invalid.
         """
-        super().__init__(difficulty, **kwargs)
+        super().__init__(
+            difficulty=difficulty,
+            n_frames_stacked=n_frames_stacked,
+            render_mode=render_mode,
+            **kwargs,
+        )
         try:
             self.difficulty_params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:
@@ -72,8 +79,9 @@ class LunarLander(ScalableEnvironment):
             raise ValueError(msg)
         self._base_env = gymnasium.make('LunarLander-v2', render_mode=render_mode, **self.difficulty_params, **kwargs)
         self._state = None
+        self._past_n_states = deque()
         self.reset()
-        
+
     def step(self, action: int) -> tuple[Any, float, bool]:
         """
         Advances the environment by one step given the specified action.
@@ -86,6 +94,12 @@ class LunarLander(ScalableEnvironment):
         """
         new_state, reward, terminated, truncated, _ = self._base_env.step(action)
         self._state = new_state
+
+        # frame stacking
+        self._past_n_states.append(self._state)
+        if len(self._past_n_states) > self.n_frames_stacked:
+            self._past_n_states.popleft()
+
         is_episode_end = terminated or truncated
         return self.observe(), float(reward), is_episode_end
     
@@ -96,7 +110,8 @@ class LunarLander(ScalableEnvironment):
         Returns:
             The current state of the environment.
         """
-        return self._state
+        stacked_state = np.concatenate(list(self._past_n_states))
+        return stacked_state
     
     def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
         """
@@ -113,7 +128,8 @@ class LunarLander(ScalableEnvironment):
             The new state after resetting the environment.
         """
         self._state = self._base_env.reset()[0]
-        return self.observe()
+        self._past_n_states = deque([self._state])
+        return self._state
     
     def render(self):
         """
