@@ -13,7 +13,8 @@ class TabularAgent(Agent):
     """
     TabularAgent class implements a reinforcement learning agent for tabular environments.
 
-    This class serves as the base class for QLAgent and SarsaAgent. This agent learns to make decisions in an 
+    This class serves as the base class for tabular agents such as :class:`academia.agents.QLAgent` 
+    and :class:`academia.agents.SarsaAgent`. This agent learns to make decisions in an 
     environment with discrete states and actions by maintaining a Q-table, which represents the quality of 
     taking a certain actionin a specific state.
     
