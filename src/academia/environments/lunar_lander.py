@@ -1,14 +1,12 @@
-from typing import Any, Union, Optional
-from collections import deque
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
-import gymnasium
 
-from .base import ScalableEnvironment
+from .base import GenericGymnasiumWrapper
 
 
-class LunarLander(ScalableEnvironment):
+class LunarLander(GenericGymnasiumWrapper):
     """
     A class representing the Lunar Lander environment, a variant of the classic Lunar Lander game.
     
@@ -65,74 +63,21 @@ class LunarLander(ScalableEnvironment):
         Raises:
             ValueError: If the specified difficulty level is invalid.
         """
-        super().__init__(
-            difficulty=difficulty,
-            n_frames_stacked=n_frames_stacked,
-            **kwargs,
-        )
         try:
-            self.difficulty_params = LunarLander.__difficulty_params_map[difficulty]
+            difficulty_params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:
             msg = (f"Difficulty value of {difficulty} is invalid for this environment. "
                    "Difficulty level should be an integer between 0 and 5")
             raise ValueError(msg)
-        self._base_env = gymnasium.make('LunarLander-v2', **self.difficulty_params, **kwargs)
-        self._state = None
-        self._past_n_states = deque()
-        self.reset()
+        super().__init__(
+            difficulty=difficulty,
+            environment_id='LunarLander-v2',
+            n_frames_stacked=n_frames_stacked,
+            **difficulty_params,
+            **kwargs,
+        )
 
-    def step(self, action: int) -> tuple[Any, float, bool]:
-        """
-        Advances the environment by one step given the specified action.
-        
-        Args:
-            action: The action to take (0 to 3).
-
-        Returns:
-            A tuple containing the new state, reward, and a flag indicating episode termination.
-        """
-        new_state, reward, terminated, truncated, _ = self._base_env.step(action)
-        self._state = new_state
-
-        # frame stacking
-        self._past_n_states.append(self._state)
-        if len(self._past_n_states) > self.n_frames_stacked:
-            self._past_n_states.popleft()
-
-        is_episode_end = terminated or truncated
-        return self.observe(), float(reward), is_episode_end
-    
-    def observe(self) -> Any:
-        """
-        Returns the current state of the environment.
-
-        Returns:
-            The current state of the environment.
-        """
-        stacked_state = np.concatenate(list(self._past_n_states))
-        return stacked_state
-    
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        """
-        Returns:
-            A binary mask indicating legal actions.
-        """
-        return np.array([1 for _ in range(self.N_ACTIONS)])
-    
-    def reset(self) -> Any:
-        """
-        Resets the environment to its initial state.
-
-        Returns:
-            The new state after resetting the environment.
-        """
-        self._state = self._base_env.reset()[0]
-        self._past_n_states = deque([self._state])
-        return self._state
-    
-    def render(self):
-        """
-        Renders the environment in the current render mode.
-        """
-        self._base_env.render()
-    
+    def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
+        # raw state returned by lunar lander is already a numpy array
+        raw_state: np.ndarray
+        return raw_state.astype(np.float32)

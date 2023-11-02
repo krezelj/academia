@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -54,15 +54,9 @@ class DoorKey(GenericMiniGridWrapper):
             **kwargs,
         )
     
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        mask = np.array([1 for _ in range(self.N_ACTIONS)])
-        mask[4] = 0 #drop action is unused
-        return mask
-    
-    @property
-    def _state(self) -> tuple[int, ...]:
+    def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         """
-        This property takes the raw state representation (self._state_raw) returned
+        This method takes the raw state representation returned
         by the base environment and transforms it so that it is compatible
         with the agent API provided by this package.
 
@@ -101,10 +95,10 @@ class DoorKey(GenericMiniGridWrapper):
                  the direction which the agent is facing and with door state.
         """
 
-        cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
+        cells_obj_types: np.ndarray = raw_state['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
-        direction = self._state_raw['direction']
-        door_array = self._state_raw['image'][:,:,2].flatten()
+        direction = raw_state['direction']
+        door_array = raw_state['image'][:, :, 2].flatten()
 
         if self._door_status == 2 and 1 in door_array:
             self._door_status = 1

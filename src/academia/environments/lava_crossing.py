@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -46,21 +46,16 @@ class LavaCrossing(GenericMiniGridWrapper):
         :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
                             and 3 is the hardest
         """
-        
         super().__init__(
             difficulty=difficulty,
             difficulty_envid_map=LavaCrossing.__difficulty_envid_map,
             n_frames_stacked=n_frames_stacked,
             **kwargs,
         )
-
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        return np.array([1 for _ in range(self.N_ACTIONS)])
         
-    @property
-    def _state(self) -> tuple[int, ...]:
+    def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         """
-        This property takes the raw state representation (self._state_raw) returned
+        This method takes the raw state representation returned
         by the base environment and transforms it so that it is compatible
         with the agent API provided by this package.
 
@@ -98,10 +93,8 @@ class LavaCrossing(GenericMiniGridWrapper):
         :return: an array of object types of every grid cell concatenated with
                  the direction which the agent is facing.
         """
-
-        cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
+        cells_obj_types: np.ndarray = raw_state['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
-        direction = self._state_raw['direction']
-
+        direction = raw_state['direction']
         return np.array([*cells_flattened, direction])
-    
+
