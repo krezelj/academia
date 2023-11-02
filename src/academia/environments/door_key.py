@@ -39,6 +39,9 @@ class DoorKey(GenericMiniGridWrapper):
 
     Attributes:
         step_count (int): Current step count since the last reset.
+        difficulty (int): Difficulty level. Higher values indicate more difficult environments.
+        n_frames_stacked (int): How many most recent states should be stacked together to form a final state
+            representation. Defaults to 1.
     """
 
     N_ACTIONS = 5

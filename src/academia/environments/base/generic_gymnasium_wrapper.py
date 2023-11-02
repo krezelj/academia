@@ -25,6 +25,9 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
 
     Attributes:
         step_count (int): Current step count since the last reset.
+        difficulty (int): Difficulty level. Higher values indicate more difficult environments.
+        n_frames_stacked (int): How many most recent states should be stacked together to form a final state
+            representation. Defaults to 1.
     """
 
     def __init__(self, difficulty: int, environment_id: str, n_frames_stacked: int = 1, **kwargs):
