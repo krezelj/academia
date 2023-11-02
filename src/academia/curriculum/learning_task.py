@@ -321,7 +321,7 @@ class LearningTask(SavableLoadable):
             # and then it will stop training because it will think that it has reached min_avg_reward
             return self.stats.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
         
-        if 'min_reward_std_dev' in self.stop_conditions and len(self.episode_rewards) > 10:
+        if 'min_reward_std_dev' in self.stop_conditions and len(self.stats.episode_rewards) > 10:
             return np.std(self.stats.episode_rewards[-10:]) <= self.stop_conditions['min_reward_std_dev']
 
         if 'evaluation_score' in self.stop_conditions:
