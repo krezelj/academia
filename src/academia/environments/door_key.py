@@ -54,11 +54,17 @@ class DoorKey(GenericMiniGridWrapper):
 
     def _transform_action(self, action: int) -> int:
         """
-        In the Door Key environment, action 4 is unused, but action 5 is used. This method maps action 5
-        to 4 in order to reduce the action space size.
+        In the Door Key environment, action 4 is unused, but action 5 is used. This method maps action 4
+        to 5 in order to reduce the action space size.
+
+        Args:
+            action: Action ID according to the package mapping
+
+        Returns:
+            Action ID according to the underlying environment mapping
         """
-        if action == 5:
-            return 4
+        if action == 4:
+            return 5
         return action
     
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
