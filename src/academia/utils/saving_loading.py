@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Type
 import importlib
+import os
 
 
 class SavableLoadable(ABC):
@@ -31,3 +32,20 @@ class SavableLoadable(ABC):
         module_name = type_.__module__
         qualname = type_.__qualname__
         return module_name + '.' + qualname
+
+    @staticmethod
+    def _prep_save_file(specified_path: str, interrupted: bool) -> str:
+        """
+        Creates parent directories if they're missing and, if ``interrupted=True``, prepends 'backup_' to the
+        file name in the specified path.
+
+        Returns:
+            Final path
+        """
+        dirname, filename = os.path.split(specified_path)
+        if interrupted:
+            # prefix to let user know that the process has been interrupted
+            filename = f'backup_{filename}'
+        os.makedirs(dirname, exist_ok=True)
+        full_path = os.path.join(dirname, filename)
+        return full_path

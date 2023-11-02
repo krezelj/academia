@@ -5,7 +5,7 @@ from typing import Optional
 import yaml
 import numpy as np
 
-from . import LearningTask
+from . import LearningTask, LearningStats
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable
 
@@ -15,19 +15,19 @@ _logger = logging.getLogger('academia.curriculum')
 
 class Curriculum(SavableLoadable):
     """
-    Groups and executes instances of :class:`academia.curriculum.LearningTask` in the specified order.
+    Groups and executes instances of :class:`LearningTask` in the specified order.
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        agents_save_dir: A path to a file where the agent states and training stats will be saved upon each
+        output_dir: A path to a file where the agent states and training stats will be saved upon each
             task's completion or interruption. If set to ``None``, agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Attributes:
-        tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        agents_save_dir: A path to a file where the agent states and training stats will be saved upon each
-            task's completion or interruption. If set to ``None``, agent's state or training stats will not
-            be saved at any point, unless relevant paths are specified for any of the tasks directly.
+        tasks (list[LearningTask]): Tasks to be run. Tasks are run one by one so their order matters.
+        output_dir (str, optional): A path to a file where the agent states and training stats will be saved
+            upon each task's completion or interruption. If set to ``None``, agent's state or training stats
+            will not be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Examples:
         Initialisation using class contructor:
@@ -46,7 +46,7 @@ class Curriculum(SavableLoadable):
         >>> )
         >>> curriculum = Curriculum(
         >>>     tasks=[task1, task2],
-        >>>     agents_save_dir='./my_curriculum/',
+        >>>     output_dir='./my_curriculum/',
         >>> )
 
         Initialisaton using a config file:
@@ -56,7 +56,7 @@ class Curriculum(SavableLoadable):
 
         ``./my_config.curriculum.yml``::
 
-            agents_save_dir: './my_curriculum/'
+            output_dir: './my_curriculum/'
             order:
             - 0
             - 1
@@ -90,17 +90,15 @@ class Curriculum(SavableLoadable):
         >>> curriculum.run(agent, verbose=4, render=True)
     """
 
-    __slots__ = ['tasks', 'agents_save_dir']
-
-    def __init__(self, tasks: list[LearningTask], agents_save_dir: Optional[str] = None) -> None:
+    def __init__(self, tasks: list[LearningTask], output_dir: Optional[str] = None) -> None:
         self.tasks = tasks
-        self.agents_save_dir = agents_save_dir
+        self.output_dir = output_dir
 
     def run(self, agent: Agent, verbose=0, render=False):
         """
         Runs all tasks for the given agent. Agent's states and training statistics will be saved upon each
             task's completion or interruption if save paths are specified either for a specific task, or
-            for the whole curriculum through ``agents_save_dir`` attribute.
+            for the whole curriculum through :attr:`agents_save_dir` attribute.
 
         Args:
             agent: An agent to train
@@ -113,14 +111,14 @@ class Curriculum(SavableLoadable):
         total_wall_time = 0
         total_cpu_time = 0
         for i, task in enumerate(self.tasks):
-            task_id = str(i + 1) if task.name is None else task.name
+            task_id = self.__get_task_id(i)
             if verbose >= 1:
                 _logger.info(f'Running Task {task_id}... ')
 
-            if task.agent_save_path is None and self.agents_save_dir is not None:
-                task.agent_save_path = os.path.join(self.agents_save_dir, task_id)
-            if task.stats_save_path is None and self.agents_save_dir is not None:
-                task.stats_save_path = os.path.join(self.agents_save_dir, f'{task_id}_stats')
+            if task.agent_save_path is None and self.output_dir is not None:
+                task.agent_save_path = os.path.join(self.output_dir, task_id)
+            if task.stats_save_path is None and self.output_dir is not None:
+                task.stats_save_path = os.path.join(self.output_dir, f'{task_id}_stats')
 
             task.run(agent, verbose=verbose, render=render)
             total_episodes += len(task.episode_rewards)
@@ -142,6 +140,20 @@ class Curriculum(SavableLoadable):
             _logger.info(f'Elapsed total wall time: {total_wall_time:.2f} sec')
             _logger.info(f'Elapsed total CPU time: {total_cpu_time:.2f} sec')
 
+    @property
+    def stats(self) -> dict[str, LearningStats]:
+        """
+        Returns:
+            A dictionary that maps task name/index to task statistics for every task in this curriculum
+        """
+        return {self.__get_task_id(i): task.stats for i, task in enumerate(self.tasks)}
+
+    def __get_task_id(self, task_idx: int) -> str:
+        """Task name or task's index in :attr:`tasks` if the task has no name"""
+        task = self.tasks[task_idx]
+        task_id = str(task_idx + 1) if task.name is None else task.name
+        return task_id
+
     @classmethod
     def load(cls, path: str) -> 'Curriculum':
         """
@@ -156,7 +168,7 @@ class Curriculum(SavableLoadable):
         An example curriculum configuration file::
 
             # my_config.curriculum.yaml
-            agents_save_dir: './my_curriculum/'
+            output_dir: './my_curriculum/'
             order:
             - 0
             - 1
@@ -177,7 +189,7 @@ class Curriculum(SavableLoadable):
 
         Args:
             path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.curriculum.yml' will be appended to the specified path (for consistency with ``save()``
+                '.curriculum.yml' will be appended to the specified path (for consistency with :func:`save()`
                 method).
 
         Returns:
