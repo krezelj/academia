@@ -57,7 +57,7 @@ class Agent(SavableLoadable):
     @abstractmethod
     def update(self, state, action, reward: float, new_state, is_terminal: bool):
         """
-        Abstract method to update the agent's knowledge based on the observed reward and new state.
+        Updates the agent's knowledge based on the observed reward and new state.
 
         Args:
             state: Current state in the environment.
@@ -70,13 +70,13 @@ class Agent(SavableLoadable):
 
     def decay_epsilon(self):
         """
-        Decay the exploration parameter epsilon based on epsilon_decay.
+        Decays the exploration parameter epsilon based on epsilon_decay.
         """
         self.epsilon = float(np.max([self.min_epsilon, self.epsilon * self.epsilon_decay]))
 
     def reset_epsilon(self, epsilon=1):
         """
-        Reset the exploration parameter epsilon to the specified value.
+        Resets the exploration parameter epsilon to the specified value.
 
         Args:
             epsilon: Value to reset epsilon to. Defaults to 1.
