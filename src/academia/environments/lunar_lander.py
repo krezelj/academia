@@ -34,13 +34,21 @@ class LunarLander(GenericGymnasiumWrapper):
     | 3          | Medium strong wind, moderate turbulence       |
     | 4          | Strong wind, medium strong turbulence         |
     | 5          | Very strong wind, strong turbulence           |
-    
+
+    Args:
+        difficulty: The difficulty level of the environment (0 to 5).
+        n_frames_stacked: How many most recent states should be stacked together to form a final state
+            representation.
+
+    Raises:
+        ValueError: If the specified difficulty level is invalid.
+
+    Attributes:
+        step_count (int): Current step count since the last reset.
     """
 
     N_ACTIONS: int = 4
-    """The number of possible actions (4)."""
     STATE_SIZE: int = 8
-    """The size of the state space (8)."""
 
     __difficulty_params_map = {
         0: {'enable_wind': False, 'wind_power': 0.0, 'turbulence_power': 0.0},
@@ -52,17 +60,6 @@ class LunarLander(GenericGymnasiumWrapper):
     }
 
     def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
-        """
-        Initializes a new instance of the LunarLander class with the specified difficulty and render mode.
-        
-        Args:
-            difficulty: The difficulty level of the environment (0 to 5).
-            n_frames_stacked: How many most recent states should be stacked together to form a final state
-                representation.
-
-        Raises:
-            ValueError: If the specified difficulty level is invalid.
-        """
         try:
             difficulty_params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:

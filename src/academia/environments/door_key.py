@@ -26,6 +26,19 @@ class DoorKey(GenericMiniGridWrapper):
     1: 6x6 grid size with 1 key and 1 door
     2: 8x8 grid size with 1 key and 1 door
     3: 16x16 grid size with 1 key and 1 door
+
+    Args:
+        difficulty: Difficulty level from 0 to 3, where 0 is the easiest
+            and 3 is the hardest.
+        n_frames_stacked: How many most recent states should be stacked together to form a final state
+            representation.
+        kwargs: Arguments passed down to ``gymnasium.make``.
+
+    Raises:
+        ValueError: If the specified difficulty level is invalid.
+
+    Attributes:
+        step_count (int): Current step count since the last reset.
     """
 
     N_ACTIONS = 5
@@ -39,11 +52,6 @@ class DoorKey(GenericMiniGridWrapper):
     """A dictionary that maps difficulty levels to environment ids"""
 
     def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
-        """
-        :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
-                            and 3 is the hardest
-        """
-
         self._door_status = 2
         super().__init__(
             difficulty=difficulty,
@@ -97,15 +105,17 @@ class DoorKey(GenericMiniGridWrapper):
         To obtain the final result, object types of each cell and the direction
         the agent is facing are used.
 
-        **Note:** the position of the agent is not marked on the 2D "image"
-        array that comes in the input state. Agent's cell might be in one of
-        four positions in this array - in the center of any of the array's
-        sides. This position could be different in every generated environment,
-        but once the environment is initialised this position will not change
-        no matter the direction the agent is facing or its location on the grid.
+        Notes:
+            The position of the agent is not marked on the 2D "image"
+            array that comes in the input state. Agent's cell might be in one of
+            four positions in this array - in the center of any of the array's
+            sides. This position could be different in every generated environment,
+            but once the environment is initialised this position will not change
+            no matter the direction the agent is facing or its location on the grid.
 
-        :return: an array of object types of every grid cell concatenated with
-                 the direction which the agent is facing and with door state.
+        Returns:
+            An array of object types of every grid cell concatenated with
+            the direction which the agent is facing and with door state.
         """
 
         cells_obj_types: np.ndarray = raw_state['image'][:, :, 0]

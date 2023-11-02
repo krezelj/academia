@@ -10,14 +10,23 @@ from . import GenericGymnasiumWrapper
 class GenericMiniGridWrapper(GenericGymnasiumWrapper):
     """
     A wrapper for MiniGrid environments that makes them scalable.
+
+    Args:
+        difficulty: Difficulty level from 0 to 3, where 0 is the easiest
+            and 3 is the hardest.
+        difficulty_envid_map: A dict that maps numerical difficulty level to gymnasium environment ID.
+        n_frames_stacked: How many most recent states should be stacked together to form a final state
+            representation.
+        kwargs: Arguments passed down to ``gymnasium.make``.
+
+    Raises:
+        ValueError: If the specified difficulty level is invalid.
+
+    Attributes:
+        step_count (int): Current step count since the last reset.
     """
 
     def __init__(self, difficulty: int, difficulty_envid_map: dict, n_frames_stacked: int = 1, **kwargs):
-        """
-        :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
-                            and 3 is the hardest
-        """
-        
         self._difficulty_envid_map = difficulty_envid_map
         try:
             env_id = self._difficulty_envid_map[difficulty]

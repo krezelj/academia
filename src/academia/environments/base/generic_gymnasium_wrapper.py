@@ -15,17 +15,19 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
     it does not have to be copied and pasted in every wrapper. At the same time, it aims to deliver
     flexibility that is required to handle generalised nature of Gymnasium API such as varying state
     representations.
+
+    Args:
+        difficulty: The difficulty level of the environment.
+        environment_id: Gymnasium environment ID.
+        n_frames_stacked: How many most recent states should be stacked together to form a final state
+            representation.
+        kwargs: Arguments passed down to ``gymnasium.make``
+
+    Attributes:
+        step_count (int): Current step count since the last reset.
     """
 
     def __init__(self, difficulty: int, environment_id: str, n_frames_stacked: int = 1, **kwargs):
-        """
-        Args:
-            difficulty: The difficulty level of the environment.
-            environment_id: Gymnasium environment ID.
-            n_frames_stacked: How many most recent states should be stacked together to form a final state
-                representation.
-            kwargs: Arguments passed down to ``gymnasium.make``
-        """
         super().__init__(
             difficulty=difficulty,
             n_frames_stacked=n_frames_stacked,
@@ -80,7 +82,8 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
             to cheaply obtain a legal mask, so this default implementation always returns an array of ones
 
         Returns:
-            A binary mask indicating legal actions.
+            A binary mask with 0s in place for illegal actions (actions that
+            have no effect) and 1s for legal actions.
         """
         return np.array([1 for _ in range(self.N_ACTIONS)])
 
@@ -109,13 +112,19 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         Transforms an action ID in case mappings used by agents are different from action mappings in
         the underlying environment. The default implementation assumes that both mappings are identical -
         otherwise this method has to be overriden.
+
+        Args:
+            action: Action ID according to the package mapping
+
+        Returns:
+            Action ID according to the underlying environment mapping
         """
         return action
 
     @abstractmethod
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         """
-        Transforms a state returned by the underlying environment to a numpy array of float32, which is a
-        format commonly used throughout this package
+        Transforms a state returned by the underlying environment to a numpy array, which is a format
+        commonly used throughout this package.
         """
         pass
