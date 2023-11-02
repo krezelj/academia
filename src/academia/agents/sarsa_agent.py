@@ -34,8 +34,6 @@ class SarsaAgent(TabularAgent):
         alpha (float): Learning rate.
         q_table (dict): Q-table for the agent.
     """
-    __slots__ = ['q_table', 'n_actions', 'alpha', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon', 
-                 'random_state']
 
     def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
