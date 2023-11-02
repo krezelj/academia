@@ -184,7 +184,7 @@ class LearningTask(SavableLoadable):
             stopwatch = Stopwatch()
             episode_reward, steps_count = self.__run_episode(agent)
             wall_time, cpu_time = stopwatch.stop()
-            self.__update_statistics(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
+            self.stats.update(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
 
             if episode % self.evaluation_interval == 0:
                 evaluation_rewards: list[float] = []
@@ -229,33 +229,6 @@ class LearningTask(SavableLoadable):
             episode_reward += reward
             steps_count += 1
         return episode_reward, steps_count
-
-    def __update_statistics(self, episode_no: int, episode_reward: float, steps_count: int,
-                            wall_time: float, cpu_time: float, verbose=0) -> None:
-        """
-        Updates and logs training statistics
-        """
-        self.stats.episode_wall_times = np.append(self.stats.episode_wall_times, wall_time)
-        self.stats.episode_cpu_times = np.append(self.stats.episode_cpu_times, cpu_time)
-
-        self.stats.episode_rewards = np.append(self.stats.episode_rewards, episode_reward)
-        self.stats.step_counts = np.append(self.stats.step_counts, steps_count)
-
-        episode_rewards_mvavg = np.mean(self.stats.episode_rewards[-5:])
-        steps_count_mvavg = np.mean(self.stats.step_counts[-5:])
-        self.stats.episode_rewards_moving_avg = np.append(
-            self.stats.episode_rewards_moving_avg, episode_rewards_mvavg)
-        self.stats.step_counts_moving_avg = np.append(
-            self.stats.step_counts_moving_avg, steps_count_mvavg)
-
-        if verbose >= 4:
-            _logger.info(f'Episode {episode_no} done.')
-            _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
-            _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
-            _logger.info(f'Reward: {episode_reward:.2f}')
-            _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
-            _logger.info(f'Steps count: {steps_count}')
-            _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
     def __handle_task_terminated(self, agent: Agent, verbose: int, interrupted=False) -> None:
         """
@@ -459,6 +432,42 @@ class LearningStats(SavableLoadable):
         self.step_counts_moving_avg = np.array([])
         self.episode_wall_times = np.array([])
         self.episode_cpu_times = np.array([])
+
+    def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
+               cpu_time: float, verbose: int = 0) -> None:
+        """
+        Updates and logs training statistics for a given episode
+
+        Args:
+            episode_no: Episode number
+            episode_reward: Total reward after the episode
+            steps_count: Steps count of the episode
+            wall_time: Actual time it took for the episode to finish
+            cpu_time: CPU time it took for the episode to finish
+            verbose: Verbosity level. See :func:`LearningTask.run` for information on different verboisty
+                levels
+        """
+        self.episode_wall_times = np.append(self.episode_wall_times, wall_time)
+        self.episode_cpu_times = np.append(self.episode_cpu_times, cpu_time)
+
+        self.episode_rewards = np.append(self.episode_rewards, episode_reward)
+        self.step_counts = np.append(self.step_counts, steps_count)
+
+        episode_rewards_mvavg = np.mean(self.episode_rewards[-5:])
+        steps_count_mvavg = np.mean(self.step_counts[-5:])
+        self.episode_rewards_moving_avg = np.append(
+            self.episode_rewards_moving_avg, episode_rewards_mvavg)
+        self.step_counts_moving_avg = np.append(
+            self.step_counts_moving_avg, steps_count_mvavg)
+
+        if verbose >= 4:
+            _logger.info(f'Episode {episode_no} done.')
+            _logger.info(f'Elapsed task wall time: {wall_time:.3f} sec')
+            _logger.info(f'Elapsed task CPU time: {cpu_time:.3f} sec')
+            _logger.info(f'Reward: {episode_reward:.2f}')
+            _logger.info(f'Moving average of rewards: {episode_rewards_mvavg:.2f}')
+            _logger.info(f'Steps count: {steps_count}')
+            _logger.info(f'Moving average of step counts: {steps_count_mvavg:.1f}')
 
     @classmethod
     def load(cls, path: str):
