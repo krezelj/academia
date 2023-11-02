@@ -1,11 +1,12 @@
 from collections import deque, namedtuple
-from typing import Type, Optional
+from typing import Type, Optional, Any
 import os
 import zipfile
 import tempfile
 import json
 
 import numpy as np
+import numpy.typing as npt
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -138,7 +139,7 @@ class DQNAgent(Agent):
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
-    def __remember(self, state: np.ndarray, action: int, reward: float, next_state: np.ndarray, done: bool):
+    def __remember(self, state: Any, action: int, reward: float, next_state: Any, done: bool):
         """
         Stores an experience tuple in the replay memory.
 
@@ -152,7 +153,7 @@ class DQNAgent(Agent):
         e = self.experience(state, action, reward, next_state, done)
         self.memory.append(e)
 
-    def get_action(self, state: np.ndarray, legal_mask: np.ndarray =None, greedy=False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
         """
         Selects an action based on the current state using the epsilon-greedy strategy.
 
@@ -201,7 +202,7 @@ class DQNAgent(Agent):
             target_params.data.copy_(self.TAU * network_params.data \
                                      + (1.0 - self.TAU) * target_params.data)
 
-    def update(self, state: np.ndarray, action: int, reward: float, new_state: np.ndarray, is_terminal: bool):
+    def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
         Updates the DQN network weights to better estimate Q-values of every action.
 
@@ -228,7 +229,7 @@ class DQNAgent(Agent):
                 self.optimizer.step()
                 self.__soft_update_target()
 
-    def __replay(self) -> (torch.Tensor, torch.Tensor):
+    def __replay(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Samples a mini-batch from the replay memory and prepares states, actions, rewards, next_states
         casting them to tensors with appropriate type values and adding to device.
