@@ -49,7 +49,7 @@ class TabularAgent(Agent):
 
     def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
         """
-        Get an action for the given state using epsilon-greedy policy.
+        Gets an action for the given state using epsilon-greedy policy.
 
         Args:
             state: Current state in the environment.
@@ -72,7 +72,7 @@ class TabularAgent(Agent):
 
     def save(self, path: str) -> str:
         """
-        Save the agent's state to a JSON file.
+        Saves the agent's state to a JSON file.
 
         Args:
             path: Path to save the JSON file.
@@ -105,7 +105,7 @@ class TabularAgent(Agent):
     @classmethod
     def load(cls, path: str) -> 'TabularAgent':
         """
-        Load the agent's state from a JSON file.
+        Loads the agent's state from a JSON file.
 
         Args:
             path: Path to the JSON file.
