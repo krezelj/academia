@@ -48,7 +48,8 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         Returns:
             A tuple containing the new state, reward, and a flag indicating episode termination.
         """
-        new_state, reward, terminated, truncated, _ = self._base_env.step(action)
+        action_transformed = self._transform_action(action)
+        new_state, reward, terminated, truncated, _ = self._base_env.step(action_transformed)
         self._state = self._transform_state(new_state)
 
         # frame stacking
@@ -99,6 +100,14 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         Renders the environment in the current render mode.
         """
         self._base_env.render()
+
+    def _transform_action(self, action: int) -> int:
+        """
+        Transforms an action ID in case mappings used by agents are different from action mappings in
+        the underlying environment. The default implementation assumes that both mappings are identical -
+        otherwise this method has to be overriden.
+        """
+        return action
 
     @abstractmethod
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:

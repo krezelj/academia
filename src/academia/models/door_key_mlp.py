@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 
+
 class DoorKeyMLP(nn.Module):
 
     def __init__(self):
@@ -12,7 +13,7 @@ class DoorKeyMLP(nn.Module):
             nn.ReLU(),
             nn.Linear(100, 60),
             nn.ReLU(),
-            nn.Linear(60, 6),
+            nn.Linear(60, 5),
         )
 
     def forward(self, x) -> torch.Tensor:

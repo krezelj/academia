@@ -19,9 +19,7 @@ class DoorKey(GenericMiniGridWrapper):
     | 1   | right    | Turn right         |
     | 2   | forward  | Move forward       |
     | 3   | pickup   | Pick up an object  |
-    | 4   | drop     | Unused             |
-    | 5   | toggle   | Toggle/activate an object |
-    | 6   | done     | Unused             |
+    | 4   | toggle   | Toggle/activate an object |
 
     Possible difficulty levels:
     0: 5x5 grid size with 1 key and 1 door
@@ -30,7 +28,7 @@ class DoorKey(GenericMiniGridWrapper):
     3: 16x16 grid size with 1 key and 1 door
     """
 
-    N_ACTIONS = 6
+    N_ACTIONS = 5
 
     __difficulty_envid_map = {
         0: 'MiniGrid-DoorKey-5x5-v0',
@@ -53,6 +51,15 @@ class DoorKey(GenericMiniGridWrapper):
             n_frames_stacked=n_frames_stacked,
             **kwargs,
         )
+
+    def _transform_action(self, action: int) -> int:
+        """
+        In the Door Key environment, action 4 is unused, but action 5 is used. This method maps action 5
+        to 4 in order to reduce the action space size.
+        """
+        if action == 5:
+            return 4
+        return action
     
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         """
