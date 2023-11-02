@@ -94,7 +94,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         # whether self.observe() or self._state is returned.
         return self._state
 
-    def render(self):
+    def render(self) -> None:
         """
         Renders the environment in the current render mode.
         """

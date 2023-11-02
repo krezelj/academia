@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Any
 
 import numpy.typing as npt
 
@@ -43,9 +43,9 @@ class ScalableEnvironment(ABC):
         pass
 
     @abstractmethod
-    def render(self):
+    def render(self) -> None:
         pass
 
     @abstractmethod
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+    def get_legal_mask(self) -> npt.NDArray[int]:
         pass
