@@ -32,9 +32,6 @@ class Agent(SavableLoadable):
     def __init__(self, n_actions: int, epsilon: float = 1.,
                  epsilon_decay: float = 0.999, min_epsilon: float = 0.01,
                  gamma: float = 0.99, random_state: Optional[int] = None):
-        """
-        Initializes a generic reinforcement learning agent.
-        """
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
