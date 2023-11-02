@@ -1,7 +1,8 @@
 from abc import abstractmethod
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
+import numpy.typing as npt
 
 from academia.utils import SavableLoadable
 
@@ -40,7 +41,7 @@ class Agent(SavableLoadable):
         self._rng = np.random.default_rng(seed=random_state)
 
     @abstractmethod
-    def get_action(self, state, legal_mask=None, greedy=False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
         """
         Gets an action for the given state.
 
@@ -55,7 +56,7 @@ class Agent(SavableLoadable):
         pass
 
     @abstractmethod
-    def update(self, state, action, reward: float, new_state, is_terminal: bool):
+    def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
         Updates the agent's knowledge based on the observed reward and new state.
 
