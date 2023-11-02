@@ -121,7 +121,7 @@ class Curriculum(SavableLoadable):
                 task.stats_save_path = os.path.join(self.output_dir, f'{task_id}_stats')
 
             task.run(agent, verbose=verbose, render=render)
-            total_episodes += len(task.episode_rewards)
+            total_episodes += len(task.stats.episode_rewards)
 
             task_wall_time = np.sum(task.stats.episode_wall_times)
             task_cpu_time = np.sum(task.stats.episode_cpu_times)
