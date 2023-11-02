@@ -56,3 +56,31 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         fig_steps.write_image(f"{save_path}_steps.png")
         fig_evaluations.write_image(f"{save_path}_evaluations.png")
         return os.path.abspath(save_path)
+    
+    
+def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
+                               save_path: str = None):
+    num_tasks = len(curriculum_stats)
+    num_cols = 2
+    num_rows = (num_tasks + 1) // num_cols
+
+    fig = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=[f'Task {task_id}' for task_id in curriculum_stats.keys()])
+
+    row = 1
+    col = 1
+    for task_id, task_stats in curriculum_stats.items():
+        rewards = task_stats.episode_rewards
+        fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Trajectory {task_id}'), row=row, col=col)
+        col += 1
+        if col > num_cols:
+            col = 1
+            row += 1
+
+    fig.update_layout(height=400 * num_rows, title_text='Trajectories of task rewards')
+    fig.update_xaxes(title_text='Step', row=num_rows, col=1)
+    fig.update_yaxes(title_text='Reward', row=1, col=1)
+
+    if show:
+        fig.show()
+    elif save_path:
+        fig.write_json(save_path)
