@@ -15,7 +15,7 @@ _logger = logging.getLogger('academia.curriculum')
 
 class Curriculum(SavableLoadable):
     """
-    Groups and executes instances of :class:`academia.curriculum.LearningTask` in the specified order.
+    Groups and executes instances of :class:`LearningTask` in the specified order.
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
@@ -24,10 +24,10 @@ class Curriculum(SavableLoadable):
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Attributes:
-        tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        output_dir: A path to a file where the agent states and training stats will be saved upon each
-            task's completion or interruption. If set to ``None``, agent's state or training stats will not
-            be saved at any point, unless relevant paths are specified for any of the tasks directly.
+        tasks (list[LearningTask]): Tasks to be run. Tasks are run one by one so their order matters.
+        output_dir (str, optional): A path to a file where the agent states and training stats will be saved
+            upon each task's completion or interruption. If set to ``None``, agent's state or training stats
+            will not be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Examples:
         Initialisation using class contructor:
@@ -98,7 +98,7 @@ class Curriculum(SavableLoadable):
         """
         Runs all tasks for the given agent. Agent's states and training statistics will be saved upon each
             task's completion or interruption if save paths are specified either for a specific task, or
-            for the whole curriculum through ``agents_save_dir`` attribute.
+            for the whole curriculum through :attr:`agents_save_dir` attribute.
 
         Args:
             agent: An agent to train
@@ -149,7 +149,7 @@ class Curriculum(SavableLoadable):
         return {self.__get_task_id(i): task.stats for i, task in enumerate(self.tasks)}
 
     def __get_task_id(self, task_idx: int) -> str:
-        """Task name or task's index in self.tasks if the task has no name"""
+        """Task name or task's index in :attr:`tasks` if the task has no name"""
         task = self.tasks[task_idx]
         task_id = str(task_idx + 1) if task.name is None else task.name
         return task_id
@@ -168,7 +168,7 @@ class Curriculum(SavableLoadable):
         An example curriculum configuration file::
 
             # my_config.curriculum.yaml
-            agents_save_dir: './my_curriculum/'
+            output_dir: './my_curriculum/'
             order:
             - 0
             - 1
@@ -189,7 +189,7 @@ class Curriculum(SavableLoadable):
 
         Args:
             path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.curriculum.yml' will be appended to the specified path (for consistency with ``save()``
+                '.curriculum.yml' will be appended to the specified path (for consistency with :func:`save()`
                 method).
 
         Returns:

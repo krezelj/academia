@@ -32,7 +32,7 @@ class LearningTask(SavableLoadable):
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
         name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-            :class:`LearningTask` is run through the :class:`academia.curriculum.Curriculum` object.
+            :class:`LearningTask` is run through the :class:`Curriculum` object.
         agent_save_path: A path to a file where the agent's state will be saved after the training is
             completed or if it is interrupted. If not set, agent's state will not be saved at any point.
         stats_save_path: A path to a file where the statistics gathered during training process will be
@@ -47,25 +47,26 @@ class LearningTask(SavableLoadable):
             It is of a type ``env_type``, initialised with parameters from ``env_args``.
         stats (LearningStats): Learning statistics. For more detailed description of their contents see
             :class:`LearningStats`.
-        env_type: A subclass of :class:`academia.environments.base.ScalableEnvironment` that the agent will
+        env_type (Type[ScalableEnvironment]): A subclass of
+            :class:`academia.environments.base.ScalableEnvironment` that the agent will
             be trained on. This should be a class, not an instantiated object.
-        env_args: Arguments passed to the constructor of the environment class (passed as ``env_type``
+        env_args (dict): Arguments passed to the constructor of the environment class (passed as ``env_type``
             argument).
-        stop_conditions: Conditions deciding when to end the training process. Available conditions:
+        stop_conditions (dict): Conditions deciding when to end the training process. Available conditions:
             ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
             ``'evaluation_score'``.
-        evaluation_interval: Controls how often evaluations are conducted.
-        evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
+        evaluation_interval (int): Controls how often evaluations are conducted.
+        evaluation_count (int): Controls how many evaluation episodes are run during a single evaluation.
             Final agent evaluation will be the mean of these individual evaluations.
-        name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
-            Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-            :class:`LearningTask` is run through the :class:`academia.curriculum.Curriculum` object.
-        agent_save_path: A path to a file where the agent's state will be saved after the training is
-            completed or if it is interrupted. If set to ``None``, agent's state will not be saved at
-            any point.
-        stats_save_path: A path to a file where the statistics gathered during training process will be
-            saved after the training is completed or if it is interrupted. If set to ``None``, agent's
-            state will not be saved at any point.
+        name (str, optional): Name of the task. This is unused when running a single :class:`LearningTask`
+            on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
+            if the :class:`LearningTask` is run through the :class:`Curriculum` object.
+        agent_save_path (str, optional): A path to a file where the agent's state will be saved after the
+            training is completed or if it is interrupted. If set to ``None``, agent's state will not be
+            saved at any point.
+        stats_save_path (str, optional): A path to a file where the statistics gathered during training
+            process will be saved after the training is completed or if it is interrupted. If set to
+            ``None``, agent's state will not be saved at any point.
 
     Examples:
         Initialisation using class contructor:
@@ -139,8 +140,8 @@ class LearningTask(SavableLoadable):
     def run(self, agent: Agent, verbose=0, render=False) -> None:
         """
         Runs the training loop for the given agent on an environment specified during :class:`LearningTask`
-        initialisation. Training statistics will be saved to a JSON file if ``LearningTask.stats_save_path``
-        is not ``None``.
+        initialisation. Training statistics will be saved to a JSON file if
+        :attr:`stats_save_path` is not ``None``.
 
         Args:
             agent: An agent to train
@@ -261,7 +262,7 @@ class LearningTask(SavableLoadable):
         """
         Creates parent directories if they're missing and, if ``interrupted=True``, prepends 'backup_' to the
         file name in the specified path. This method was created to avoid duplicating code in the
-        ``LearningTask.__handle_task_terminated()`` method.
+        :func:`LearningTask.__handle_task_terminated` method.
 
         Returns:
             Final path
@@ -328,7 +329,8 @@ class LearningTask(SavableLoadable):
 
         Args:
             path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.task.yml' will be appended to the specified path (for consistency with ``save()`` method).
+                '.task.yml' will be appended to the specified path (for consistency with :func:`save()`
+                method).
 
         Returns:
             A :class:`LearningTask` instance based on the configuration in the specified file.
@@ -365,9 +367,7 @@ class LearningTask(SavableLoadable):
     def from_dict(cls, task_data: dict) -> 'LearningTask':
         """
         Creates a task based on a configuration stored in a dictionary.
-
-        This is a helper method used by the :class:`academia.curriculum.Curriculum` class and it is not
-        useful for the end user.
+        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
 
         Args:
             task_data: dictionary that contains raw contents from the configuration file
@@ -383,9 +383,7 @@ class LearningTask(SavableLoadable):
     def to_dict(self) -> dict:
         """
         Puts this :class:`LearningTask`'s configuration to a dictionary.
-
-        This is a helper method used by the :class:`academia.curriculum.Curriculum` class and it is not
-        useful for the end user.
+        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
 
         Returns:
             A dictionary with the task configuration, ready to be written to a text file.
@@ -406,21 +404,21 @@ class LearningStats(SavableLoadable):
     Container for training statistics from LearningTask
 
     Attributes:
-        episode_rewards (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+        episode_rewards (numpy.ndarray): An array of floats which stores total rewards for each
             episode (excluding evaluations).
-        agent_evaluations (:obj:`numpy.ndarray`): An array of floats which stores total rewards for each
+        agent_evaluations (numpy.ndarray): An array of floats which stores total rewards for each
             evaluation.
-        step_counts (:obj:`numpy.ndarray`): An array of integers which stores step counts for each episode
+        step_counts (numpy.ndarray): An array of integers which stores step counts for each episode
             (excluding evaluations).
-        episode_rewards_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+        episode_rewards_moving_avg (numpy.ndarray): An array of floats which stores moving averages
             of total rewards for each episode (excluding evaluations). Each average is calculated from 5
             observations.
-        step_counts_moving_avg (:obj:`numpy.ndarray`): An array of floats which stores moving averages
+        step_counts_moving_avg (numpy.ndarray): An array of floats which stores moving averages
             of step counts for each episode (excluding evaluations). Each average is calculated from 5
             observations.
-        episode_wall_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed wall times for
+        episode_wall_times (numpy.ndarray): An array of floats which stores elapsed wall times for
             each episode (excluding evaluations).
-        episode_cpu_times (:obj:`numpy.ndarray`): An array of floats which stores elapsed CPU times for
+        episode_cpu_times (numpy.ndarray): An array of floats which stores elapsed CPU times for
             each episode (excluding evaluations).
     """
 
@@ -498,7 +496,7 @@ class LearningStats(SavableLoadable):
 
         Args:
             path: Path to a stats file. If the specified file does not end with '.stats.json' extension,
-                this extension will be appended to the specified path (for consistency with ``save()``
+                this extension will be appended to the specified path (for consistency with :func:`save()`
                 method).
 
         Returns:
