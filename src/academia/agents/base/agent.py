@@ -19,7 +19,7 @@ class Agent(SavableLoadable):
         epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
         min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
         gamma: Discount factor. Defaults to 0.99.
-        random_state: Seed for the random number generator. Defaults to None.
+        random_state: Seed for the random number generator. Defaults to ``None``.
 
     Attributes:
         epsilon (float): Exploration-exploitation trade-off parameter.
