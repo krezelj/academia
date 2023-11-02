@@ -241,7 +241,7 @@ class LearningTask(SavableLoadable):
         """
         # preserve agent's state
         if self.agent_save_path is not None:
-            agent_save_path = self.__prep_save_file(self.agent_save_path, interrupted)
+            agent_save_path = self._prep_save_file(self.agent_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving agent's state...")
             final_save_path = agent.save(agent_save_path)
@@ -250,30 +250,12 @@ class LearningTask(SavableLoadable):
 
         # save task statistics
         if self.stats_save_path is not None:
-            stats_save_path = self.__prep_save_file(self.stats_save_path, interrupted)
+            stats_save_path = self._prep_save_file(self.stats_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
             self.stats.save(stats_save_path)
             if verbose >= 1:
                 _logger.info(f"Task's stats saved to {stats_save_path}")
-
-    @staticmethod
-    def __prep_save_file(specified_path: str, interrupted: bool) -> str:
-        """
-        Creates parent directories if they're missing and, if ``interrupted=True``, prepends 'backup_' to the
-        file name in the specified path. This method was created to avoid duplicating code in the
-        :func:`LearningTask.__handle_task_terminated` method.
-
-        Returns:
-            Final path
-        """
-        dirname, filename = os.path.split(specified_path)
-        if interrupted:
-            # prefix to let user know that the training has not been completed
-            filename = f'backup_{filename}'
-        os.makedirs(dirname, exist_ok=True)
-        full_path = os.path.join(dirname, filename)
-        return full_path
 
     def __is_finished(self) -> bool:
         """
