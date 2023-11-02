@@ -12,7 +12,6 @@ class SarsaAgent(TabularAgent):
     action actually taken in the next state.
 
     Args:
-        q_table (dict): Q-table for the agent.
         n_actions: Number of possible actions in the environment.
         alpha: Learning rate. Defaults to 0.1.
         gamma: Discount factor. Defaults to 0.99.
