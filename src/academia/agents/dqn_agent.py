@@ -102,9 +102,6 @@ class DQNAgent(Agent):
                  min_epsilon: float = 0.01,
                  batch_size: int = 64, random_state: Optional[int] = None
                  ):
-        """
-        Initializes a new instance of the DQNAgent class.
-        """
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
                                        n_actions=n_actions, gamma=gamma, random_state=random_state)
