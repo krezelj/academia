@@ -14,17 +14,29 @@ class LavaCrossing(GenericMiniGridWrapper):
 
     Possible actions:
 
-    | Num | Name    | Action             |
-    |-----|---------|--------------------|
-    | 0   | left    | Turn left          |
-    | 1   | right   | Turn right         |
-    | 2   | forward | Move forward       |
+    +-----+---------+---------------+
+    | Num | Name    | Action        |
+    +=====+=========+===============+
+    | 0   | left    | Turn left     |
+    +-----+---------+---------------+
+    | 1   | right   | Turn right    |
+    +-----+---------+---------------+
+    | 2   | forward | Move forward  |
+    +-----+---------+---------------+
 
-    Possible difficulty levels:
-    0: 9x9 grid size with 1 lava patch
-    1: 9x9 grid size with 2 lava patches
-    2: 9x9 grid size with 3 lava patches
-    3: 11x11 grid size with 5 lava patches
+    Difficulty levels:
+
+    +------------+----------------------------------------------+
+    | Difficulty | Description                                  |
+    +============+==============================================+
+    | 0          | 9x9 grid size with 1 lava patch              |
+    +------------+----------------------------------------------+
+    | 1          | 9x9 grid size with 2 lava patches            |
+    +------------+----------------------------------------------+
+    | 2          | 9x9 grid size with 3 lava patches            |
+    +------------+----------------------------------------------+
+    | 3          | 11x11 grid size with 5 lava patches          |
+    +------------+----------------------------------------------+
 
     Args:
         difficulty: Difficulty level from 0 to 3, where 0 is the easiest
