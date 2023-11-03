@@ -121,20 +121,20 @@ class Curriculum(SavableLoadable):
                 task.stats_save_path = os.path.join(self.output_dir, f'{task_id}_stats')
 
             task.run(agent, verbose=verbose, render=render)
-            total_episodes += len(task.episode_rewards)
+            total_episodes += len(task.stats.episode_rewards)
 
-            task_wall_time = np.sum(task.episode_wall_times)
-            task_cpu_time = np.sum(task.episode_cpu_times)
+            task_wall_time = np.sum(task.stats.episode_wall_times)
+            task_cpu_time = np.sum(task.stats.episode_cpu_times)
             total_wall_time += task_wall_time
             total_cpu_time += task_cpu_time
 
             if verbose >= 1:
                 _logger.info(f'Task {task_id} finished after '
-                             f'{len(task.episode_rewards)} episodes.')
+                             f'{len(task.stats.episode_rewards)} episodes.')
                 _logger.info(f'Elapsed task wall time: {task_wall_time:.2f} sec')
                 _logger.info(f'Elapsed task CPU time: {task_cpu_time:.2f} sec')
-                _logger.info(f'Average steps per episode: {np.mean(task.step_counts):.2f}')
-                _logger.info(f'Average reward per episode: {np.mean(task.episode_rewards):.2f}')
+                _logger.info(f'Average steps per episode: {np.mean(task.stats.step_counts):.2f}')
+                _logger.info(f'Average reward per episode: {np.mean(task.stats.episode_rewards):.2f}')
         if verbose >= 1:
             _logger.info(f'Curriculum finished after {total_episodes} episodes.')
             _logger.info(f'Elapsed total wall time: {total_wall_time:.2f} sec')
@@ -167,7 +167,7 @@ class Curriculum(SavableLoadable):
 
         An example curriculum configuration file::
 
-            # my_config.curriculum.yaml
+            # my_config.curriculum.yml
             output_dir: './my_curriculum/'
             order:
             - 0
@@ -184,8 +184,8 @@ class Curriculum(SavableLoadable):
                   max_episodes: 500
               1:
                 # this task's config lies in a separate file
-                # path is relative to the location of my_config.curriculum.yaml
-                path: ./lava_crossing_hard.task.yaml
+                # path is relative to the location of my_config.curriculum.yml
+                path: ./lava_crossing_hard.task.yml
 
         Args:
             path: Path to a configuration file. If the specified file does not end with '.yml' extension,
