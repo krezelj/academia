@@ -1,6 +1,5 @@
-import json
 import os
-from typing import Dict
+from typing import Dict, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +9,7 @@ from plotly.subplots import make_subplots
 
 from academia.curriculum import LearningStats
 
-def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None):
+def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)), 
                           y=[task_stats.episode_rewards, task_stats.episode_rewards_moving_avg],
                           title='Episode Rewards and Moving Average')
@@ -52,14 +51,19 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
 
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        fig_rewards.write_image(f"{save_path}_rewards.png")
-        fig_steps.write_image(f"{save_path}_steps.png")
-        fig_evaluations.write_image(f"{save_path}_evaluations.png")
+        if save_format == 'png':
+            fig_rewards.write_image(f"{save_path}_rewards.png")
+            fig_steps.write_image(f"{save_path}_steps.png")
+            fig_evaluations.write_image(f"{save_path}_evaluations.png")
+        else:
+            fig_rewards.write_html(f"{save_path}_rewards.html")
+            fig_steps.write_html(f"{save_path}_steps.html")
+            fig_evaluations.write_html(f"{save_path}_evaluations.html")
         return os.path.abspath(save_path)
     
     
 def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
-                               save_path: str = None):
+                               save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     num_tasks = len(curriculum_stats)
     num_cols = 2
     num_rows = (num_tasks + 1) // num_cols
@@ -83,4 +87,9 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     if show:
         fig.show()
     elif save_path:
-        fig.write_json(save_path)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(save_path)
+        else:
+            fig.write_html(save_path)
+        return os.path.abspath(save_path)
