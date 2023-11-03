@@ -300,7 +300,7 @@ class LearningTask(SavableLoadable):
 
         An example task configuration file::
 
-            # my_config.task.yaml
+            # my_config.task.yml
             env_type: academia.environments.LavaCrossing
             env_args:
                 difficulty: 2
