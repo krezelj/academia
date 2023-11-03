@@ -11,21 +11,36 @@ class DoorKey(GenericMiniGridWrapper):
     A grid environment where an agent has to find a key and then open a door to reach the destination.
     The higher the difficulty, the bigger the grid so it is more complicated to find the key, next the door 
     and next the destination.
+
     Possible actions:
 
-    | Num | Name     | Action             |
-    |-----|----------|--------------------|
-    | 0   | left     | Turn left          |
-    | 1   | right    | Turn right         |
-    | 2   | forward  | Move forward       |
-    | 3   | pickup   | Pick up an object  |
+    +-----+----------+---------------------------+
+    | Num | Name     | Action                    |
+    +=====+==========+===========================+
+    | 0   | left     | Turn left                 |
+    +-----+----------+---------------------------+
+    | 1   | right    | Turn right                |
+    +-----+----------+---------------------------+
+    | 2   | forward  | Move forward              |
+    +-----+----------+---------------------------+
+    | 3   | pickup   | Pick up an object         |
+    +-----+----------+---------------------------+
     | 4   | toggle   | Toggle/activate an object |
+    +-----+----------+---------------------------+
 
-    Possible difficulty levels:
-    0: 5x5 grid size with 1 key and 1 door
-    1: 6x6 grid size with 1 key and 1 door
-    2: 8x8 grid size with 1 key and 1 door
-    3: 16x16 grid size with 1 key and 1 door
+    Difficulty levels:
+
+    +------------+-----------------------------------------------+
+    | Difficulty | Description                                   |
+    +============+===============================================+
+    | 0          | 5x5 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 1          | 6x6 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 2          | 8x8 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 3          | 16x16 grid size with 1 key and 1 door         |
+    +------------+-----------------------------------------------+
 
     Args:
         difficulty: Difficulty level from 0 to 3, where 0 is the easiest
