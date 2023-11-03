@@ -194,7 +194,7 @@ class LearningTask(SavableLoadable):
                     evaluation_rewards.append(evaluation_reward)
                     if verbose >= 3:
                         _logger.info(f'Evaluation {evaluation_no} after episode {episode}. '
-                                     f'Reward: {episode_reward}')
+                                     f'Reward: {evaluation_reward}')
                 mean_evaluation = np.mean(evaluation_rewards)
                 if verbose >= 2:
                     _logger.info(f'Evaluations after episode {episode} completed. '
