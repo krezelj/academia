@@ -68,28 +68,33 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     num_cols = 2
     num_rows = (num_tasks + 1) // num_cols
 
-    fig = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=[f'Task {task_id}' for task_id in curriculum_stats.keys()])
+    fig = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=[f'Episode rewards for task {task_id}' for task_id in curriculum_stats.keys()])
 
     row = 1
     col = 1
     for task_id, task_stats in curriculum_stats.items():
         rewards = task_stats.episode_rewards
-        fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Trajectory {task_id}'), row=row, col=col)
+        fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Task {task_id}'), row=row, col=col)
+        fig.update_xaxes(title_text='Step', row=row, col=col)
+        fig.update_yaxes(title_text='Reward', row=row, col=1)
         col += 1
         if col > num_cols:
             col = 1
             row += 1
 
     fig.update_layout(height=400 * num_rows, title_text='Trajectories of task rewards')
-    fig.update_xaxes(title_text='Step', row=num_rows, col=1)
-    fig.update_yaxes(title_text='Reward', row=1, col=1)
-
+    fig.update_traces(
+        hovertemplate="<br>".join([
+            "Episode: %{x}",
+            "Reward: %{y}"
+        ])
+    )
     if show:
         fig.show()
-    elif save_path:
+    if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(save_path)
+            fig.write_image(f"{save_path}_rewards_curriculum.png")
         else:
-            fig.write_html(save_path)
+            fig.write_html(f"{save_path}_rewards_curriculum.html")
         return os.path.abspath(save_path)
