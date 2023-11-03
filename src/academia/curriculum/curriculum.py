@@ -167,7 +167,7 @@ class Curriculum(SavableLoadable):
 
         An example curriculum configuration file::
 
-            # my_config.curriculum.yaml
+            # my_config.curriculum.yml
             output_dir: './my_curriculum/'
             order:
             - 0
@@ -184,8 +184,8 @@ class Curriculum(SavableLoadable):
                   max_episodes: 500
               1:
                 # this task's config lies in a separate file
-                # path is relative to the location of my_config.curriculum.yaml
-                path: ./lava_crossing_hard.task.yaml
+                # path is relative to the location of my_config.curriculum.yml
+                path: ./lava_crossing_hard.task.yml
 
         Args:
             path: Path to a configuration file. If the specified file does not end with '.yml' extension,
