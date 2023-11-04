@@ -47,17 +47,6 @@ class LearningTask(SavableLoadable):
             It is of a type ``env_type``, initialised with parameters from ``env_args``.
         stats (LearningStats): Learning statistics. For more detailed description of their contents see
             :class:`LearningStats`.
-        env_type (Type[ScalableEnvironment]): A subclass of
-            :class:`academia.environments.base.ScalableEnvironment` that the agent will
-            be trained on. This should be a class, not an instantiated object.
-        env_args (dict): Arguments passed to the constructor of the environment class (passed as ``env_type``
-            argument).
-        stop_conditions (dict): Conditions deciding when to end the training process. Available conditions:
-            ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
-            ``'evaluation_score'``.
-        evaluation_interval (int): Controls how often evaluations are conducted.
-        evaluation_count (int): Controls how many evaluation episodes are run during a single evaluation.
-            Final agent evaluation will be the mean of these individual evaluations.
         name (str, optional): Name of the task. This is unused when running a single task
             on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
             if the task is run through the :class:`Curriculum` object.
@@ -111,8 +100,8 @@ class LearningTask(SavableLoadable):
                  evaluation_interval: int = 100, evaluation_count: int = 5,
                  name: Optional[str] = None, agent_save_path: Optional[str] = None,
                  stats_save_path: Optional[str] = None) -> None:
-        self.env_type = env_type
-        self.env_args = env_args
+        self.__env_type = env_type
+        self.__env_args = env_args
 
         if len(stop_conditions) == 0:
             msg = ('stop_conditions dict must not be empty. '
@@ -127,11 +116,11 @@ class LearningTask(SavableLoadable):
                 _logger.warning(f'"{sc}" is not a known stop condition. '
                                 f'Available stop conditions: {available_stop_conditions}')
 
-        self.stop_conditions = stop_conditions
-        self.evaluation_interval = evaluation_interval
-        self.evaluation_count = evaluation_count
+        self.__stop_conditions = stop_conditions
+        self.__evaluation_interval = evaluation_interval
+        self.__evaluation_count = evaluation_count
 
-        self.stats = LearningStats(self.evaluation_interval)
+        self.stats = LearningStats(self.__evaluation_interval)
 
         self.name = name
         self.agent_save_path = agent_save_path
@@ -151,7 +140,7 @@ class LearningTask(SavableLoadable):
             render: Whether or not to render the environment
         """
         self.__reset()
-        if render and self.env_args.get('render_mode') == 'human':
+        if render and self.__env_args.get('render_mode') == 'human':
             self.env.render()
         elif render and verbose >= 1:
             _logger.warning("Cannot render environment when render_mode is not 'human'. "
@@ -187,9 +176,9 @@ class LearningTask(SavableLoadable):
             wall_time, cpu_time = stopwatch.stop()
             self.stats.update(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
 
-            if episode % self.evaluation_interval == 0:
+            if episode % self.__evaluation_interval == 0:
                 evaluation_rewards: list[float] = []
-                for evaluation_no in range(self.evaluation_count):
+                for evaluation_no in range(self.__evaluation_count):
                     evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
                     evaluation_rewards.append(evaluation_reward)
                     if verbose >= 3:
@@ -265,30 +254,30 @@ class LearningTask(SavableLoadable):
             ``True`` if the task should be terminated or ``False`` otherwise
         """
         # using `if` instead of `elif` we will exit the task it *any* of the condition is true
-        if 'max_episodes' in self.stop_conditions:
-            return len(self.stats.episode_rewards) >= self.stop_conditions['max_episodes']
+        if 'max_episodes' in self.__stop_conditions:
+            return len(self.stats.episode_rewards) >= self.__stop_conditions['max_episodes']
         
-        if 'max_steps' in self.stop_conditions:
-            return np.sum(self.stats.step_counts) >= self.stop_conditions['max_steps']
+        if 'max_steps' in self.__stop_conditions:
+            return np.sum(self.stats.step_counts) >= self.__stop_conditions['max_steps']
         
-        if 'min_avg_reward' in self.stop_conditions and len(self.stats.episode_rewards_moving_avg) > 5:
+        if 'min_avg_reward' in self.__stop_conditions and len(self.stats.episode_rewards_moving_avg) > 5:
             # check if episode_rewards_moving_avg length is greater than because if not it is possibility
             # that agent scored max reward in first episode
             # and then it will stop training because it will think that it has reached min_avg_reward
-            return self.stats.episode_rewards_moving_avg[-1] >= self.stop_conditions['min_avg_reward']
+            return self.stats.episode_rewards_moving_avg[-1] >= self.__stop_conditions['min_avg_reward']
         
-        if 'min_reward_std_dev' in self.stop_conditions and len(self.stats.episode_rewards) > 10:
-            return np.std(self.stats.episode_rewards[-10:]) <= self.stop_conditions['min_reward_std_dev']
+        if 'min_reward_std_dev' in self.__stop_conditions and len(self.stats.episode_rewards) > 10:
+            return np.std(self.stats.episode_rewards[-10:]) <= self.__stop_conditions['min_reward_std_dev']
 
-        if 'evaluation_score' in self.stop_conditions:
-            return np.mean(self.stats.agent_evaluations[-5:]) >= self.stop_conditions['evaluation_score']
+        if 'evaluation_score' in self.__stop_conditions:
+            return np.mean(self.stats.agent_evaluations[-5:]) >= self.__stop_conditions['evaluation_score']
         
     def __reset(self) -> None:
         """
         Resets environment and statistics.
         """
-        self.env: ScalableEnvironment = self.env_type(**self.env_args)
-        self.stats = LearningStats(self.evaluation_interval)
+        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
+        self.stats = LearningStats(self.__evaluation_interval)
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
@@ -371,10 +360,10 @@ class LearningTask(SavableLoadable):
             A dictionary with the task configuration, ready to be written to a text file.
         """
         task_data = {
-            'env_type': self.get_type_name_full(self.env_type),
-            'env_args': self.env_args,
-            'stop_conditions': self.stop_conditions,
-            'evaluation_interval': self.evaluation_interval,
+            'env_type': self.get_type_name_full(self.__env_type),
+            'env_args': self.__env_args,
+            'stop_conditions': self.__stop_conditions,
+            'evaluation_interval': self.__evaluation_interval,
         }
         if self.name is not None:
             task_data['name'] = self.name
