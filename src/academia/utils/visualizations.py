@@ -157,7 +157,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
     fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
                           title='Impact of learning duration in task x to evaluation of task y')
     fig.update_layout(
-        xaxis_title="Number of episodes in task x",
+        xaxis_title="Number of episodes in task X",
         yaxis_title="Evaluation score in task Y"
     )
     fig.update_traces(
@@ -171,8 +171,39 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(f"{save_path}_impact_task_to_another.png")
+            fig.write_image(f"{save_path}_evaluation_impact.png")
         else:
-            fig.write_html(f"{save_path}_impact_task_to_another.html")
+            fig.write_html(f"{save_path}_evaluation_impact.html")
+        return os.path.abspath(save_path)
+    
+def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = True, 
+                     save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    if len(stats_lvl_x) != len(stats_lvl_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
+    
+    episoded_lvl_x = [len(task.step_counts) for task in stats_lvl_x]
+    agent_time_lvl_x = [np.sum(task.episode_cpu_times) for task in stats_lvl_x]
+    agent_time_lvl_y = [np.sum(task.episode_cpu_times) for task in stats_lvl_y]
+    total_times_for_both = agent_time_lvl_x + agent_time_lvl_y
+    fig = px.line(x=episoded_lvl_x, y=total_times_for_both,
+                          title='Impact of number of episodes in task x on total time spent in both tasks')
+    fig.update_layout(
+        xaxis_title="Number of episodes in task X",
+        yaxis_title="Total time spent in both tasks"
+    )
+    fig.update_traces(
+        hovertemplate="<br>".join([
+            "Number of episodes in task X: %{x}",
+            "Total time spent in both tasks: %{y}"
+        ])
+    )
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_time_impact.png")
+        else:
+            fig.write_html(f"{save_path}_time_impact.html")
         return os.path.abspath(save_path)
     
