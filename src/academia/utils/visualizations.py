@@ -140,3 +140,34 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
         else:
             fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
         return os.path.abspath(save_path)
+
+def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
+                                show: bool = True, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    num_of_episodes_lvl_x = [num_of_episoded for num_of_episoded in num_of_episodes_lvl_x]
+    agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
+
+    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
+        raise ValueError("Number of episodes in task x and number of tasks y should be equal")
+    
+    fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
+                          title='Impact of learning duration in task x to evaluation of task y')
+    fig.update_layout(
+        xaxis_title="Number of episodes in task x",
+        yaxis_title="Evaluation score in task Y"
+    )
+    fig.update_traces(
+        hovertemplate="<br>".join([
+            "Number of episodes in task x: %{x}",
+            "Evaluation score in task y: %{y}"
+        ])
+    )
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_impact_task_to_another.png")
+        else:
+            fig.write_html(f"{save_path}_impact_task_to_another.html")
+        return os.path.abspath(save_path)
+    
