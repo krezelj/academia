@@ -21,7 +21,7 @@ class ScalableEnvironment(ABC):
 
     N_ACTIONS: int
     """Number of available actions."""
-    STATE_SHAPE: tuple
+    STATE_SHAPE: tuple[int, ...]
     """Shape of the state representation. Can vary for each instance"""
 
     @abstractmethod
