@@ -131,7 +131,7 @@ class LearningTask(SavableLoadable):
         self.evaluation_interval = evaluation_interval
         self.evaluation_count = evaluation_count
 
-        self.stats = LearningStats()
+        self.stats = LearningStats(self.evaluation_interval)
 
         self.name = name
         self.agent_save_path = agent_save_path
@@ -288,7 +288,7 @@ class LearningTask(SavableLoadable):
         Resets environment and statistics.
         """
         self.env: ScalableEnvironment = self.env_type(**self.env_args)
-        self.stats = LearningStats()
+        self.stats = LearningStats(self.evaluation_interval)
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
@@ -402,9 +402,10 @@ class LearningStats(SavableLoadable):
             each episode (excluding evaluations).
         episode_cpu_times (numpy.ndarray): An array of floats which stores elapsed CPU times for
             each episode (excluding evaluations).
+        evaluation_interval (int): How often evaluations were conducted.
     """
 
-    def __init__(self):
+    def __init__(self, evaluation_interval: int):
         self.agent_evaluations = np.array([])
         self.episode_rewards = np.array([])
         self.step_counts = np.array([])
@@ -412,6 +413,7 @@ class LearningStats(SavableLoadable):
         self.step_counts_moving_avg = np.array([])
         self.episode_wall_times = np.array([])
         self.episode_cpu_times = np.array([])
+        self.evaluation_interval = evaluation_interval
 
     def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
                cpu_time: float, verbose: int = 0) -> None:
@@ -473,7 +475,8 @@ class LearningStats(SavableLoadable):
                     2.3829500180000007,
                     2.4324373569999995,
                     2.3217381230000001
-                ]
+                ],
+                "evaluation_interval": 100
             }
 
         Args:
@@ -488,7 +491,7 @@ class LearningStats(SavableLoadable):
             path += '.stats.json'
         with open(path, 'r') as file:
             stats_dict = json.load(file)
-        stats_obj = cls()
+        stats_obj = cls(evaluation_interval=stats_dict['evaluation_interval'])
         stats_obj.episode_rewards = np.array(stats_dict['episode_rewards'])
         stats_obj.step_counts = np.array(stats_dict['step_counts'])
         stats_obj.episode_rewards_moving_avg = np.array(stats_dict['episode_rewards_moving_avg'])
@@ -520,6 +523,7 @@ class LearningStats(SavableLoadable):
                 'agent_evaluations': self.agent_evaluations.tolist(),
                 'episode_wall_times': self.episode_wall_times.tolist(),
                 'episode_cpu_times': self.episode_cpu_times.tolist(),
+                'evaluation_interval': self.evaluation_interval,
             }
             json.dump(data, file, indent=4)
         return path
