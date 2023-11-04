@@ -304,7 +304,7 @@ class LearningTask(SavableLoadable):
         Loads a task configuration from the specified file.
 
         A configuration file should be in YAML format. Properties names should be identical to the arguments
-        of the :class:`LearningTask` constructor.
+        of the :class:`LearningTask`'s constructor.
 
         An example task configuration file::
 
