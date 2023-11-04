@@ -99,9 +99,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         self._state = self._transform_state(self._base_env.reset()[0])
         self._past_n_states = deque([self._state for _ in range(self.n_frames_stacked)])
         self.step_count = 0
-        # after resetting there's only one state so it doesn't make any difference
-        # whether self.observe() or self._state is returned.
-        return self._state
+        return self.observe()
 
     def render(self) -> None:
         """
