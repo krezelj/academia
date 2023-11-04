@@ -11,12 +11,12 @@ class ScalableEnvironment(ABC):
     Args:
         difficulty: Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
-            representation.
+            representation. Defaults to 1.
 
     Attributes:
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
-            representation. Defaults to 1.
+            representation.
     """
 
     N_ACTIONS: int

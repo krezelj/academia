@@ -20,15 +20,15 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         difficulty: The difficulty level of the environment.
         environment_id: Gymnasium environment ID.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
-            representation.
-        append_step_count: Whether or not append the current step count to each state.
+            representation. Defaults to 1.
+        append_step_count: Whether or not append the current step count to each state. Defaults to ``False``
         kwargs: Arguments passed down to ``gymnasium.make``
 
     Attributes:
         step_count (int): Current step count since the last reset.
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
-            representation. Defaults to 1.
+            representation.
         append_step_count (bool): Whether or not append the current step count to each state.
     """
 
