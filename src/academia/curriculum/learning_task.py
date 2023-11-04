@@ -364,9 +364,14 @@ class LearningTask(SavableLoadable):
             'env_args': self.__env_args,
             'stop_conditions': self.__stop_conditions,
             'evaluation_interval': self.__evaluation_interval,
+            'evaluation_count': self.__evaluation_count,
         }
         if self.name is not None:
             task_data['name'] = self.name
+        if self.agent_save_path is not None:
+            task_data['agent_save_path'] = self.agent_save_path
+        if self.stats_save_path is not None:
+            task_data['stats_save_path'] = self.stats_save_path
         return task_data
 
 
