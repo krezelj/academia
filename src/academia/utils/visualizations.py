@@ -143,12 +143,17 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
 
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
                                 show: bool = True, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
-    num_of_episodes_lvl_x = [num_of_episoded for num_of_episoded in num_of_episodes_lvl_x]
     agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
 
-    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
-        raise ValueError("Number of episodes in task x and number of tasks y should be equal")
+    if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
     
+    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
+        raise ValueError(
+            f"Agent evaluations should only be performed at the end of tasks with a level "
+            f"of difficulty y."
+        )
+
     fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
                           title='Impact of learning duration in task x to evaluation of task y')
     fig.update_layout(
