@@ -66,11 +66,12 @@ class LavaCrossing(GenericMiniGridWrapper):
     }
     """A dictionary that maps difficulty levels to gymnasium environment ids"""
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False, **kwargs):
         super().__init__(
             difficulty=difficulty,
             difficulty_envid_map=LavaCrossing.__difficulty_envid_map,
             n_frames_stacked=n_frames_stacked,
+            append_step_count=append_step_count,
             **kwargs,
         )
         

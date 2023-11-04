@@ -75,7 +75,7 @@ class LunarLander(GenericGymnasiumWrapper):
         5: {'enable_wind': True, 'wind_power': 25.0, 'turbulence_power': 2.0}, 
     }
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False, **kwargs):
         try:
             difficulty_params = LunarLander.__difficulty_params_map[difficulty]
         except KeyError:
@@ -86,6 +86,7 @@ class LunarLander(GenericGymnasiumWrapper):
             difficulty=difficulty,
             environment_id='LunarLander-v2',
             n_frames_stacked=n_frames_stacked,
+            append_step_count=append_step_count,
             **difficulty_params,
             **kwargs,
         )

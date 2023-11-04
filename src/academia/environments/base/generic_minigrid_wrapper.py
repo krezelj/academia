@@ -30,7 +30,8 @@ class GenericMiniGridWrapper(GenericGymnasiumWrapper):
         append_step_count (bool): Whether or not append the current step count to each state
     """
 
-    def __init__(self, difficulty: int, difficulty_envid_map: dict, n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, difficulty_envid_map: dict, n_frames_stacked: int = 1,
+                 append_step_count: bool = False, **kwargs):
         self._difficulty_envid_map = difficulty_envid_map
         try:
             env_id = self._difficulty_envid_map[difficulty]
@@ -42,6 +43,7 @@ class GenericMiniGridWrapper(GenericGymnasiumWrapper):
             difficulty=difficulty,
             environment_id=env_id,
             n_frames_stacked=n_frames_stacked,
+            append_step_count=append_step_count,
             **kwargs
         )
 

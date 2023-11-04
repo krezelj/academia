@@ -70,12 +70,13 @@ class DoorKey(GenericMiniGridWrapper):
     }
     """A dictionary that maps difficulty levels to environment ids"""
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False, **kwargs):
         self._door_status = 2
         super().__init__(
             difficulty=difficulty,
             difficulty_envid_map=DoorKey.__difficulty_envid_map,
             n_frames_stacked=n_frames_stacked,
+            append_step_count=append_step_count,
             **kwargs,
         )
 
