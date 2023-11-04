@@ -57,6 +57,7 @@ class DoorKey(GenericMiniGridWrapper):
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
+        append_step_count (bool): Whether or not append the current step count to each state
     """
 
     N_ACTIONS = 5
@@ -147,6 +148,6 @@ class DoorKey(GenericMiniGridWrapper):
             self._door_status = 0
             
         return np.array(
-            [*cells_flattened, direction, self._door_status, self.step_count],
+            [*cells_flattened, direction, self._door_status],
             dtype=np.float32
         )

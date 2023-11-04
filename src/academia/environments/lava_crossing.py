@@ -53,6 +53,7 @@ class LavaCrossing(GenericMiniGridWrapper):
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
+        append_step_count (bool): Whether or not append the current step count to each state
     """
 
     N_ACTIONS = 3
@@ -118,5 +119,5 @@ class LavaCrossing(GenericMiniGridWrapper):
         cells_obj_types: np.ndarray = raw_state['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
         direction = raw_state['direction']
-        return np.array([*cells_flattened, direction, self.step_count], dtype=np.float32)
+        return np.array([*cells_flattened, direction], dtype=np.float32)
 

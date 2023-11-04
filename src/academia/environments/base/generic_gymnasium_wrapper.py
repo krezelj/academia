@@ -21,6 +21,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         environment_id: Gymnasium environment ID.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation.
+        append_step_count: Whether or not append the current step count to each state
         kwargs: Arguments passed down to ``gymnasium.make``
 
     Attributes:
@@ -28,15 +29,18 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
+        append_step_count (bool): Whether or not append the current step count to each state
     """
 
-    def __init__(self, difficulty: int, environment_id: str, n_frames_stacked: int = 1, **kwargs):
+    def __init__(self, difficulty: int, environment_id: str, n_frames_stacked: int = 1,
+                 append_step_count: bool = False, **kwargs):
         super().__init__(
             difficulty=difficulty,
             n_frames_stacked=n_frames_stacked,
         )
         self._base_env = gymnasium.make(environment_id, **kwargs)
         self.step_count = 0
+        self.append_step_count = append_step_count
         self._state = None  # properly set in self.reset()
         """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
 
@@ -75,6 +79,8 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
             The current state of the environment.
         """
         stacked_state = np.concatenate(list(self._past_n_states))
+        if self.append_step_count:
+            stacked_state = np.append(stacked_state, self.step_count)
         return stacked_state
 
     def get_legal_mask(self) -> npt.NDArray[int]:

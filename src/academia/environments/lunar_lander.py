@@ -60,6 +60,7 @@ class LunarLander(GenericGymnasiumWrapper):
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
+        append_step_count (bool): Whether or not append the current step count to each state
     """
 
     N_ACTIONS: int = 4
@@ -92,4 +93,4 @@ class LunarLander(GenericGymnasiumWrapper):
     def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
         # raw state returned by lunar lander is already a numpy array
         raw_state: np.ndarray
-        return np.array([*raw_state, self.step_count], dtype=np.float32)
+        return raw_state.astype(np.float32)
