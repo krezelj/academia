@@ -98,3 +98,43 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         else:
             fig.write_html(f"{save_path}_rewards_curriculum.html")
         return os.path.abspath(save_path)
+
+def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], nocurriculum_stats: LearningStats, show: bool = True,
+                               save_path: str = None, save_format: Literal['png', 'html'] = 'png', eval_interval: int = 20):
+    fig = go.Figure()
+    total_steps_to_last_eval = 0
+    for task_id, task_stats in curriculum_stats.items():
+        evaluations = task_stats.agent_evaluations
+        steps_count = task_stats.step_counts
+        steps_count[0] += total_steps_to_last_eval
+        steps_cum = np.cumsum(steps_count)
+        indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+        steps_to_eval = steps_cum[indices]
+        fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
+                                 y=evaluations, mode='lines', name=f'Task {task_id}'))
+        total_steps_to_last_eval = steps_to_eval[-1]
+    nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
+    nocurr_indices = np.arange(eval_interval - 1, len(nocurr_steps_cum), eval_interval)
+    no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
+    fig.add_trace(go.Scatter(x=np.concatenate([[0], no_curr_steps_to_eval]), y=nocurriculum_stats.agent_evaluations, mode='lines', name='No curriculum'))
+    fig.update_layout(title_text='Curriculum vs No Curriculum',
+                      xaxis_title='Total number of steps to evaluation',
+                      yaxis_title='Evaluation score')
+    fig.update_traces(
+        hovertemplate="<br>".join([
+            "Total num of steps to evaluation: %{x}",
+            "Evaluation score: %{y}"
+        ])
+    )
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_curriculum_vs_no_curriculum.png")
+        else:
+            fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
+        return os.path.abspath(save_path)
+
+
+
