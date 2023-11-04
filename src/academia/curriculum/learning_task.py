@@ -30,9 +30,9 @@ class LearningTask(SavableLoadable):
         evaluation_interval: Controls how often evaluations are conducted. Defaults to 100.
         evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
-        name: Name of the task. This is unused when running a single :class:`LearningTask` on its own.
+        name: Name of the task. This is unused when running a single task on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-            :class:`LearningTask` is run through the :class:`Curriculum` object.
+            task is run through the :class:`Curriculum` object.
         agent_save_path: A path to a file where the agent's state will be saved after the training is
             completed or if it is interrupted. If not set, agent's state will not be saved at any point.
         stats_save_path: A path to a file where the statistics gathered during training process will be
@@ -58,9 +58,9 @@ class LearningTask(SavableLoadable):
         evaluation_interval (int): Controls how often evaluations are conducted.
         evaluation_count (int): Controls how many evaluation episodes are run during a single evaluation.
             Final agent evaluation will be the mean of these individual evaluations.
-        name (str, optional): Name of the task. This is unused when running a single :class:`LearningTask`
+        name (str, optional): Name of the task. This is unused when running a single task
             on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
-            if the :class:`LearningTask` is run through the :class:`Curriculum` object.
+            if the task is run through the :class:`Curriculum` object.
         agent_save_path (str, optional): A path to a file where the agent's state will be saved after the
             training is completed or if it is interrupted. If set to ``None``, agent's state will not be
             saved at any point.
@@ -139,7 +139,7 @@ class LearningTask(SavableLoadable):
 
     def run(self, agent: Agent, verbose=0, render=False) -> None:
         """
-        Runs the training loop for the given agent on an environment specified during :class:`LearningTask`
+        Runs the training loop for the given agent on an environment specified during this task's
         initialisation. Training statistics will be saved to a JSON file if
         :attr:`stats_save_path` is not ``None``.
 
@@ -326,7 +326,7 @@ class LearningTask(SavableLoadable):
 
     def save(self, path: str) -> str:
         """
-        Saves this :class:`LearningTask`'s configuration to a file.
+        Saves this task's configuration to a file.
         Configuration is stored in a YAML format.
 
         Args:

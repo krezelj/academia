@@ -221,7 +221,7 @@ class Curriculum(SavableLoadable):
 
     def save(self, path: str) -> str:
         """
-        Saves this :class:`Curriculum`'s configuration to the file.
+        Saves this curriculum's configuration to the file.
         Configuration is stored in a YAML format.
 
         Args:
