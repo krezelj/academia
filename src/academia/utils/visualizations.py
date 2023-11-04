@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Literal
+from typing import Dict, Literal, List
 
 import numpy as np
 import numpy.typing as npt
@@ -100,7 +100,8 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         return os.path.abspath(save_path)
 
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], nocurriculum_stats: LearningStats, show: bool = True,
-                               save_path: str = None, save_format: Literal['png', 'html'] = 'png', eval_interval: int = 20):
+                               save_path: str = None, save_format: Literal['png', 'html'] = 'png', eval_interval: int = 20,
+                               includes_init_eval: bool = False):
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
@@ -110,8 +111,12 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
         steps_cum = np.cumsum(steps_count)
         indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
         steps_to_eval = steps_cum[indices]
-        fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
-                                 y=evaluations, mode='lines', name=f'Task {task_id}'))
+        if includes_init_eval:
+            fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
+                                    y=evaluations, mode='lines', name=f'Task {task_id}'))
+        else:
+            fig.add_trace(go.Scatter(x=steps_to_eval, y=evaluations, mode='lines', name=f'Task {task_id}'))
+            
         total_steps_to_last_eval = steps_to_eval[-1]
     nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
     nocurr_indices = np.arange(eval_interval - 1, len(nocurr_steps_cum), eval_interval)
@@ -135,6 +140,3 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
         else:
             fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
         return os.path.abspath(save_path)
-
-
-
