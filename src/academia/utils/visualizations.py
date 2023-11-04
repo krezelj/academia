@@ -9,7 +9,9 @@ from plotly.subplots import make_subplots
 
 from academia.curriculum import LearningStats
 
-def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None, 
+              save_format: Literal['png', 'html'] = 'png'):
+    
     fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)), 
                           y=[task_stats.episode_rewards, task_stats.episode_rewards_moving_avg],
                           title='Episode Rewards and Moving Average')
@@ -99,9 +101,11 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
             fig.write_html(f"{save_path}_rewards_curriculum.html")
         return os.path.abspath(save_path)
 
-def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], nocurriculum_stats: LearningStats, show: bool = True,
-                               save_path: str = None, save_format: Literal['png', 'html'] = 'png', eval_interval: int = 20,
-                               includes_init_eval: bool = False):
+
+def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
+                                    nocurriculum_stats: LearningStats, show: bool = True,
+                                    save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
+                                    eval_interval: int = 20, includes_init_eval: bool = False):
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
@@ -141,8 +145,11 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
             fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
         return os.path.abspath(save_path)
 
+
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
-                                show: bool = True, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+                           show: bool = True, save_path: str = None, 
+                           save_format: Literal['png', 'html'] = 'png'):
+    
     agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
 
     if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
@@ -175,9 +182,11 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         else:
             fig.write_html(f"{save_path}_evaluation_impact.html")
         return os.path.abspath(save_path)
-    
+
+
 def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = True, 
                      save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
     
