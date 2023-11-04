@@ -64,7 +64,6 @@ class LunarLander(GenericGymnasiumWrapper):
     """
 
     N_ACTIONS: int = 4
-    STATE_SIZE: int = 8
 
     __difficulty_params_map = {
         0: {'enable_wind': False, 'wind_power': 0.0, 'turbulence_power': 0.0},

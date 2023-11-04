@@ -46,7 +46,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
 
         self._past_n_states = deque()  # properly set in self.reset()
         self.reset()
-        self.STATE_SIZE = len(self.observe())
+        self.STATE_SHAPE = self.observe().shape
 
     def step(self, action: int) -> tuple[Any, float, bool]:
         """

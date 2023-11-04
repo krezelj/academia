@@ -21,8 +21,8 @@ class ScalableEnvironment(ABC):
 
     N_ACTIONS: int
     """Number of available actions."""
-    STATE_SIZE: int
-    """A constant denoting the dimension of the state representation. Can vary for each instance"""
+    STATE_SHAPE: tuple
+    """Shape of the state representation. Can vary for each instance"""
 
     @abstractmethod
     def __init__(self, difficulty: int, n_frames_stacked: int = 1, **kwargs):
