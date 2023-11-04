@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -11,26 +11,57 @@ class DoorKey(GenericMiniGridWrapper):
     A grid environment where an agent has to find a key and then open a door to reach the destination.
     The higher the difficulty, the bigger the grid so it is more complicated to find the key, next the door 
     and next the destination.
+
     Possible actions:
 
-    | Num | Name     | Action             |
-    |-----|----------|--------------------|
-    | 0   | left     | Turn left          |
-    | 1   | right    | Turn right         |
-    | 2   | forward  | Move forward       |
-    | 3   | pickup   | Pick up an object  |
-    | 4   | drop     | Unused             |
-    | 5   | toggle   | Toggle/activate an object |
-    | 6   | done     | Unused             |
+    +-----+----------+---------------------------+
+    | Num | Name     | Action                    |
+    +=====+==========+===========================+
+    | 0   | left     | Turn left                 |
+    +-----+----------+---------------------------+
+    | 1   | right    | Turn right                |
+    +-----+----------+---------------------------+
+    | 2   | forward  | Move forward              |
+    +-----+----------+---------------------------+
+    | 3   | pickup   | Pick up an object         |
+    +-----+----------+---------------------------+
+    | 4   | toggle   | Toggle/activate an object |
+    +-----+----------+---------------------------+
 
-    Possible difficulty levels:
-    0: 5x5 grid size with 1 key and 1 door
-    1: 6x6 grid size with 1 key and 1 door
-    2: 8x8 grid size with 1 key and 1 door
-    3: 16x16 grid size with 1 key and 1 door
+    Difficulty levels:
+
+    +------------+-----------------------------------------------+
+    | Difficulty | Description                                   |
+    +============+===============================================+
+    | 0          | 5x5 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 1          | 6x6 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 2          | 8x8 grid size with 1 key and 1 door           |
+    +------------+-----------------------------------------------+
+    | 3          | 16x16 grid size with 1 key and 1 door         |
+    +------------+-----------------------------------------------+
+
+    Args:
+        difficulty: Difficulty level from 0 to 3, where 0 is the easiest
+            and 3 is the hardest.
+        n_frames_stacked: How many most recent states should be stacked together to form a final state
+            representation. Defaults to 1.
+        append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
+        kwargs: Arguments passed down to ``gymnasium.make``.
+
+    Raises:
+        ValueError: If the specified difficulty level is invalid.
+
+    Attributes:
+        step_count (int): Current step count since the last reset.
+        difficulty (int): Difficulty level. Higher values indicate more difficult environments.
+        n_frames_stacked (int): How many most recent states should be stacked together to form a final state
+            representation.
+        append_step_count (bool): Whether or not append the current step count to each state.
     """
 
-    N_ACTIONS = 6
+    N_ACTIONS = 5
 
     __difficulty_envid_map = {
         0: 'MiniGrid-DoorKey-5x5-v0',
@@ -40,25 +71,34 @@ class DoorKey(GenericMiniGridWrapper):
     }
     """A dictionary that maps difficulty levels to environment ids"""
 
-    def __init__(self, difficulty: int, render_mode: Optional[str] = None, **kwargs):
-        """
-        :param difficulty:  Difficulty level from 0 to 3, where 0 is the easiest
-                            and 3 is the hardest
-        :param render_mode: render_mode value passed to gymnasium.make
-        """
-
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False, **kwargs):
         self._door_status = 2
-        super().__init__(difficulty, DoorKey.__difficulty_envid_map, render_mode=render_mode, **kwargs)
-    
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
-        mask = np.array([1 for _ in range(self.N_ACTIONS)])
-        mask[4] = 0 #drop action is unused
-        return mask
-    
-    @property
-    def _state(self) -> tuple[int, ...]:
+        super().__init__(
+            difficulty=difficulty,
+            difficulty_envid_map=DoorKey.__difficulty_envid_map,
+            n_frames_stacked=n_frames_stacked,
+            append_step_count=append_step_count,
+            **kwargs,
+        )
+
+    def _transform_action(self, action: int) -> int:
         """
-        This property takes the raw state representation (self._state_raw) returned
+        In the Door Key environment, action 4 is unused, but action 5 is used. This method maps action 4
+        to 5 in order to reduce the action space size.
+
+        Args:
+            action: Action ID according to the package mapping
+
+        Returns:
+            Action ID according to the underlying environment mapping
+        """
+        if action == 4:
+            return 5
+        return action
+    
+    def _transform_state(self, raw_state: Any) -> npt.NDArray[np.float32]:
+        """
+        This method takes the raw state representation returned
         by the base environment and transforms it so that it is compatible
         with the agent API provided by this package.
 
@@ -86,25 +126,30 @@ class DoorKey(GenericMiniGridWrapper):
         To obtain the final result, object types of each cell and the direction
         the agent is facing are used.
 
-        **Note:** the position of the agent is not marked on the 2D "image"
-        array that comes in the input state. Agent's cell might be in one of
-        four positions in this array - in the center of any of the array's
-        sides. This position could be different in every generated environment,
-        but once the environment is initialised this position will not change
-        no matter the direction the agent is facing or its location on the grid.
+        Notes:
+            The position of the agent is not marked on the 2D "image"
+            array that comes in the input state. Agent's cell might be in one of
+            four positions in this array - in the center of any of the array's
+            sides. This position could be different in every generated environment,
+            but once the environment is initialised this position will not change
+            no matter the direction the agent is facing or its location on the grid.
 
-        :return: an array of object types of every grid cell concatenated with
-                 the direction which the agent is facing and with door state.
+        Returns:
+            An array of object types of every grid cell concatenated with
+            the direction which the agent is facing and with door state.
         """
 
-        cells_obj_types: np.ndarray = self._state_raw['image'][:, :, 0]
+        cells_obj_types: np.ndarray = raw_state['image'][:, :, 0]
         cells_flattened = cells_obj_types.flatten()
-        direction = self._state_raw['direction']
-        door_array = self._state_raw['image'][:,:,2].flatten()
+        direction = raw_state['direction']
+        door_array = raw_state['image'][:, :, 2].flatten()
 
         if self._door_status == 2 and 1 in door_array:
             self._door_status = 1
         elif self._door_status == 1 and 0 in door_array:
             self._door_status = 0
             
-        return np.array([*cells_flattened, direction, self._door_status])
+        return np.array(
+            [*cells_flattened, direction, self._door_status],
+            dtype=np.float32
+        )

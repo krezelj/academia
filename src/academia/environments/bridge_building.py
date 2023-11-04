@@ -89,10 +89,10 @@ class BridgeBuilding(ScalableEnvironment):
             state += self.boulder_positions[i]
         return state
 
-    def render(self):
+    def render(self) -> None:
         pass
 
-    def get_legal_mask(self) -> npt.NDArray[Union[bool, int]]:
+    def get_legal_mask(self) -> npt.NDArray[int]:
         mask = np.zeros(self.N_ACTIONS)
         offsets = [self.__get_offset_from_direction(d) for d in range(4)]
         for i, offset in enumerate(offsets):
