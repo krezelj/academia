@@ -48,7 +48,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         self.reset()
         self.STATE_SHAPE = self.observe().shape
 
-    def step(self, action: int) -> tuple[Any, float, bool]:
+    def step(self, action: int) -> tuple[npt.NDArray[np.float32], float, bool]:
         """
         Advances the environment by one step given the specified action.
 
@@ -70,7 +70,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         is_episode_end = terminated or truncated
         return self.observe(), float(reward), is_episode_end
 
-    def observe(self) -> Any:
+    def observe(self) -> npt.NDArray[np.float32]:
         """
         Returns the current state of the environment. Performs state stacking if :attr:`n_frames_stacked` is
         greater than 1.
@@ -95,7 +95,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         """
         return np.array([1 for _ in range(self.N_ACTIONS)])
 
-    def reset(self) -> Any:
+    def reset(self) -> npt.NDArray[np.float32]:
         """
         Resets the environment to its initial state.
 
