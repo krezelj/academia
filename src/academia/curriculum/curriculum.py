@@ -231,11 +231,13 @@ class Curriculum(SavableLoadable):
         Returns:
             A final (i.e. with an extension), absolute path where the configuration was saved.
         """
-        # dict preserves insertion order
         curr_data = {
             'order': list(range(len(self.tasks))),
+            # dict preserves insertion order
             'tasks': {i: task.to_dict() for i, task in enumerate(self.tasks)},
         }
+        if self.output_dir is not None:
+            curr_data['output_dir'] = self.output_dir
         # add file extension
         if not path.endswith('.yml'):
             path += '.curriculum.yml'
