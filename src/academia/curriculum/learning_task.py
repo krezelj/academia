@@ -35,10 +35,10 @@ class LearningTask(SavableLoadable):
         name: Name of the task. This is unused when running a single task on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
             task is run through the :class:`Curriculum` object.
-        agent_save_path: A path to a file where the agent's state will be saved after the training is
-            completed or if it is interrupted. If not set, agent's state will not be saved at any point.
-        stats_save_path: A path to a file where the statistics gathered during training process will be
-            saved after the training is completed or if it is interrupted. If not set, agent's state will
+        agent_save_path: A path to a file where agent's state will be saved after the training is
+            completed or if it is interrupted. If not set, an agent's state will not be saved at any point.
+        stats_save_path: A path to a file where statistics gathered during training process will be
+            saved after the training is completed or if it is interrupted. If not set, they will
             not be saved at any point.
 
     Raises:
@@ -52,12 +52,12 @@ class LearningTask(SavableLoadable):
         name (str, optional): Name of the task. This is unused when running a single task
             on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
             if the task is run through the :class:`Curriculum` object.
-        agent_save_path (str, optional): A path to a file where the agent's state will be saved after the
-            training is completed or if it is interrupted. If set to ``None``, agent's state will not be
+        agent_save_path (str, optional): A path to a file where agent's state will be saved after the
+            training is completed or if it is interrupted. If set to ``None``, an agent's state will not be
             saved at any point.
-        stats_save_path (str, optional): A path to a file where the statistics gathered during training
+        stats_save_path (str, optional): A path to a file where statistics gathered during training
             process will be saved after the training is completed or if it is interrupted. If set to
-            ``None``, agent's state will not be saved at any point.
+            ``None``, they will not be saved at any point.
 
     Examples:
         Initialisation using class contructor:
@@ -137,9 +137,8 @@ class LearningTask(SavableLoadable):
 
         Args:
             agent: An agent to train
-            verbose: Verbosity level. Possible values: 0 - no logging (except for errors);
-                1 - Task finished/Task interrupted + warnings; 2 - Mean evaluation score at each iteration;
-                3 - Each evaluation is logged; 4 - Each episode is logged.
+            verbose: Verbosity level. These are common for the entire module - for information on
+                different levels see :mod:`academia.curriculum`.
             render: Whether or not to render the environment
         """
         self.__reset()

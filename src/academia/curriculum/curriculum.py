@@ -19,14 +19,14 @@ class Curriculum(SavableLoadable):
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        output_dir: A path to a file where the agent states and training stats will be saved upon each
-            task's completion or interruption. If set to ``None``, agent's state or training stats will not
+        output_dir: A path to a file where agent states and training stats will be saved upon each task's
+            completion or interruption. If set to ``None``, an agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Attributes:
         tasks (list[LearningTask]): Tasks to be run. Tasks are run one by one so their order matters.
-        output_dir (str, optional): A path to a file where the agent states and training stats will be saved
-            upon each task's completion or interruption. If set to ``None``, agent's state or training stats
+        output_dir (str, optional): A path to a file where agent states and training stats will be saved upon
+            each task's completion or interruption. If set to ``None``, an agent's state or training stats
             will not be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Examples:
@@ -102,9 +102,8 @@ class Curriculum(SavableLoadable):
 
         Args:
             agent: An agent to train
-            verbose: Verbosity level. Possible values: 0 - no logging (except for errors);
-                1 - Task finished/Task interrupted + warnings; 2 - Mean evaluation score at each iteration;
-                3 - Each evaluation is logged; 4 - Each episode is logged.
+            verbose: Verbosity level. These are common for the entire module - for information on
+                different levels see :mod:`academia.curriculum`.
             render: Whether or not to render the environment
         """
         total_episodes = 0
