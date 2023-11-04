@@ -169,8 +169,8 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
     )
     fig.update_traces(
         hovertemplate="<br>".join([
-            "Number of episodes in task x: %{x}",
-            "Evaluation score in task y: %{y}"
+            "Number of episodes in task X: %{x}",
+            "Evaluation score in task Y: %{y}"
         ])
     )
     if show:
@@ -215,4 +215,51 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         else:
             fig.write_html(f"{save_path}_time_impact.html")
         return os.path.abspath(save_path)
+
+
+def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
+                                    stats_lvl_z: List[LearningStats], show: bool = True, save_path: str = None, 
+                                    save_format: Literal['png', 'html'] = 'png'):
+    agent_evals_lvl_z = [task.agent_evaluations for task in stats_lvl_z]
+
+    if len(num_of_episodes_lvl_x) != len(num_of_episodes_lvl_y) or \
+       len(num_of_episodes_lvl_x) != len(stats_lvl_z) or \
+       len(num_of_episodes_lvl_y) != len(stats_lvl_z):
+        raise ValueError("The number of tasks at level x, level y and level z should be equal.")
     
+    
+    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_z) or len(num_of_episodes_lvl_y) != len(agent_evals_lvl_z):
+        raise ValueError(
+            f"Agent evaluations should only be performed at the end of tasks with a level "
+            f"of difficulty z."
+        )
+
+    fig = px.scatter(x=num_of_episodes_lvl_x, 
+                     y=num_of_episodes_lvl_y, 
+                     color=agent_evals_lvl_z,
+                     color_continuous_scale='Greens',
+                     labels = {'color': 'Evaluation score in task Z'},
+                     text=np.round(agent_evals_lvl_z, 1),
+                     title='Impact of learning duration in task x and task y to evaluation of task z'
+                     )
+    
+    fig.update_traces(
+        marker_size=48,
+        hovertemplate="<br>".join(["Number of episodes in task X: %{x}",
+                                   "Number of episodes in task Y: %{y}",
+                                   "Evaluation score in task Z: %{marker.color:.3f}"
+                                   ]),
+        textfont_color='black'
+        )
+    
+    fig.update_xaxes(title_text='Number of Episodes Level X')
+    fig.update_yaxes(title_text='Number of Episodes Level Y')
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_multiple_evaluation_impact.png")
+        else:
+            fig.write_html(f"{save_path}_multiple_evaluation_impact.html")
+        return os.path.abspath(save_path)
