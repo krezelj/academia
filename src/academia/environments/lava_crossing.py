@@ -43,6 +43,7 @@ class LavaCrossing(GenericMiniGridWrapper):
             and 3 is the hardest.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation.
+        append_step_count: Whether or not append the current step count to each state.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -53,7 +54,7 @@ class LavaCrossing(GenericMiniGridWrapper):
         difficulty (int): Difficulty level. Higher values indicate more difficult environments.
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
-        append_step_count (bool): Whether or not append the current step count to each state
+        append_step_count (bool): Whether or not append the current step count to each state.
     """
 
     N_ACTIONS = 3
