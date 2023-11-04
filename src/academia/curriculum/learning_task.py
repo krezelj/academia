@@ -30,6 +30,8 @@ class LearningTask(SavableLoadable):
         evaluation_interval: Controls how often evaluations are conducted. Defaults to 100.
         evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
+        include_init_eval: Whether or not to evaluate an agent before the training starts (i.e. right at the
+            start of the :func:`run` method). Defaults to ``True``.
         name: Name of the task. This is unused when running a single task on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
             task is run through the :class:`Curriculum` object.
@@ -97,7 +99,7 @@ class LearningTask(SavableLoadable):
     """
 
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, evaluation_count: int = 5,
+                 evaluation_interval: int = 100, evaluation_count: int = 5, include_init_eval: bool = True,
                  name: Optional[str] = None, agent_save_path: Optional[str] = None,
                  stats_save_path: Optional[str] = None) -> None:
         self.__env_type = env_type
@@ -119,6 +121,7 @@ class LearningTask(SavableLoadable):
         self.__stop_conditions = stop_conditions
         self.__evaluation_interval = evaluation_interval
         self.__evaluation_count = evaluation_count
+        self.__include_init_eval = include_init_eval
 
         self.stats = LearningStats(self.__evaluation_interval)
 
@@ -168,6 +171,8 @@ class LearningTask(SavableLoadable):
         Runs a training loop on a given agent until one or more stop conditions are met.
         """
         episode = 0
+        if self.__include_init_eval:
+            self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
         while not self.__is_finished():
             episode += 1
 
@@ -177,19 +182,7 @@ class LearningTask(SavableLoadable):
             self.stats.update(episode, episode_reward, steps_count, wall_time, cpu_time, verbose)
 
             if episode % self.__evaluation_interval == 0:
-                evaluation_rewards: list[float] = []
-                for evaluation_no in range(self.__evaluation_count):
-                    evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
-                    evaluation_rewards.append(evaluation_reward)
-                    if verbose >= 3:
-                        _logger.info(f'Evaluation {evaluation_no} after episode {episode}. '
-                                     f'Reward: {evaluation_reward}')
-                mean_evaluation = np.mean(evaluation_rewards)
-                if verbose >= 2:
-                    _logger.info(f'Evaluations after episode {episode} completed. '
-                                 f'Mean reward: {mean_evaluation}')
-                self.stats.agent_evaluations = np.append(
-                    self.stats.agent_evaluations, mean_evaluation)
+                self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -219,6 +212,33 @@ class LearningTask(SavableLoadable):
             episode_reward += reward
             steps_count += 1
         return episode_reward, steps_count
+
+    def __handle_evaluation(self, agent: Agent, verbose: int, episode_no: int) -> None:
+        """
+        Runs the evaluation logic, together with logging and stats updating.
+
+        Args:
+            episode_no: The number of episode that precedes this evaluation (used for logging).
+        """
+
+        evaluation_rewards: list[float] = []
+        for evaluation_no in range(self.__evaluation_count):
+            evaluation_reward, _ = self.__run_episode(agent, evaluation_mode=True)
+            evaluation_rewards.append(evaluation_reward)
+            # different message for initial evaluations
+            if verbose >= 3 and episode_no == 0:
+                _logger.info(f'Initial evaluation {evaluation_no} completed. Reward: {evaluation_reward}')
+            elif verbose >= 3:
+                _logger.info(f'Evaluation {evaluation_no} after episode {episode_no} completed. '
+                             f'Reward: {evaluation_reward}')
+        mean_evaluation = np.mean(evaluation_rewards)
+        if verbose >= 2 and episode_no == 0:
+            _logger.info(f'All initial evaluations completed. Mean reward: {mean_evaluation}')
+        elif verbose >= 2:
+            _logger.info(f'All evaluations after episode {episode_no} completed. '
+                         f'Mean reward: {mean_evaluation}')
+        self.stats.agent_evaluations = np.append(
+            self.stats.agent_evaluations, mean_evaluation)
 
     def __handle_task_terminated(self, agent: Agent, verbose: int, interrupted=False) -> None:
         """
