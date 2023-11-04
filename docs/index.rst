@@ -10,7 +10,7 @@ Welcome to academia's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   modules
+   source/academia
 
 Indices and tables
 ==================
