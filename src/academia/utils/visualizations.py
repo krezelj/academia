@@ -339,11 +339,126 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         return os.path.abspath(save_path)
 
 
-
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
                            show: bool = True, save_path: str = None, 
                            save_format: Literal['png', 'html'] = 'png'):
+    """
+    Plots the impact of learning duration in task with difficulty level = x to evaluation 
+    of task with difficulty level = y.
+
+    The purpose of this plot is to show how the learning duration in task with difficulty level = x
+    affects the evaluation of task with difficulty level = y. The X-axis shows the number of episodes
+    in task with difficulty level = x, while the Y-axis shows the evaluation score obtained by the agent
+    in task with difficulty level = y. 
+
+    Args:
+        num_of_episodes_lvl_x: Number of episodes in task X.
+        stats_lvl_y: Learning statistics for tasks in level Y.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Raises:
+        ``ValueError``: If the number of tasks at level x and level y is not equal. It is assumed that 
+        the number of tasks at level x and level y is equal because the experiment involves testing 
+        the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
+        the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
+        environment.
+
+        ``ValueError``: If the number of evaluation scores is not equal to the number of tasks at level x.
+        This means that the evaluation was not performed only at the end of the task, which is necessary to
+        correctly measure the impact of learning duration in task with difficulty level = x to evaluation of this task.
+
+    Returns:
+        Absolute path to the saved plot file if ``save_path`` was provided.
     
+    Note:
+        It is important that evaluations in task with difficulty level = y
+        are only performed at the end of the task and that the number of episodes in this task should be fixed
+        to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of this task.     
+    
+    Examples:
+        Initialisation of a diffrent pairs we want to analyze:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task0_v500 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task1_v500 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task0_v700 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 700},
+        >>> )
+        >>> task1_v700 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task0_v1000 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task1_v1000 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+
+        Initialisation of agents:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent_v500 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent_v700 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent_v1000 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        
+        Initialisation of a curriculums and running them:
+
+        >>> curriculum_v500 = Curriculum(
+        >>>     tasks=[task0_v500, task1_v500],
+        >>>     output_dir='./curriculum_v500/',
+        >>> )
+        >>> curriculum_v500.run(agent, verbose=4, render=True)
+        >>> curriculum_v700 = Curriculum(
+        >>>     tasks=[task0_v700, task1_v700],
+        >>>     output_dir='./curriculum_v700/',
+        >>> )
+        >>> curriculum_v700.run(agent, verbose=4, render=True)
+        >>> curriculum_v1000 = Curriculum(
+        >>>     tasks=[task0_v1000, task1_v1000],
+        >>>     output_dir='./curriculum_v1000/',
+        >>> )
+        >>> curriculum_v1000.run(agent, verbose=4, render=True)
+
+        Plotting the evaluation impact:
+
+        >>> from academia.utils.visualizations import plot_evaluation_impact
+        >>> plot_evaluation_impact([500, 700, 1000], 
+                                   [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+                                    save_path='./evaluation_impact', 
+                                    save_format='png')
+    """
     agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
 
     if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
