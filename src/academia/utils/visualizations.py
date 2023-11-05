@@ -175,6 +175,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         >>> curriculum.run(agent, verbose=4, render=True)
 
         Plotting the curriculum:
+
         >>> from academia.utils.visualizations import plot_rewards_curriculum
         >>> plot_rewards_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
     """
@@ -268,6 +269,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         >>> curriculum.run(agent, verbose=4, render=True)
 
         Plotting the curriculum:
+        
         >>> from academia.utils.visualizations import plot_trajectory_curriculum
         >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
     """
