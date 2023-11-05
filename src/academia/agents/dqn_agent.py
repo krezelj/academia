@@ -262,10 +262,13 @@ class DQNAgent(Agent):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with zipfile.ZipFile(path, 'w') as zf:
             # network state
-            network_temp = tempfile.NamedTemporaryFile()
+            network_temp = tempfile.NamedTemporaryFile(delete=False)
             torch.save(self.network.state_dict(), network_temp)
+            # target network state
+            target_network_temp = tempfile.NamedTemporaryFile(delete=False)
+            torch.save(self.target_network.state_dict(), target_network_temp)
             # agent config
-            agent_temp = tempfile.NamedTemporaryFile()
+            agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
             learner_state_dict = {
                 'n_actions': self.n_actions,
                 'gamma': self.gamma,
@@ -276,11 +279,17 @@ class DQNAgent(Agent):
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
                 'random_state': self._rng.bit_generator.state
             }
-            with open(agent_temp.name, 'w') as file:
-                json.dump(dict(learner_state_dict), file, indent=4)
+            json.dump(dict(learner_state_dict), agent_temp, indent=4)
+            agent_temp.flush()
             # zip both
             zf.write(network_temp.name, 'network.pth')
             zf.write(agent_temp.name, 'state.agent.json')
+            zf.write(target_network_temp.name, 'target_network.pth')
+
+            network_temp.close()
+            target_network_temp.close()
+            agent_temp.close()
+
         return os.path.abspath(path)
 
     @classmethod
@@ -298,6 +307,7 @@ class DQNAgent(Agent):
             zf.extractall(tempdir)
             # network state
             network_params = torch.load(os.path.join(tempdir, 'network.pth'))
+            target_network_params = torch.load(os.path.join(tempdir, 'target_network.pth'))
             # agent config
             with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 params = json.load(file)
@@ -308,5 +318,5 @@ class DQNAgent(Agent):
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
         agent.network.load_state_dict(network_params)
-        agent.target_network.load_state_dict(network_params)
+        agent.target_network.load_state_dict(target_network_params)
         return agent
