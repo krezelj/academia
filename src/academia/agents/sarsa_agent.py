@@ -47,7 +47,7 @@ class SarsaAgent(TabularAgent):
             new_state: New state observed after taking the action.
             is_terminal: Whether the new state is a terminal state or not.
         """
-        policy_next_action = self.get_action(state)
+        policy_next_action = self.get_action(new_state)
         self.q_table[state][action] = \
             (1 - self.alpha) * self.q_table[state][action] \
             + self.alpha * (reward + self.gamma * self.q_table[new_state][policy_next_action])
