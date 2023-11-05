@@ -131,8 +131,8 @@ class LearningTask(SavableLoadable):
         'max_episodes': _max_episodes_predicate,
         'max_steps': _max_steps_predicate,
         'min_avg_reward': _min_avg_reward_predicate,
-        'min_reward_std_dev': _max_reward_std_dev_predicate,
-        'evaluation_score': _min_evaluation_score_predicate,
+        'max_reward_std_dev': _max_reward_std_dev_predicate,
+        'min_evaluation_score': _min_evaluation_score_predicate,
     }
     """
     A class attribute that stores global (i.e. shared by every
