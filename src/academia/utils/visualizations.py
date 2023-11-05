@@ -25,6 +25,7 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         - If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
             the file names will be appended with ``_rewards``, ``_steps`` and ``_evaluations`` respectively.
         - if show is set to ``True``, the plots will be displayed in the browser window.   
+
     Args:
         task_stats: Learning statistics for the task.
         show: Whether to display the plot. Defaults to ``True``.
@@ -124,7 +125,7 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         return os.path.abspath(save_path)
     
     
-def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
+def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
                                save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of episode rewards for multiple tasks in the curriculum.
@@ -174,8 +175,8 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         >>> curriculum.run(agent, verbose=4, render=True)
 
         Plotting the curriculum:
-        >>> from academia.utils.visualizations import plot_trajectory_curriculum
-        >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
+        >>> from academia.utils.visualizations import plot_rewards_curriculum
+        >>> plot_rewards_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
     """
     num_tasks = len(curriculum_stats)
     num_cols = 2
