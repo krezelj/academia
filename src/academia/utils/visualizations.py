@@ -9,9 +9,60 @@ from plotly.subplots import make_subplots
 
 from academia.curriculum import LearningStats
 
+
 def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None, 
               save_format: Literal['png', 'html'] = 'png'):
-    
+    """
+    Plots the learning statistics for a single task.
+
+    The returned plots include:
+    - A plot showing rewards and their moving average over episodes.
+    - A plot displaying the steps taken by the agent in each episode against the episode numbers.
+    - A plot indicating the agent's learning progress, represented by its evaluation score, in 
+        relation to the number of steps taken up to the current evaluation.
+
+    Note:
+        - If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
+            the file names will be appended with ``_rewards``, ``_steps`` and ``_evaluations`` respectively.
+        - if show is set to ``True``, the plots will be displayed in the browser window.   
+    Args:
+        task_stats: Learning statistics for the task.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        Absolute path to the saved plot file if ``save_path`` was provided.
+
+    Examples:
+        Initialisation of a task we want to plot:
+
+        >>> from academia.curriculum import LearningTask
+        >>> from academia.environments import LunarLander 
+        >>> from academia.utils.visualizations import plot_task
+        >>> test_task = LearningTask(
+        >>>     env_type= LunarLander,
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>>     eval_interval=100,
+        >>>     stats_save_path='./my_task_stats.json',
+        >>> )
+
+        Running a task:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LunarLanderMLP
+        >>> agent = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LunarLanderMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> test_task.run(agent, verbose=4, render=True)
+
+        Plotting the task:
+
+        >>> plot_task(test_task.stats, save_path='./test_task', save_format='png')
+    """
     fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)), 
                           y=[task_stats.episode_rewards, task_stats.episode_rewards_moving_avg],
                           title='Episode Rewards and Moving Average')
@@ -28,20 +79,29 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
             "Reward: %{y}"
         ])
     )
-
-    fig_steps = px.line(x=np.arange(len(task_stats.step_counts)), y=task_stats.step_counts)
+    fig_steps = px.line(x=np.arange(len(task_stats.step_counts)), 
+                        y=task_stats.step_counts,
+                        title='Steps per episode')
     fig_steps.update_layout(
         xaxis_title="Episode",
-        yaxis_title="Steps",
-        title="Steps per episode"
+        yaxis_title="Steps"
     )
 
+    eval_interval = task_stats.eval_interval
+    steps_count = task_stats.step_counts
+    steps_cum = np.cumsum(steps_count)
+    indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+    steps_to_eval = steps_cum[indices]
+    #  Add 0 to the beginning of the array if the first evaluation is at the beginning of the task
+    if len(steps_to_eval) < len(task_stats.agent_evaluations):
+        steps_to_eval = np.concatenate([[0], steps_to_eval])
 
-    fig_evaluations = px.line(x=np.arange(len(task_stats.agent_evaluations)), y=task_stats.agent_evaluations)
+    fig_evaluations = px.line(x=steps_to_eval, 
+                              y=task_stats.agent_evaluations,
+                              title='Agent evaluations')
     fig_evaluations.update_layout(
-        xaxis_title="Episode",
-        yaxis_title="Score",
-        title="Agent evaluations"
+        xaxis_title="Total number of steps to evaluation",
+        yaxis_title="Evaluation score"
     )
     fig_evaluations.update_traces(mode="markers+lines")
 
