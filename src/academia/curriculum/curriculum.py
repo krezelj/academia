@@ -97,8 +97,8 @@ class Curriculum(SavableLoadable):
     def run(self, agent: Agent, verbose=0, render=False):
         """
         Runs all tasks for the given agent. Agent's states and training statistics will be saved upon each
-            task's completion or interruption if save paths are specified either for a specific task, or
-            for the whole curriculum through :attr:`agents_save_dir` attribute.
+        task's completion or interruption if save paths are specified either for a specific task, or
+        for the whole curriculum through :attr:`agents_save_dir` attribute.
 
         Args:
             agent: An agent to train
