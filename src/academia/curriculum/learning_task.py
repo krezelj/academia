@@ -1,8 +1,9 @@
 import sys
-from typing import Optional, Type
+from typing import Optional, Type, Callable, Any
 import os
 import logging
 import json
+from functools import partial
 
 import numpy as np
 import yaml
@@ -15,6 +16,35 @@ from academia.utils import SavableLoadable, Stopwatch
 _logger = logging.getLogger('academia.curriculum')
 
 
+def _max_episodes_predicate(value: int, stats: 'LearningStats') -> bool:
+    return len(stats.episode_rewards) >= value
+
+
+def _max_steps_predicate(value: int, stats: 'LearningStats') -> bool:
+    return np.sum(stats.step_counts) >= value
+
+
+def _min_avg_reward_predicate(value: int, stats: 'LearningStats') -> bool:
+    # check if episode_rewards_moving_avg length is greater than because if not it is possibility
+    # that agent scored max reward in first episode
+    # and then it will stop training because it will think that it has reached min_avg_reward
+    if len(stats.episode_rewards_moving_avg) <= 5:
+        return False
+    return stats.episode_rewards_moving_avg[-1].item() >= value
+
+
+def _min_reward_std_dev_predicate(value: int, stats: 'LearningStats') -> bool:
+    if len(stats.episode_rewards) <= 10:
+        return False
+    return np.std(stats.episode_rewards[-10:]) <= value
+
+
+def _evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
+    if len(stats.agent_evaluations) <= 5:
+        return False
+    return np.mean(stats.agent_evaluations[-5:]) >= value
+
+
 class LearningTask(SavableLoadable):
     """
     Controls agent's training.
@@ -24,9 +54,8 @@ class LearningTask(SavableLoadable):
             be trained on. This should be a class, not an instantiated object.
         env_args: Arguments passed to the constructor of the environment class (passed as``env_type``
             argument).
-        stop_conditions: Conditions deciding when to end the training process. Available conditions:
-            ``'max_episodes'``, ``'max_steps'``, ``'min_avg_reward'``, ``'min_reward_std_dev'``,
-            ``'evaluation_score'``.
+        stop_conditions: Conditions deciding when to end the training process. For details see
+            :attr:`stop_predicates`.
         evaluation_interval: Controls how often evaluations are conducted. Defaults to 100.
         evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
@@ -42,7 +71,7 @@ class LearningTask(SavableLoadable):
             not be saved at any point.
 
     Raises:
-        ValueError: If `stop_conditions` is empty
+        ValueError: If no valid stop conditions were passed.
 
     Attributes:
         env (ScalableEnvironment): An environment that an agent can interact with.
@@ -98,27 +127,74 @@ class LearningTask(SavableLoadable):
         >>> task.run(agent, verbose=4, render=True)
     """
 
+    stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
+        'max_episodes': _max_episodes_predicate,
+        'max_steps': _max_steps_predicate,
+        'min_avg_reward': _min_avg_reward_predicate,
+        'min_reward_std_dev': _min_reward_std_dev_predicate,
+        'evaluation_score': _evaluation_score_predicate,
+    }
+    """
+    A class attribute that stores global (i.e. shared by every
+    task) list of available learning stop conditions. These are stored as functions with the
+    following signature::
+
+        >>> def my_stop_predicate(value, stats: LearningStats) -> bool:
+        >>>     pass
+
+    where ``value`` can be of any type and is passed in a ``stop_conditions`` dictionary through
+    :class:`LearningTask`'s constructor. The return value indicates whether learning should be
+    stopped.
+
+    There are a few default stop predicates:
+
+    - ``'max_episodes'`` - maximum number of episodes,
+    - ``'max_steps'`` - maximum number of total steps,
+    - ``'min_avg_reward'`` - miniumum moving average of rewards (after at least five episodes),
+    - ``'min_reward_std_dev'`` - minimum standard deviation of the last 10 rewards,
+    - ``'evaluation_score'`` - minimum mean reward of the last 5 evaluations.
+    
+    Example:
+
+        Given that::
+
+            LearningTask.stop_predicates = {'predicate': my_stop_predicate}
+
+        and that a task was initialised with::
+
+            stop_conditions={'predicate': 500}
+
+        When checking whether the task should be stopped, a predicate would be called
+        as follows::
+
+            my_stop_predicate(500, self.stats)
+    """
+
     def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100, evaluation_count: int = 5, include_init_eval: bool = True,
                  name: Optional[str] = None, agent_save_path: Optional[str] = None,
                  stats_save_path: Optional[str] = None) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
+        self.__stop_conditions = stop_conditions
 
-        if len(stop_conditions) == 0:
-            msg = ('stop_conditions dict must not be empty. '
-                   'Please provide at least one stop condition.')
+        self.__initialised_stop_predicates = []
+        """Partial functions with stop conditions specified during initialisation"""
+
+        for predicate_name, predicate_arg in stop_conditions.items():
+            predicate = LearningTask.stop_predicates.get(predicate_name)
+            if predicate is None:
+                _logger.warning(f'"{predicate_name}" is not a known stop condition. '
+                                f'Available stop conditions: {LearningTask.stop_predicates.keys()}')
+                continue
+            self.__initialised_stop_predicates.append(partial(predicate, predicate_arg))
+
+        if len(self.__initialised_stop_predicates) == 0:
+            msg = ('stop_conditions dict does not have any valid stop conditions. '
+                   'Please provide at least one valid stop condition.')
             _logger.error(msg)
             raise ValueError(msg)
-        # temporary solution (see issue #67)
-        available_stop_conditions = {'max_episodes', 'max_steps', 'min_avg_reward',
-                                     'min_reward_std_dev', 'evaluation_score'}
-        for sc in stop_conditions.keys():
-            if sc not in available_stop_conditions:
-                _logger.warning(f'"{sc}" is not a known stop condition. '
-                                f'Available stop conditions: {available_stop_conditions}')
 
-        self.__stop_conditions = stop_conditions
         self.__evaluation_interval = evaluation_interval
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
@@ -272,25 +348,10 @@ class LearningTask(SavableLoadable):
         Returns:
             ``True`` if the task should be terminated or ``False`` otherwise
         """
-        # using `if` instead of `elif` we will exit the task it *any* of the condition is true
-        if 'max_episodes' in self.__stop_conditions:
-            return len(self.stats.episode_rewards) >= self.__stop_conditions['max_episodes']
-        
-        if 'max_steps' in self.__stop_conditions:
-            return np.sum(self.stats.step_counts) >= self.__stop_conditions['max_steps']
-        
-        if 'min_avg_reward' in self.__stop_conditions and len(self.stats.episode_rewards_moving_avg) > 5:
-            # check if episode_rewards_moving_avg length is greater than because if not it is possibility
-            # that agent scored max reward in first episode
-            # and then it will stop training because it will think that it has reached min_avg_reward
-            return self.stats.episode_rewards_moving_avg[-1] >= self.__stop_conditions['min_avg_reward']
-        
-        if 'min_reward_std_dev' in self.__stop_conditions and len(self.stats.episode_rewards) > 10:
-            return np.std(self.stats.episode_rewards[-10:]) <= self.__stop_conditions['min_reward_std_dev']
+        for predicate in self.__initialised_stop_predicates:
+            if predicate(self.stats):
+                return True
 
-        if 'evaluation_score' in self.__stop_conditions:
-            return np.mean(self.stats.agent_evaluations[-5:]) >= self.__stop_conditions['evaluation_score']
-        
     def __reset(self) -> None:
         """
         Resets environment and statistics.
