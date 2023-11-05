@@ -40,7 +40,7 @@ def _max_reward_std_dev_predicate(value: int, stats: 'LearningStats') -> bool:
 
 
 def _min_evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
-    if len(stats.agent_evaluations) <= 5:
+    if len(stats.agent_evaluations) == 0:
         return False
     return stats.agent_evaluations[-1].item() >= value
 
