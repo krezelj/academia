@@ -53,7 +53,7 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
         or 128 bytes of console RAM.
 
         To obtain the final result the data is scaled to fit inside [0,1] range
-        and if :attr:``flatten_state`` is set to ``True`` the data is also flattened to a 1D array.
+        and if :attr:`flatten_state` is set to ``True`` the data is also flattened to a 1D array.
 
         Returns:
             An array representing a scaled and potentially flattended image or scaled RAM content.
