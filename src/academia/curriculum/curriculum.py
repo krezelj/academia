@@ -142,8 +142,7 @@ class Curriculum(SavableLoadable):
     @property
     def stats(self) -> dict[str, LearningStats]:
         """
-        Returns:
-            A dictionary that maps task name/index to task statistics for every task in this curriculum
+        A dictionary that maps task name/index to task statistics for every task in this curriculum.
         """
         return {self.__get_task_id(i): task.stats for i, task in enumerate(self.tasks)}
 

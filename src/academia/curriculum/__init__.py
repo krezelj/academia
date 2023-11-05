@@ -11,20 +11,20 @@ Exported classes:
 In this module logging is used, which is handled using built-in ``logging`` library. Besides standard logging
 configuration, in certain methods such as :func:`LearningTask.run` and :func:`Curriculum.run` a user can
 specify verbosity level which can be used to filter out some of the logs. These verbosity levels are common
-throughout the entire module and they are as follows:
+throughout the entire module and are as follows:
 
 +-----------------+-------------------------------------------+
-| Verbosity level | Description                               |
+| Verbosity level | What is logged                            |
 +=================+===========================================+
 | 0               | no logging (except for errors)            |
 +-----------------+-------------------------------------------+
 | 1               | Task finished/Task interrupted + warnings |
 +-----------------+-------------------------------------------+
-| 2               | Mean evaluation reward at each iteration  |
+| 2               | Mean evaluation rewards                   |
 +-----------------+-------------------------------------------+
-| 3               | Each evaluation is logged                 |
+| 3               | Each evaluation                           |
 +-----------------+-------------------------------------------+
-| 4               | Each episode is logged                    |
+| 4               | Each episode                              |
 +-----------------+-------------------------------------------+
 """
 from .learning_task import LearningTask, LearningStats
