@@ -33,16 +33,16 @@ def _min_avg_reward_predicate(value: int, stats: 'LearningStats') -> bool:
     return stats.episode_rewards_moving_avg[-1].item() >= value
 
 
-def _min_reward_std_dev_predicate(value: int, stats: 'LearningStats') -> bool:
+def _max_reward_std_dev_predicate(value: int, stats: 'LearningStats') -> bool:
     if len(stats.episode_rewards) <= 10:
         return False
     return np.std(stats.episode_rewards[-10:]) <= value
 
 
-def _evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
+def _min_evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
     if len(stats.agent_evaluations) <= 5:
         return False
-    return np.mean(stats.agent_evaluations[-5:]) >= value
+    return stats.agent_evaluations[-1].item() >= value
 
 
 class LearningTask(SavableLoadable):
@@ -131,8 +131,8 @@ class LearningTask(SavableLoadable):
         'max_episodes': _max_episodes_predicate,
         'max_steps': _max_steps_predicate,
         'min_avg_reward': _min_avg_reward_predicate,
-        'min_reward_std_dev': _min_reward_std_dev_predicate,
-        'evaluation_score': _evaluation_score_predicate,
+        'min_reward_std_dev': _max_reward_std_dev_predicate,
+        'evaluation_score': _min_evaluation_score_predicate,
     }
     """
     A class attribute that stores global (i.e. shared by every
@@ -151,8 +151,8 @@ class LearningTask(SavableLoadable):
     - ``'max_episodes'`` - maximum number of episodes,
     - ``'max_steps'`` - maximum number of total steps,
     - ``'min_avg_reward'`` - miniumum moving average of rewards (after at least five episodes),
-    - ``'min_reward_std_dev'`` - minimum standard deviation of the last 10 rewards,
-    - ``'evaluation_score'`` - minimum mean reward of the last 5 evaluations.
+    - ``'max_reward_std_dev'`` - maximum standard deviation of the last 10 rewards,
+    - ``'min_evaluation_score'`` - minimum mean evaluation score.
     
     Example:
 
