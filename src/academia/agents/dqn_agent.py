@@ -1,5 +1,5 @@
 from collections import deque, namedtuple
-from typing import Type, Optional, Any
+from typing import Type, Optional, Any, Literal
 import os
 import zipfile
 import tempfile
@@ -13,9 +13,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from academia.agents.base import Agent
-
-USE_CUDA = torch.cuda.is_available()
-device = torch.device("cuda" if USE_CUDA else "cpu")
 
 
 class DQNAgent(Agent):
@@ -36,6 +33,7 @@ class DQNAgent(Agent):
         min_epsilon: Minimum epsilon value to ensure exploration. Defaults to 0.01.
         batch_size: Size of the mini-batch used for training. Defaults to 64.
         random_state: Seed for random number generation. Defaults to ``None``.
+        device: Device to use for training. Defaults to ``cpu``.
     
     Attributes:
         nn_architecture (Type[nn.Module]): Type of neural network architecture to be used.
@@ -57,6 +55,7 @@ class DQNAgent(Agent):
         LR (float): Learning rate for the optimizer.
         TAU (float): Interpolation parameter for target network soft updates.
         UPDATE_EVERY (int): Frequency of network updates.
+        device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
         >>> from models import CartPoleMLP  # Import custom neural network architecture
@@ -101,7 +100,8 @@ class DQNAgent(Agent):
                  gamma: float = 0.99, epsilon: float = 1.,
                  epsilon_decay: float = 0.995,
                  min_epsilon: float = 0.01,
-                 batch_size: int = 64, random_state: Optional[int] = None
+                 batch_size: int = 64, random_state: Optional[int] = None,
+                 device: Literal['cpu', 'cuda'] = 'cpu'
                  ):
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
@@ -112,7 +112,15 @@ class DQNAgent(Agent):
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
                                                                 "next_state", "done"])
         self.train_step = 0
-        
+
+        if device == 'cuda' and not torch.cuda.is_available():
+            device = torch.device('cpu')
+        elif device == 'cuda' and torch.cuda.is_available():
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
+        self.device = device
+
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__build_network()
@@ -132,10 +140,10 @@ class DQNAgent(Agent):
             - The target network is initialized with the same architecture as the main network with same weights.
         """
         self.network = self.nn_architecture()
-        self.network.to(device)
+        self.network.to(self.device)
 
         self.target_network = self.nn_architecture()
-        self.target_network.to(device)
+        self.target_network.to(self.device)
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
@@ -167,15 +175,15 @@ class DQNAgent(Agent):
         Returns:
             The index of the selected action.
         """
-        state = torch.from_numpy(state).float().to(device)
+        state = torch.from_numpy(state).float().to(self.device)
         self.network.eval()
 
         with torch.no_grad():
-            q_val_act = self.network(state).to(device)
+            q_val_act = self.network(state).to(self.device)
         self.network.train()
 
         if legal_mask is not None:
-            legal_mask = torch.from_numpy(legal_mask).float().to(device)
+            legal_mask = torch.from_numpy(legal_mask).float().to(self.device)
             q_val_act = (q_val_act - torch.min(q_val_act)) * legal_mask \
                 + legal_mask
             
@@ -239,12 +247,12 @@ class DQNAgent(Agent):
         """
         batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
-        states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(device)
+        states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(self.device)
+        actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(self.device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(self.device)
         next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None]))\
-            .float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(device)
+            .float().to(self.device)
+        dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(self.device)
         return (states, actions, rewards, next_states, dones)
 
     def save(self, path: str) -> str:
