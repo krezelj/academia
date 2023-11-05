@@ -216,6 +216,61 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
 
 def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
                                  save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    """
+    Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
+
+    On the X-axis we have the total number of steps to a given agent's evaluation, while on the Y-axis we have the 
+    evaluation score obtained by the agent. The colors of the charts correspond to the appropriate tasks performed
+    as part of the curriculum, which is described in the legend.
+
+    Args:
+        curriculum_stats: Learning statistics for multiple tasks in the curriculum.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        Absolute path to the saved plot file if the ``save_path`` was provided.
+    
+    Note:
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
+            the _curriculum_eval_trajectory is added to the end of the ``save_path`` 
+    
+    Examples:
+        Initialisation of a curriculum we want to plot:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> curriculum = Curriculum(
+        >>>     tasks=[task1, task2],
+        >>>     output_dir='./my_curriculum/',
+        >>> )
+
+        Running a curriculum:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> curriculum.run(agent, verbose=4, render=True)
+
+        Plotting the curriculum:
+        >>> from academia.utils.visualizations import plot_trajectory_curriculum
+        >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
+    """
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
