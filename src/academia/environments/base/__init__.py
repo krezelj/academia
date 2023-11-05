@@ -7,5 +7,5 @@ __all__ = [
     'ScalableEnvironment',
     'GenericMiniGridWrapper',
     'GenericGymnasiumWrapper',
-    'GenericAtariWrapper'
+    'GenericAtariWrapper',
 ]

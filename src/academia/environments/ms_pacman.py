@@ -1,5 +1,5 @@
-from typing import Any
-
+import numpy as np
+import numpy.typing as npt
 
 from .base import GenericAtariWrapper
 
@@ -74,7 +74,7 @@ class MsPacman(GenericAtariWrapper):
     Notes:
         For this environment the keyword argument ``mode`` is not used. This is because Ms Pacman did not
         use the difficulty settings available in Atari but did use mode settings to control the number of
-        ghosts on the map. Because of this the ``difficulty`` parameter is mapped to ``mode``.
+        ghosts on the map. Because of this the :attr:``difficulty`` parameter is mapped to ``mode``.
     """
     
     N_ACTIONS = 9
@@ -99,7 +99,7 @@ class MsPacman(GenericAtariWrapper):
             difficulty, "ALE/MsPacman-v5", n_frames_stacked, append_step_count, flatten_state, **kwargs)
         
 
-    def reset(self) -> Any:
+    def reset(self) -> npt.NDArray[np.float32]:
         """
         Resets the environment to its initial state.
 
@@ -107,7 +107,7 @@ class MsPacman(GenericAtariWrapper):
             The new state after resetting the environment.
 
         Notes:
-            if ``skip_game_start`` is set to ``True`` this method also performs 65 NOOP
+            if :attr:``skip_game_start`` is set to ``True`` this method also performs 65 NOOP
             actions before returning the first observed state.
         """
         super().reset()

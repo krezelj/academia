@@ -9,5 +9,5 @@ __all__ = [
     'LavaCrossing',
     'DoorKey',
     'LunarLander',
-    'MsPacman'
+    'MsPacman',
 ]
