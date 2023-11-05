@@ -126,6 +126,57 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
     
 def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
                                save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    """
+    Plots the trajectories of episode rewards for multiple tasks in the curriculum.
+
+    Args:
+        curriculum_stats: Learning statistics for multiple tasks in the curriculum.
+        show: Whether to display the plot. Defaults to True.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        Absolute path to the saved plot file if the ``save_path`` was provided.
+    
+    Note:
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
+            the _rewards_curriculum is added to the end of the ``save_path`` 
+    
+    Examples:
+        Initialisation of a curriculum we want to plot:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> curriculum = Curriculum(
+        >>>     tasks=[task1, task2],
+        >>>     output_dir='./my_curriculum/',
+        >>> )
+
+        Running a curriculum:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> curriculum.run(agent, verbose=4, render=True)
+
+        Plotting the curriculum:
+        >>> from academia.utils.visualizations import plot_trajectory_curriculum
+        >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
+    """
     num_tasks = len(curriculum_stats)
     num_cols = 2
     num_rows = (num_tasks + 1) // num_cols
@@ -138,7 +189,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         rewards = task_stats.episode_rewards
         fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Task {task_id}'), row=row, col=col)
         fig.update_xaxes(title_text='Step', row=row, col=col)
-        fig.update_yaxes(title_text='Reward', row=row, col=1)
+        fig.update_yaxes(title_text='Episode', row=row, col=1)
         col += 1
         if col > num_cols:
             col = 1
