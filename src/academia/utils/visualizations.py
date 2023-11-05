@@ -746,6 +746,140 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
 def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
                                     stats_lvl_z: List[LearningStats], show: bool = True, save_path: str = None, 
                                     save_format: Literal['png', 'html'] = 'png'):
+    """
+    Plots the impact of learning duration in task x and task y to evaluation of task z. The purpose of this plot is 
+    to show how the learning duration in task x and task y affects the evaluation of task z. It is done by testing 
+    the curriculum on group of three tasks with three specific levels of difficulty in order to examine how the number 
+    of episodes spent in the easier ones affects the evaluation of the agent in a more difficult environment.
+
+    Args:
+        num_of_episodes_lvl_x: Number of episodes in task X.
+        num_of_episodes_lvl_y: Number of episodes in task Y.
+        stats_lvl_z: Learning statistics for tasks in level Z.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Raises:
+        ValueError: If the number of tasks at level x, level y and level z is not equal. 
+        It is assumed that the number of tasks at level x, level y and level z is equal 
+        because the experiment involves testing the curriculum on group of three tasks with 
+        three specific levels of difficulty in order to examine how the number of episodes spent 
+        in the easier ones affects the evaluation of the agent in a more difficult environment.
+
+        ValueError: If the number of evaluation scores is not equal to the number of tasks at level x and level y.
+        It is assumed that the evaluation was not performed only at the end of the task, which is necessary to
+        correctly measure the impact of learning duration in task x and task y to evaluation of task z.
+
+    Returns:
+        Absolute path to the saved plot file if ``save_path`` was provided.
+    
+    Note:
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of
+        the name of the saved plot, the _multiple_evaluation_impact is added to the end of the ``save_path``
+        - It is important that evaluations in task with difficulty level = z
+        are only performed at the end of the task and that the number of episodes in this task should be fixed
+        to correctly measure the impact of learning duration in task with difficulty level = x and task with difficulty level = y 
+        to evaluation of this task.
+    
+    Examples:
+
+        Initialisation of a diffrent groups we want to analyze:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task_curr0_v0 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task_curr0_v1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task_curr0_v2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+        >>> curriculum0 = Curriculum(
+        >>>     tasks=[task_curr0_v0, task_curr0_v1, task_curr0_v2],
+        >>>     output_dir='./curriculum0/',
+        >>> )
+        >>> task_curr1_v0 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 700},
+        >>> )
+        >>> task_curr1_v1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1200},
+        >>> )
+        >>> task_curr1_v2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+        >>> curriculum1 = Curriculum(
+        >>>     tasks=[task_curr1_v0, task_curr1_v1, task_curr1_v2],
+        >>>     output_dir='./curriculum1/',
+        >>> )
+        >>> task_curr2_v0 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task_curr2_v1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 600},
+        >>> )
+        >>> task_curr2_v2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+        >>> curriculum2 = Curriculum(
+        >>>     tasks=[task_curr2_v0, task_curr2_v1, task_curr2_v2],
+        >>>     output_dir='./curriculum2/',
+        >>> )
+
+        Initialisation of agents:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent0 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent1 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent2 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+
+        Running curriculums:
+
+        >>> curriculum0.run(agent0, verbose=4, render=True)
+        >>> curriculum1.run(agent1, verbose=4, render=True)
+        >>> curriculum2.run(agent2, verbose=4, render=True)
+
+        Plotting the multiple evaluation impact:
+
+        >>> from academia.utils.visualizations import plot_multiple_evaluation_impact
+        >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
+                                            [curriculum0.stats[2], curriculum1.stats[2], curriculum2.stats[2]],
+                                            save_path='./multiple_evaluation_impact', 
+                                            save_format='png')
+    """
     agent_evals_lvl_z = [task.agent_evaluations for task in stats_lvl_z]
 
     if len(num_of_episodes_lvl_x) != len(num_of_episodes_lvl_y) or \
