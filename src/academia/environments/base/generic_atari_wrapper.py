@@ -28,7 +28,7 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation.
         append_step_count (bool): Whether or not append the current step count to each state.
-        flatten_state: Wheter ot not to flatten the state if represented by and RGB or grayscale image.
+        flatten_state (bool): Wheter ot not to flatten the state if represented by and RGB or grayscale image.
     """
     
     def __init__(self, 

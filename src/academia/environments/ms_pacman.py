@@ -68,8 +68,8 @@ class MsPacman(GenericAtariWrapper):
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation.
         append_step_count (bool): Whether or not append the current step count to each state.
-        flatten_state: Wheter ot not to flatten the state if represented by and RGB or grayscale image.
-        skip_game_start: Whether or not skip the game start.
+        flatten_state (bool): Wheter ot not to flatten the state if represented by and RGB or grayscale image.
+        skip_game_start (bool): Whether or not skip the game start.
 
     Notes:
         For this environment the keyword argument ``mode`` is not used. This is because Ms Pacman did not
