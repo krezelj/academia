@@ -216,10 +216,92 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
                                     nocurriculum_stats: LearningStats, show: bool = True,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
-                                    eval_interval: int = 20, includes_init_eval: bool = False):
+                                    includes_init_eval: bool = False):
+    """
+    Plots the comparison of curriculum learning with no curriculum learning.
+
+    The chart is used to compare the agent's evaluation when teaching with a curriculum and without it. 
+    The X-axis shows the total number of steps to a given agent's evaluation, while the Y-axis shows the 
+    evaluation score obtained by the agent. The colors of the charts correspond to the appropriate tasks 
+    performed as part of the curriculum and the task that is performed without the curriculum, which is 
+    described in the legend.
+
+    Args:
+        curriculum_stats: Learning statistics for tasks in the curriculum.
+        nocurriculum_stats: Learning statistics for the task without curriculum.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+        includes_init_eval: Whether to include initial evaluation. Defaults to ``False``.
+    
+    Returns:
+        Absolute path to the saved plot file if the ``save_path`` was provided.
+    
+    Note:
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
+            the _curriculum_vs_no_curriculum is added to the end of the ``save_path``
+        - Change the ``includes_init_eval`` to ``True`` if you specified this flag in :class:`LearningTask`.
+    
+    Examples:
+        Initialisation of a curriculum we want to plot:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task1 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task2 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> curriculum = Curriculum(
+        >>>     tasks=[task1, task2],
+        >>>     output_dir='./my_curriculum/',
+        >>> )
+
+        Initialisation of a task without curriculum we want to plot:
+
+        >>> no_curriculum = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1500},
+        >>> )
+
+        Defining an agent:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent_curriculum = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent_no_curriculum = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+
+        Running a curriculum:
+
+        >>> curriculum.run(agent_curriculum, verbose=4, render=True)
+
+        Running a task without curriculum:
+
+        >>> no_curriculum.run(agent_no_curriculum, verbose=4, render=True)
+
+        Plotting the curriculum vs no curriculum:
+
+        >>> from academia.utils.visualizations import plot_curriculum_vs_nocurriculum
+        >>> plot_curriculum_vs_nocurriculum(curriculum.stats, no_curriculum.stats, save_path='./curriculum', save_format='png')
+    """
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
+        eval_interval = task_stats.eval_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
@@ -255,6 +337,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         else:
             fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
         return os.path.abspath(save_path)
+
 
 
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
