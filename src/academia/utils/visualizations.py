@@ -373,7 +373,9 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
-        It is important that evaluations in task with difficulty level = y
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
+        the name of the saved plot, the _evaluation_impact is added to the end of the ``save_path``
+        - It is important that evaluations in task with difficulty level = y
         are only performed at the end of the task and that the number of episodes in this task should be fixed
         to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of this task.     
     
@@ -495,7 +497,120 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
 
 def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = True, 
                      save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
-    
+    """
+    Plots the impact of the number of episodes in task x on the total time spent in both tasks.
+
+    The purpose of this plot is to show how the number of episodes in task x affects the total 
+    time spent in both tasks. It is done by testing the curriculum on pairs of tasks with two
+    specific levels of difficulty in order to examine how the number of episodes spent in the easier
+    one affects the total time spent in both tasks when the stop condition in harder task is specified to reach the 
+    fixed value of agent evaluation eg. equals 200.
+
+    On the X-axis we have the number of episodes in task x, while on the Y-axis we have the total time spent in 
+    both tasks.
+
+    Args:
+        stats_lvl_x: Learning statistics for tasks in level X.
+        stats_lvl_y: Learning statistics for tasks in level Y.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Raises:
+        ``ValueError``: If the number of tasks at level x and level y is not equal. It is assumed that 
+        the number of tasks at level x and level y is equal because the experiment involves testing 
+        the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
+        the number of episodes spent in the easier one affects the total time spent in both tasks.
+
+    Returns:
+        Absolute path to the saved plot file if ``save_path`` was provided.
+
+    Note:
+        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of
+        the name of the saved plot, the _time_impact is added to the end of the ``save_path``
+
+    Examples:
+        Initialisation of a diffrent pairs we want to analyze:
+
+        >>> from academia.curriculum import LearningTask, Curriculum
+        >>> from academia.environments import LavaCrossing
+        >>> task0_v500 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 500},
+        >>> )
+        >>> task1_v500 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+        >>> task0_v700 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 700},
+        >>> )
+        >>> task1_v700 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+        >>> task0_v1000 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     stop_conditions={'max_episodes': 1000},
+        >>> )
+        >>> task1_v1000 = LearningTask(
+        >>>     env_type=LavaCrossing,
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     stop_conditions={'min_evaluation_score': 200},
+        >>> )
+
+        Initialisation of agents:
+
+        >>> from academia.agents import DQNAgent
+        >>> from academia.models import LavaCrossingMLP
+        >>> agent_v500 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent_v700 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+        >>> agent_v1000 = DQNAgent(
+        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     random_state=123,
+        >>> )
+
+        Initialisation of a curriculums and running them:
+
+        >>> curriculum_v500 = Curriculum(
+        >>>     tasks=[task0_v500, task1_v500],
+        >>>     output_dir='./curriculum_v500/',
+        >>> )
+        >>> curriculum_v500.run(agent, verbose=4, render=True)
+        >>> curriculum_v700 = Curriculum(
+        >>>     tasks=[task0_v700, task1_v700],
+        >>>     output_dir='./curriculum_v700/',
+        >>> )
+        >>> curriculum_v700.run(agent, verbose=4, render=True)
+        >>> curriculum_v1000 = Curriculum(
+        >>>     tasks=[task0_v1000, task1_v1000],
+        >>>     output_dir='./curriculum_v1000/',
+        >>> )
+        >>> curriculum_v1000.run(agent, verbose=4, render=True)
+
+        Plotting the time impact:
+
+        >>> from academia.utils.visualizations import plot_time_impact
+        >>> plot_time_impact([curriculum_v500.stats[0], curriculum_v700.stats[0], curriculum_v1000.stats[0]], 
+                             [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+                              save_path='./time_impact', 
+                              save_format='png')
+    """
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
     
