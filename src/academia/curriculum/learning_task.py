@@ -337,9 +337,9 @@ class LearningTask(SavableLoadable):
             stats_save_path = self._prep_save_file(self.stats_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
-            self.stats.save(stats_save_path)
+            final_save_path = self.stats.save(stats_save_path)
             if verbose >= 1:
-                _logger.info(f"Task's stats saved to {stats_save_path}")
+                _logger.info(f"Task's stats saved to {final_save_path}")
 
     def __is_finished(self) -> bool:
         """
