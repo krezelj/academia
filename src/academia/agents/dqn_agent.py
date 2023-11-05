@@ -249,7 +249,8 @@ class DQNAgent(Agent):
 
     def save(self, path: str) -> str:
         """
-        Saves the state dictionary of the neural network model to the specified file path.
+        Saves the state dictionary of the neural network model, target network model and agent parameters to 
+        the specified file path.
 
         Args:
             path: The file path (including filename and extension) where the model's state dictionary will be saved.
@@ -269,6 +270,10 @@ class DQNAgent(Agent):
             torch.save(self.target_network.state_dict(), target_network_temp)
             # agent config
             agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
+
+            memory_save_format = [{"state": exp.state.tolist(), "action": int(exp.action), "reward": float(exp.reward),
+                    "next_state": exp.next_state.tolist(), "done": bool(exp.done)} for exp in self.memory]
+            
             learner_state_dict = {
                 'n_actions': self.n_actions,
                 'gamma': self.gamma,
@@ -277,11 +282,12 @@ class DQNAgent(Agent):
                 'min_epsilon': self.min_epsilon,
                 'batch_size': self.batch_size,
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
-                'random_state': self._rng.bit_generator.state
+                'random_state': self._rng.bit_generator.state,
+                'memory': memory_save_format
             }
             json.dump(dict(learner_state_dict), agent_temp, indent=4)
             agent_temp.flush()
-            # zip both
+
             zf.write(network_temp.name, 'network.pth')
             zf.write(agent_temp.name, 'state.agent.json')
             zf.write(target_network_temp.name, 'target_network.pth')
@@ -295,7 +301,8 @@ class DQNAgent(Agent):
     @classmethod
     def load(cls, path: str) -> 'DQNAgent':
         """
-        Loads the state dictionary of the neural network model from the specified file path. 
+        Loads the state dictionary of the neural network model, target network model and agent parameters 
+        from the specified file path. 
 
         Args:
             path: The file path from which to load the model's state dictionary.
@@ -315,8 +322,20 @@ class DQNAgent(Agent):
         nn_architecture = cls.get_type(params['nn_architecture'])
         del params['nn_architecture']
         rng_state = params.pop('random_state')
+        memory = params.pop('memory')
+        experience = namedtuple("Experience", field_names=["state", "action", "reward",
+                                                                "next_state", "done"])
+        restored_memory = deque(maxlen=cls.REPLAY_MEMORY_SIZE)
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
+        for exp_dict in memory:
+            state = np.array(exp_dict["state"], dtype=np.float32) 
+            action = int(exp_dict["action"])
+            reward = float(exp_dict["reward"])
+            next_state = np.array(exp_dict["next_state"], dtype=np.float32)
+            done = bool(exp_dict["done"])
+            restored_memory.append(experience(state, action, reward, next_state, done))
+        agent.memory = restored_memory
         agent.network.load_state_dict(network_params)
         agent.target_network.load_state_dict(target_network_params)
         return agent
