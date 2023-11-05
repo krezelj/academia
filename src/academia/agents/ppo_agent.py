@@ -309,7 +309,7 @@ class PPOAgent(Agent):
             agent.__covariance_matrix = covariance_matrix
             agent.__action_logit_cache = action_logit_cache
 
-            agent.buffer.states = [torch.tensor(s) for s in buffer_state['states']]
+            agent.buffer.states = [np.array(s) for s in buffer_state['states']]
             del buffer_state['states']
             for attribute_name, value in buffer_state.items():
                 setattr(agent.buffer, attribute_name, value)
