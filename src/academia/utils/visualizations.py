@@ -132,7 +132,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
 
     Args:
         curriculum_stats: Learning statistics for multiple tasks in the curriculum.
-        show: Whether to display the plot. Defaults to True.
+        show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
@@ -213,7 +213,48 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
             fig.write_html(f"{save_path}_rewards_curriculum.html")
         return os.path.abspath(save_path)
 
+def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
+                                 save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+    fig = go.Figure()
+    total_steps_to_last_eval = 0
+    for task_id, task_stats in curriculum_stats.items():
+        eval_interval = task_stats.eval_interval
+        evaluations = task_stats.agent_evaluations
+        steps_count = task_stats.step_counts
+        steps_count[0] += total_steps_to_last_eval
+        steps_cum = np.cumsum(steps_count)
+        indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+        steps_to_eval = steps_cum[indices]
+        if len(steps_to_eval) < len(evaluations):
+            steps_to_eval = np.concatenate([[0], steps_to_eval])
 
+        fig.add_trace(go.Scatter(x=steps_to_eval, 
+                                y=evaluations, 
+                                mode='lines', 
+                                name=f'Task {task_id}'))
+            
+        total_steps_to_last_eval = steps_to_eval[-1]
+        
+    fig.update_layout(title_text='Curriculum evaluation trajectory',
+                      xaxis_title='Total number of steps to evaluation',
+                      yaxis_title='Evaluation score')
+    fig.update_traces(
+        hovertemplate="<br>".join([
+            "Total num of steps to evaluation: %{x}",
+            "Evaluation score: %{y}"
+        ])
+    )
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_curriculum_eval_trajectory.png")
+        else:
+            fig.write_html(f"{save_path}_curriculum_eval_trajectory.html")
+        return os.path.abspath(save_path)
+    
+    
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
                                     nocurriculum_stats: LearningStats, show: bool = True,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
@@ -319,7 +360,11 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
     nocurr_indices = np.arange(eval_interval - 1, len(nocurr_steps_cum), eval_interval)
     no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
-    fig.add_trace(go.Scatter(x=np.concatenate([[0], no_curr_steps_to_eval]), y=nocurriculum_stats.agent_evaluations, mode='lines', name='No curriculum'))
+    
+    if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
+        no_curr_steps_to_eval = np.concatenate([[0], no_curr_steps_to_eval])
+
+    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval, y=nocurriculum_stats.agent_evaluations, mode='lines', name='No curriculum'))
     fig.update_layout(title_text='Curriculum vs No Curriculum',
                       xaxis_title='Total number of steps to evaluation',
                       yaxis_title='Evaluation score')
