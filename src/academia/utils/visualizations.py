@@ -213,6 +213,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
             fig.write_html(f"{save_path}_rewards_curriculum.html")
         return os.path.abspath(save_path)
 
+
 def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
                                  save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     fig = go.Figure()
@@ -254,7 +255,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
             fig.write_html(f"{save_path}_curriculum_eval_trajectory.html")
         return os.path.abspath(save_path)
     
-    
+
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
                                     nocurriculum_stats: LearningStats, show: bool = True,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
@@ -733,3 +734,4 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         else:
             fig.write_html(f"{save_path}_multiple_evaluation_impact.html")
         return os.path.abspath(save_path)
+    
