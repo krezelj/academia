@@ -187,7 +187,7 @@ class LearningTask(SavableLoadable):
                 _logger.warning(f'"{predicate_name}" is not a known stop condition. '
                                 f'Available stop conditions: {LearningTask.stop_predicates.keys()}')
                 continue
-            self.__initialised_stop_predicates.append(partial(predicate, predicate_arg))
+            self.__initialised_stop_predicates.append(partial(predicate, value=predicate_arg))
 
         if len(self.__initialised_stop_predicates) == 0:
             msg = ('stop_conditions dict does not have any valid stop conditions. '
@@ -349,7 +349,7 @@ class LearningTask(SavableLoadable):
             ``True`` if the task should be terminated or ``False`` otherwise
         """
         for predicate in self.__initialised_stop_predicates:
-            if predicate(self.stats):
+            if predicate(stats=self.stats):
                 return True
 
     def __reset(self) -> None:
