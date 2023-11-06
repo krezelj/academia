@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from abc import abstractmethod
 
 import numpy as np
@@ -18,6 +18,7 @@ class GenericMiniGridWrapper(GenericGymnasiumWrapper):
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
+        random_state: Optional seed that controls randomness of the environment.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -32,7 +33,7 @@ class GenericMiniGridWrapper(GenericGymnasiumWrapper):
     """
 
     def __init__(self, difficulty: int, difficulty_envid_map: dict, n_frames_stacked: int = 1,
-                 append_step_count: bool = False, **kwargs):
+                 append_step_count: bool = False, random_state: Optional[int] = None, **kwargs):
         self._difficulty_envid_map = difficulty_envid_map
         try:
             env_id = self._difficulty_envid_map[difficulty]
@@ -45,6 +46,7 @@ class GenericMiniGridWrapper(GenericGymnasiumWrapper):
             environment_id=env_id,
             n_frames_stacked=n_frames_stacked,
             append_step_count=append_step_count,
+            random_state=random_state,
             **kwargs
         )
 

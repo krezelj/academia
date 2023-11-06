@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import numpy.typing as npt
 
@@ -57,6 +59,7 @@ class MsPacman(GenericAtariWrapper):
         skip_game_start: Whether or not skip the game start. After every reset the game is an "noop" state
             for 65 frames which can hinder the training process. If true the game skips this stage
             by applying 65 NOOP actions before returning the first observed state. Defaults to ``True``.
+        random_state: Optional seed that controls randomness of the environment.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -85,6 +88,7 @@ class MsPacman(GenericAtariWrapper):
                  append_step_count: bool = False,
                  flatten_state: bool = False,
                  skip_game_start: bool = True,
+                 random_state: Optional[int] = None,
                  **kwargs) -> None:
         
         self.skip_game_start = skip_game_start
@@ -96,8 +100,8 @@ class MsPacman(GenericAtariWrapper):
         # See atariage.com manual for ms pacman for details
         kwargs['mode'] = 0 if difficulty == 3 else 1 + difficulty
         super(MsPacman, self).__init__(
-            difficulty, "ALE/MsPacman-v5", n_frames_stacked, append_step_count, flatten_state, **kwargs)
-        
+            difficulty, "ALE/MsPacman-v5", n_frames_stacked,
+            append_step_count, flatten_state, random_state, **kwargs)
 
     def reset(self) -> npt.NDArray[np.float32]:
         """
@@ -121,4 +125,3 @@ class MsPacman(GenericAtariWrapper):
         """
         for _ in range(65):
             self.step(0)
-
