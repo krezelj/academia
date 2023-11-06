@@ -46,7 +46,7 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         >>>     env_type= LunarLander,
         >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
         >>>     stop_conditions={'max_episodes': 1000},
-        >>>     eval_interval=100,
+        >>>     evalutaion_interval=100,
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
 
@@ -89,10 +89,10 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         yaxis_title="Steps"
     )
 
-    eval_interval = task_stats.eval_interval
+    evalutaion_interval = task_stats.evalutaion_interval
     steps_count = task_stats.step_counts
     steps_cum = np.cumsum(steps_count)
-    indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+    indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
     steps_to_eval = steps_cum[indices]
     #  Add 0 to the beginning of the array if the first evaluation is at the beginning of the task
     if len(steps_to_eval) < len(task_stats.agent_evaluations):
@@ -280,12 +280,12 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        eval_interval = task_stats.eval_interval
+        evalutaion_interval = task_stats.evalutaion_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
         steps_to_eval = steps_cum[indices]
         if len(steps_to_eval) < len(evaluations):
             steps_to_eval = np.concatenate([[0], steps_to_eval])
@@ -422,12 +422,12 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        eval_interval = task_stats.eval_interval
+        evalutaion_interval = task_stats.evaluation_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
+        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
         steps_to_eval = steps_cum[indices]
         if includes_init_eval:
             if len(np.concatenate([[total_steps_to_last_eval],steps_to_eval])) > len(evaluations):
@@ -449,7 +449,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
             
         total_steps_to_last_eval = steps_to_eval[-1]
     nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
-    nocurr_indices = np.arange(eval_interval - 1, len(nocurr_steps_cum), eval_interval)
+    nocurr_indices = np.arange(evalutaion_interval - 1, len(nocurr_steps_cum), evalutaion_interval)
     no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
     
     if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
@@ -602,7 +602,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
 
         >>> from academia.utils.visualizations import plot_evaluation_impact
         >>> plot_evaluation_impact([500, 700, 1000], 
-        >>>                        [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+        >>>                        [curriculum_v500.stats['1'], curriculum_v700.stats['1'], curriculum_v1000.stats['1']],
         >>>                         save_path='./evaluation_impact', 
         >>>                         save_format='png')
     """
@@ -751,8 +751,8 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         Plotting the time impact:
 
         >>> from academia.utils.visualizations import plot_time_impact
-        >>> plot_time_impact([curriculum_v500.stats[0], curriculum_v700.stats[0], curriculum_v1000.stats[0]], 
-        >>>                  [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+        >>> plot_time_impact([curriculum_v500.stats['0'], curriculum_v700.stats['0'], curriculum_v1000.stats['0']], 
+        >>>                  [curriculum_v500.stats['1'], curriculum_v700.stats['1'], curriculum_v1000.stats['1']],
         >>>                   save_path='./time_impact', 
         >>>                   save_format='png')
     """
@@ -921,7 +921,7 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
         >>> from academia.utils.visualizations import plot_multiple_evaluation_impact
         >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
-        >>>                                 [curriculum0.stats[2], curriculum1.stats[2], curriculum2.stats[2]],
+        >>>                                 [curriculum0.stats['2'], curriculum1.stats['2'], curriculum2.stats['2']],
         >>>                                 save_path='./multiple_evaluation_impact', 
         >>>                                 save_format='png')
     """
