@@ -15,10 +15,11 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
     Plots the learning statistics for a single task.
 
     The returned plots include:
-    * A plot showing rewards and their moving average over episodes.
-    * A plot displaying the steps taken by the agent in each episode against the episode numbers.
-    * A plot indicating the agent's learning progress, represented by its evaluation score, in 
-        relation to the number of steps taken up to the current evaluation.
+
+    - A plot showing rewards and their moving average over episodes.
+    - A plot displaying the steps taken by the agent in each episode against the episode numbers.
+    - A plot indicating the agent's learning progress, represented by its evaluation score, in 
+      relation to the number of steps taken up to the current evaluation.
 
     Note:
         If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
@@ -357,7 +358,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
     Warning:
         Change the ``includes_init_eval`` to same value that you initialized in the 
-        :class:`academia.curriculum.LearningTask` class. Otherwise, the function will return an ``ValueError``.
+        :class:`academia.curriculum.LearningTask` class. Otherwise, the function will raises an ``ValueError``.
     
     Examples:
         Initialisation of a curriculum we want to plot:
