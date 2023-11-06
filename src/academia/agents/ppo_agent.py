@@ -1,3 +1,4 @@
+import logging
 import os
 import zipfile
 import tempfile
@@ -20,10 +21,10 @@ from .base import Agent
 
 # PPO improvements branch todo
 # TODO [x] remove slots
-# TODO [] add logging
-# TODO [] address other todos scatter around the code
-# TODO [] add CUDA
-# TODO [] add documentation
+# TODO [ ] add logging
+# TODO [x] address other todos scatter around the code
+# TODO [ ] add CUDA
+# TODO [ ] add documentation
 
 class PPOAgent(Agent):
 
@@ -34,7 +35,6 @@ class PPOAgent(Agent):
                      n_episodes: Optional[int] = None) -> None:
             if (n_steps is None and n_episodes is None)\
                     or (n_steps is not None and n_episodes is not None):
-                # TODO add logging
                 raise ValueError("Exactly one of n_steps and n_episodes must be not None")
             self.reset()
             self.n_steps = n_steps
@@ -114,6 +114,7 @@ class PPOAgent(Agent):
                  clip: float = 0.2,
                  lr: float = 3e-4,
                  covariance_fill: float = 0.5,
+                 entropy_coefficient: float = 0.01,
                  gamma: float = 0.99, 
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
@@ -127,6 +128,7 @@ class PPOAgent(Agent):
         self.actor_architecture = actor_architecture
         self.critic_architecture = critic_architecture
         self.lr = lr
+        self.entropy_coefficient = entropy_coefficient
         self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
 
         if random_state is not None:
@@ -143,7 +145,7 @@ class PPOAgent(Agent):
         self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
-        -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
         V = self.critic(states).squeeze(dim=1)
         if self.discrete:
             pi = self.actor(states)
@@ -156,9 +158,8 @@ class PPOAgent(Agent):
         return V, actions_logits, distribution.entropy()
 
     def __get_discrete_action_with_logits(self, states: torch.FloatTensor, legal_mask, greedy) \
-        -> Tuple[npt.NDArray, torch.FloatTensor]:
+            -> Tuple[npt.NDArray, torch.FloatTensor]:
         pi = self.actor(states)
-        # pi *= legal_mask
         distribution = Categorical(pi)
         if greedy:
             action = torch.argmax(pi).detach().numpy().reshape(1,)
@@ -168,11 +169,10 @@ class PPOAgent(Agent):
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
     def __get_continuous_action_with_logits(self, states: torch.FloatTensor, greedy) \
-        -> Tuple[npt.NDArray, torch.FloatTensor]:
+            -> Tuple[npt.NDArray, torch.FloatTensor]:
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
-            # NOTE should log prob for greedy be all 1? (same as discrete)
             return mean.detach().numpy(), distribution.log_prob(mean).detach()
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
@@ -185,7 +185,7 @@ class PPOAgent(Agent):
                 return self.__get_continuous_action_with_logits(states, greedy)
 
     def get_action(self, state: Any, legal_mask=None, greedy=False) -> Union[float, int]:
-        # PPOAgent currently doesn't support legal_masks TODO add warning to logger
+        # PPOAgent currently doesn't support legal_masks TODO add note in documentation
         
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
@@ -196,12 +196,8 @@ class PPOAgent(Agent):
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
         # Otherwise gym environments return new states as batches which we try to unsqueeze again
         # and this leads to shape errors during inference.
-        # TODO this logic should probably be rethinked but right now I have no idea
-        # how else we could deal with single-sample inference with neural networks that end with softmax
         action = action[0]
         action_logit = action_logit.item()
-
-        # TODO add better caching logic so that we can check if the logit corresponds to the the same state
         self.__action_logit_cache = action_logit
         return action
 
@@ -243,8 +239,7 @@ class PPOAgent(Agent):
 
                 # negative sign since we are performing gradient **ascent**
                 actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
-                # TODO parametrise entropy coefficient
-                actor_loss -= 0.01 * entropy.mean()
+                actor_loss -= self.entropy_coefficient * entropy.mean()
 
                 self.actor_optimiser.zero_grad()
 
@@ -332,6 +327,8 @@ class PPOAgent(Agent):
                 'min_epsilon': self.min_epsilon,
                 'discrete': self.discrete,
                 'clip': self.clip,
+                'lr': self.lr,
+                'entropy_coefficient': self.entropy_coefficient,
                 'batch_size': self.batch_size,
                 'n_epochs': self.n_epochs,
                 'actor_architecture': self.get_type_name_full(self.actor_architecture),
