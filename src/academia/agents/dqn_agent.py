@@ -4,6 +4,7 @@ import os
 import zipfile
 import tempfile
 import json
+import logging
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +14,9 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 from academia.agents.base import Agent
+
+
+_logger = logging.getLogger('academia.agents')
 
 
 class DQNAgent(Agent):
@@ -42,7 +46,6 @@ class DQNAgent(Agent):
         epsilon_decay (float): Decay rate for epsilon.
         n_actions (int): Number of possible actions in the environment.
         gamma (float): Discount factor.
-        random_state (int): Seed for the random number generator.
         memory (deque): Replay memory used to store experiences for training.
         batch_size (int): Size of the mini-batch used for training.
         network (nn.Module): Neural network used to approximate Q-values.
@@ -58,7 +61,7 @@ class DQNAgent(Agent):
         device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
-        >>> from models import CartPoleMLP  # Import custom neural network architecture
+        >>> from academia.models import CartPoleMLP  # Import custom neural network architecture
         
         >>> # Create an instance of the DQNAgent class with custom neural network architecture
         >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
@@ -114,6 +117,7 @@ class DQNAgent(Agent):
         self.train_step = 0
 
         if device == 'cuda' and not torch.cuda.is_available():
+            _logger.warning('CUDA is not available. Using CPU instead.')
             device = torch.device('cpu')
         elif device == 'cuda' and torch.cuda.is_available():
             device = torch.device('cuda')
