@@ -2,7 +2,6 @@ import os
 from typing import Dict, Literal, List
 
 import numpy as np
-import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -16,15 +15,16 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
     Plots the learning statistics for a single task.
 
     The returned plots include:
-    - A plot showing rewards and their moving average over episodes.
-    - A plot displaying the steps taken by the agent in each episode against the episode numbers.
-    - A plot indicating the agent's learning progress, represented by its evaluation score, in 
+    * A plot showing rewards and their moving average over episodes.
+    * A plot displaying the steps taken by the agent in each episode against the episode numbers.
+    * A plot indicating the agent's learning progress, represented by its evaluation score, in 
         relation to the number of steps taken up to the current evaluation.
 
     Note:
-        - If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
-            the file names will be appended with ``_rewards``, ``_steps`` and ``_evaluations`` respectively.
-        - if show is set to ``True``, the plots will be displayed in the browser window.   
+        If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
+        the file names will be appended with ``_rewards``, ``_steps`` and ``_evaluations`` respectively.
+
+        if show is set to ``True``, the plots will be displayed in the browser window.   
 
     Args:
         task_stats: Learning statistics for the task.
@@ -140,8 +140,8 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         Absolute path to the saved plot file if the ``save_path`` was provided.
     
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
-            the _rewards_curriculum is added to the end of the ``save_path`` 
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
+        the name of the saved plot, the _rewards_curriculum is added to the end of the ``save_path`` 
     
     Examples:
         Initialisation of a curriculum we want to plot:
@@ -183,7 +183,10 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
     num_cols = 2
     num_rows = (num_tasks + 1) // num_cols
 
-    fig = make_subplots(rows=num_rows, cols=num_cols, subplot_titles=[f'Episode rewards for task {task_id}' for task_id in curriculum_stats.keys()])
+    fig = make_subplots(rows=num_rows, 
+                        cols=num_cols, 
+                        subplot_titles=[f'Episode rewards for task {task_id}' 
+                                        for task_id in curriculum_stats.keys()])
 
     row = 1
     col = 1
@@ -234,8 +237,8 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         Absolute path to the saved plot file if the ``save_path`` was provided.
     
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
-            the _curriculum_eval_trajectory is added to the end of the ``save_path`` 
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
+        the name of the saved plot, the _curriculum_eval_trajectory is added to the end of the ``save_path`` 
     
     Examples:
         Initialisation of a curriculum we want to plot:
@@ -334,13 +337,27 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         save_format: File format for saving the plot. Defaults to 'png'.
         includes_init_eval: Whether to include initial evaluation. Defaults to ``False``.
     
+    Raises:
+        ValueError: If the number of evaluations is greater than the number of steps to evaluation. 
+        This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
+        is greater than the number of steps to evaluation. This may be the problem if the flag was set to
+        ``True`` in the LearningTask class.
+
+        ValueError: If the number of evaluations is smaller than the number of steps to evaluation.
+        This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
+        is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
+        ``False`` in the LearningTask class.
+
     Returns:
         Absolute path to the saved plot file if the ``save_path`` was provided.
     
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of the name of the saved plot, 
-            the _curriculum_vs_no_curriculum is added to the end of the ``save_path``
-        - Change the ``includes_init_eval`` to ``True`` if you specified this flag in :class:`LearningTask`.
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
+        the name of the saved plot, the _curriculum_vs_no_curriculum is added to the end of the ``save_path``
+
+    Warning:
+        Change the ``includes_init_eval`` to same value that you initialized in the 
+        :class:`academia.curriculum.LearningTask` class. Otherwise, the function will return an ``ValueError``.
     
     Examples:
         Initialisation of a curriculum we want to plot:
@@ -396,7 +413,10 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         Plotting the curriculum vs no curriculum:
 
         >>> from academia.utils.visualizations import plot_curriculum_vs_nocurriculum
-        >>> plot_curriculum_vs_nocurriculum(curriculum.stats, no_curriculum.stats, save_path='./curriculum', save_format='png')
+        >>> plot_curriculum_vs_nocurriculum(curriculum.stats, 
+        >>>                                 no_curriculum.stats, 
+        >>>                                 save_path='./curriculum', 
+        >>>                                 save_format='png')
     """
     fig = go.Figure()
     total_steps_to_last_eval = 0
@@ -409,9 +429,21 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         indices = np.arange(eval_interval - 1, len(steps_cum), eval_interval)
         steps_to_eval = steps_cum[indices]
         if includes_init_eval:
+            if len(np.concatenate([[total_steps_to_last_eval],steps_to_eval])) > len(evaluations):
+                raise ValueError(
+                    f"The flag includes_init_eval is set to True, but the number of evaluations "
+                    f"for task {task_id} is smaller than the number of steps to evaluation. "
+                    f"Make sure that the flag was set to True in the LearningTask class."
+                )
             fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
                                     y=evaluations, mode='lines', name=f'Task {task_id}'))
         else:
+            if len(steps_to_eval) < len(evaluations):
+                raise ValueError(
+                    f"The flag includes_init_eval is set to False, but the number of evaluations "
+                    f"for task {task_id} is greater than the number of steps to evaluation. "
+                    f"Make sure that the flag was set to False in the LearningTask class."
+                )
             fig.add_trace(go.Scatter(x=steps_to_eval, y=evaluations, mode='lines', name=f'Task {task_id}'))
             
         total_steps_to_last_eval = steps_to_eval[-1]
@@ -422,7 +454,11 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
         no_curr_steps_to_eval = np.concatenate([[0], no_curr_steps_to_eval])
 
-    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval, y=nocurriculum_stats.agent_evaluations, mode='lines', name='No curriculum'))
+    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval, 
+                             y=nocurriculum_stats.agent_evaluations, 
+                             mode='lines', 
+                             name='No curriculum'
+                             ))
     fig.update_layout(title_text='Curriculum vs No Curriculum',
                       xaxis_title='Total number of steps to evaluation',
                       yaxis_title='Evaluation score')
@@ -463,25 +499,29 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Raises:
-        ``ValueError``: If the number of tasks at level x and level y is not equal. It is assumed that 
-        the number of tasks at level x and level y is equal because the experiment involves testing 
-        the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
-        the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
-        environment.
+        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
+            the number of tasks at level x and level y is equal because the experiment involves testing 
+            the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
+            the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
+            environment.
 
-        ``ValueError``: If the number of evaluation scores is not equal to the number of tasks at level x.
-        This means that the evaluation was not performed only at the end of the task, which is necessary to
-        correctly measure the impact of learning duration in task with difficulty level = x to evaluation of this task.
+        ValueError: If the number of evaluation scores is not equal to the number of tasks at level x.
+            This means that the evaluation was not performed only at the end of the task, which is necessary to
+            correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
+            this task.
 
     Returns:
         Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
         the name of the saved plot, the _evaluation_impact is added to the end of the ``save_path``
-        - It is important that evaluations in task with difficulty level = y
+
+    Warning:
+        It is important that evaluations in task with difficulty level = y
         are only performed at the end of the task and that the number of episodes in this task should be fixed
-        to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of this task.     
+        to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
+        this task.     
     
     Examples:
         Initialisation of a diffrent pairs we want to analyze:
@@ -561,9 +601,9 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
 
         >>> from academia.utils.visualizations import plot_evaluation_impact
         >>> plot_evaluation_impact([500, 700, 1000], 
-                                   [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
-                                    save_path='./evaluation_impact', 
-                                    save_format='png')
+        >>>                        [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+        >>>                         save_path='./evaluation_impact', 
+        >>>                         save_format='png')
     """
     agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
 
@@ -607,8 +647,8 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
     The purpose of this plot is to show how the number of episodes in task x affects the total 
     time spent in both tasks. It is done by testing the curriculum on pairs of tasks with two
     specific levels of difficulty in order to examine how the number of episodes spent in the easier
-    one affects the total time spent in both tasks when the stop condition in harder task is specified to reach the 
-    fixed value of agent evaluation eg. equals 200.
+    one affects the total time spent in both tasks when the stop condition in harder task is specified to reach 
+    the fixed value of agent evaluation eg. equals 200.
 
     On the X-axis we have the number of episodes in task x, while on the Y-axis we have the total time spent in 
     both tasks.
@@ -621,16 +661,16 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Raises:
-        ``ValueError``: If the number of tasks at level x and level y is not equal. It is assumed that 
-        the number of tasks at level x and level y is equal because the experiment involves testing 
-        the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
-        the number of episodes spent in the easier one affects the total time spent in both tasks.
+        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
+            the number of tasks at level x and level y is equal because the experiment involves testing 
+            the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
+            the number of episodes spent in the easier one affects the total time spent in both tasks.
 
     Returns:
         Absolute path to the saved plot file if ``save_path`` was provided.
 
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of
         the name of the saved plot, the _time_impact is added to the end of the ``save_path``
 
     Examples:
@@ -711,9 +751,9 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
 
         >>> from academia.utils.visualizations import plot_time_impact
         >>> plot_time_impact([curriculum_v500.stats[0], curriculum_v700.stats[0], curriculum_v1000.stats[0]], 
-                             [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
-                              save_path='./time_impact', 
-                              save_format='png')
+        >>>                  [curriculum_v500.stats[1], curriculum_v700.stats[1], curriculum_v1000.stats[1]],
+        >>>                   save_path='./time_impact', 
+        >>>                   save_format='png')
     """
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
@@ -764,25 +804,27 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
     Raises:
         ValueError: If the number of tasks at level x, level y and level z is not equal. 
-        It is assumed that the number of tasks at level x, level y and level z is equal 
-        because the experiment involves testing the curriculum on group of three tasks with 
-        three specific levels of difficulty in order to examine how the number of episodes spent 
-        in the easier ones affects the evaluation of the agent in a more difficult environment.
+            It is assumed that the number of tasks at level x, level y and level z is equal 
+            because the experiment involves testing the curriculum on group of three tasks with 
+            three specific levels of difficulty in order to examine how the number of episodes spent 
+            in the easier ones affects the evaluation of the agent in a more difficult environment.
 
         ValueError: If the number of evaluation scores is not equal to the number of tasks at level x and level y.
-        It is assumed that the evaluation was not performed only at the end of the task, which is necessary to
-        correctly measure the impact of learning duration in task x and task y to evaluation of task z.
+            It is assumed that the evaluation was not performed only at the end of the task, which is necessary to
+            correctly measure the impact of learning duration in task x and task y to evaluation of task z.
 
     Returns:
         Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
-        - If save path is provided, the plot will be saved to the specified path. To increase the clarity of
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of
         the name of the saved plot, the _multiple_evaluation_impact is added to the end of the ``save_path``
-        - It is important that evaluations in task with difficulty level = z
+
+    Warning:
+        It is important that evaluations in task with difficulty level = z
         are only performed at the end of the task and that the number of episodes in this task should be fixed
-        to correctly measure the impact of learning duration in task with difficulty level = x and task with difficulty level = y 
-        to evaluation of this task.
+        to correctly measure the impact of learning duration in task with difficulty level = x and task with 
+        difficulty level = y to evaluation of this task.
     
     Examples:
 
@@ -878,9 +920,9 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
         >>> from academia.utils.visualizations import plot_multiple_evaluation_impact
         >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
-                                            [curriculum0.stats[2], curriculum1.stats[2], curriculum2.stats[2]],
-                                            save_path='./multiple_evaluation_impact', 
-                                            save_format='png')
+        >>>                                 [curriculum0.stats[2], curriculum1.stats[2], curriculum2.stats[2]],
+        >>>                                 save_path='./multiple_evaluation_impact', 
+        >>>                                 save_format='png')
     """
     agent_evals_lvl_z = [task.agent_evaluations for task in stats_lvl_z]
 
