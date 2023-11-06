@@ -1,7 +1,7 @@
 import os
 import zipfile
 import tempfile
-from typing import Any, Optional, Tuple, Type, Union
+from typing import Any, Literal, Optional, Tuple, Type, Union
 import json
 
 import numpy as np
@@ -91,13 +91,13 @@ class PPOAgent(Agent):
             self.rewards_to_go = []
             self.episode_lengths = []
 
-        def get_tensors(self) \
+        def get_tensors(self, device) \
                 -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
-            states_t = torch.tensor(np.array(self.states), dtype=torch.float)
-            actions_t = torch.tensor(np.array(self.actions), dtype=torch.float)
-            actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float)
-            rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float)
+            states_t = torch.tensor(np.array(self.states), dtype=torch.float).to(device)
+            actions_t = torch.tensor(np.array(self.actions), dtype=torch.float).to(device)
+            actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float).to(device)
+            rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float).to(device)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     def __init__(self, 
@@ -117,7 +117,9 @@ class PPOAgent(Agent):
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
                  min_epsilon: float = 0.01,
-                 random_state: Optional[int] = None) -> None:
+                 random_state: Optional[int] = None,
+                 device: Literal['cpu', 'cuda'] = 'cpu'
+                 ) -> None:
         super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
         self.discrete = discrete
         self.clip = clip
@@ -129,6 +131,11 @@ class PPOAgent(Agent):
         self.entropy_coefficient = entropy_coefficient
         self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
 
+        if device == 'cuda' and torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
+
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__init_networks()
@@ -136,8 +143,8 @@ class PPOAgent(Agent):
         self.__action_logit_cache = 0
 
     def __init_networks(self) -> None:
-        self.actor = self.actor_architecture()
-        self.critic = self.critic_architecture()
+        self.actor = self.actor_architecture()# .to(self.device)
+        self.critic = self.critic_architecture()# .to(self.device)
 
         self.actor_optimiser = Adam(self.actor.parameters(), lr=self.lr)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
@@ -212,7 +219,10 @@ class PPOAgent(Agent):
             self.buffer.reset()
 
     def __train(self) -> None:
-        states, actions, actions_logits, rewards_to_go = self.buffer.get_tensors()
+        self.actor.to(self.device)
+        self.critic.to(self.device)
+
+        states, actions, actions_logits, rewards_to_go = self.buffer.get_tensors(self.device)
         V, _, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
         A = (A - A.mean()) / (A.std() + 1e-10)
@@ -255,6 +265,9 @@ class PPOAgent(Agent):
                 self.critic_optimiser.zero_grad()    
                 critic_loss.backward()    
                 self.critic_optimiser.step()
+        
+        self.actor.to('cpu')
+        self.critic.to('cpu')
 
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
@@ -329,6 +342,7 @@ class PPOAgent(Agent):
                 'entropy_coefficient': self.entropy_coefficient,
                 'batch_size': self.batch_size,
                 'n_epochs': self.n_epochs,
+                'device': self.device,
                 'actor_architecture': self.get_type_name_full(self.actor_architecture),
                 'critic_architecture': self.get_type_name_full(self.critic_architecture),
                 'random_state': self._rng.bit_generator.state,
