@@ -21,7 +21,7 @@ from .base import Agent
 # PPO improvements branch todo
 # TODO [x] remove slots
 # TODO [x] address other todos scatter around the code
-# TODO [ ] add CUDA
+# TODO [x] add CUDA
 # TODO [ ] add documentation
 
 class PPOAgent(Agent):
@@ -342,7 +342,7 @@ class PPOAgent(Agent):
                 'entropy_coefficient': self.entropy_coefficient,
                 'batch_size': self.batch_size,
                 'n_epochs': self.n_epochs,
-                'device': self.device,
+                'device': str(self.device),
                 'actor_architecture': self.get_type_name_full(self.actor_architecture),
                 'critic_architecture': self.get_type_name_full(self.critic_architecture),
                 'random_state': self._rng.bit_generator.state,
