@@ -16,18 +16,18 @@ from .base import Agent
 # TODO Add KL estimation
 # TODO Add GAES
 # TODO Add lr scheduler
+# TODO Add legal mask
+
+# PPO improvements branch todo
+# TODO [x] remove slots
+# TODO [] add logging
+# TODO [] address other todos scatter around the code
+# TODO [] add CUDA
+# TODO [] add documentation
 
 class PPOAgent(Agent):
 
     class PPOBuffer:
-
-        __slots__ = ['n_steps', 'n_episodes',
-                     '_steps_counter', '_episode_length_counter', '_episode_counter',
-                     'states', 'actions', 'actions_logits', 'rewards', 'rewards_to_go', 'episode_lengths']
-
-        @property
-        def buffer_size(self):
-            return len(self.rewards)
 
         def __init__(self, 
                      n_steps: Optional[int] = None, 
@@ -36,25 +36,25 @@ class PPOAgent(Agent):
                     or (n_steps is not None and n_episodes is not None):
                 # TODO add logging
                 raise ValueError("Exactly one of n_steps and n_episodes must be not None")
-            self._reset()
+            self.reset()
             self.n_steps = n_steps
             self.n_episodes = n_episodes
 
         def __is_full(self):
-            if self.n_episodes is not None and self._episode_counter >= self.n_episodes:
+            if self.n_episodes is not None and self.episode_counter >= self.n_episodes:
                 return True
-            if self.n_steps is not None and self._steps_counter >= self.n_steps:
+            if self.n_steps is not None and self.steps_counter >= self.n_steps:
                 return True
             return False
 
-        def _update(self, 
+        def update(self, 
                     state: Any, 
                     action: Any, 
                     action_logits: float, 
                     reward: float, 
                     is_terminal: bool) -> bool:
-            self._steps_counter += 1
-            self._episode_length_counter += 1
+            self.steps_counter += 1
+            self.episode_length_counter += 1
 
             self.states.append(state)
             self.actions.append(action)
@@ -62,15 +62,15 @@ class PPOAgent(Agent):
             self.rewards.append(reward)
 
             if is_terminal:
-                self._episode_counter += 1
-                self.episode_lengths.append(self._episode_length_counter)
-                self._episode_length_counter = 0
+                self.episode_counter += 1
+                self.episode_lengths.append(self.episode_length_counter)
+                self.episode_length_counter = 0
 
             # we are also checking if the state is terminal to avoid updating the agent
             # before the end of the episode when using n_steps instead of n_episodes
             return is_terminal and self.__is_full()
 
-        def _calculate_rewards_to_go(self, gamma: float) -> None:
+        def calculate_rewards_to_go(self, gamma: float) -> None:
             t_offset = 0 
             for episode_length in self.episode_lengths:
                 discounted_reward = 0
@@ -81,10 +81,10 @@ class PPOAgent(Agent):
                 self.rewards_to_go.extend(discounted_rewards)
                 t_offset += episode_length
 
-        def _reset(self) -> None:
-            self._episode_length_counter = 0
-            self._steps_counter = 0
-            self._episode_counter = 0
+        def reset(self) -> None:
+            self.episode_length_counter = 0
+            self.steps_counter = 0
+            self.episode_counter = 0
 
             self.states = []
             self.actions = []
@@ -93,7 +93,7 @@ class PPOAgent(Agent):
             self.rewards_to_go = []
             self.episode_lengths = []
 
-        def _get_tensors(self) \
+        def get_tensors(self) \
                 -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
             states_t = torch.tensor(np.array(self.states), dtype=torch.float)
@@ -101,11 +101,6 @@ class PPOAgent(Agent):
             actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float)
             rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
-
-    __slots__ = ['n_actions', 'gamma', 'epsilon', 'epsilon_decay', 'min_epsilon',
-                 'discrete', 'clip', 'actor_architecture', 'critic_architecture',
-                 'actor', 'critic', 'buffer', 'batch_size', 'n_epochs',
-                 '__covariance_matrix', '__action_logit_cache']
 
     def __init__(self, 
                  discrete: bool,
@@ -117,6 +112,8 @@ class PPOAgent(Agent):
                  n_steps: Optional[int] = None,
                  n_episodes: Optional[int] = None,
                  clip: float = 0.2,
+                 lr: float = 3e-4,
+                 covariance_fill: float = 0.5,
                  gamma: float = 0.99, 
                  epsilon: float = 1.,
                  epsilon_decay: float = 0.99,
@@ -129,21 +126,21 @@ class PPOAgent(Agent):
         self.n_epochs = n_epochs
         self.actor_architecture = actor_architecture
         self.critic_architecture = critic_architecture
+        self.lr = lr
         self.buffer = PPOAgent.PPOBuffer(n_steps=n_steps, n_episodes=n_episodes)
 
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__init_networks()
-        # TODO parametrise `fill_value`
-        self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=0.5))
+        self.__covariance_matrix = torch.diag(torch.full(size=(self.n_actions,), fill_value=covariance_fill))
         self.__action_logit_cache = 0
 
     def __init_networks(self) -> None:
         self.actor = self.actor_architecture()
         self.critic = self.critic_architecture()
 
-        self.actor_optimiser = Adam(self.actor.parameters(), lr=3e-4)
-        self.critic_optimiser = Adam(self.critic.parameters(), lr=3e-4)
+        self.actor_optimiser = Adam(self.actor.parameters(), lr=self.lr)
+        self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
         -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -214,22 +211,22 @@ class PPOAgent(Agent):
                reward: float, 
                new_state: Any, 
                is_terminal: bool) -> None:
-        buffer_full = self.buffer._update(state, action, self.__action_logit_cache, reward, is_terminal)
+        buffer_full = self.buffer.update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
-            self.buffer._calculate_rewards_to_go(self.gamma)
+            self.buffer.calculate_rewards_to_go(self.gamma)
             self.__train()
-            self.buffer._reset()
+            self.buffer.reset()
 
     def __train(self) -> None:
-        states, actions, actions_logits, rewards_to_go = self.buffer._get_tensors()
+        states, actions, actions_logits, rewards_to_go = self.buffer.get_tensors()
         V, _, _ = self.__evaluate(states, actions)
         A = rewards_to_go - V.detach()
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            idx_permutation = np.arange(self.buffer.buffer_size)
+            idx_permutation = np.arange(self.buffer.steps_counter)
             self._rng.shuffle(idx_permutation)
-            n_batches = np.ceil(self.buffer.buffer_size / self.batch_size).astype(np.int32)
+            n_batches = np.ceil(self.buffer.steps_counter / self.batch_size).astype(np.int32)
             for batch_idx in range(n_batches):
                 idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
                 batch_states = states[idx_in_batch]
@@ -327,8 +324,16 @@ class PPOAgent(Agent):
             critic_temp = tempfile.NamedTemporaryFile(delete=False)
             torch.save(self.critic.state_dict(), critic_temp)
 
-            # save private and special attributes manually
             agent_state = {
+                'n_actions': self.n_actions,
+                'gamma': self.gamma,
+                'epsilon': self.epsilon,
+                'epsilon_decay': self.epsilon_decay,
+                'min_epsilon': self.min_epsilon,
+                'discrete': self.discrete,
+                'clip': self.clip,
+                'batch_size': self.batch_size,
+                'n_epochs': self.n_epochs,
                 'actor_architecture': self.get_type_name_full(self.actor_architecture),
                 'critic_architecture': self.get_type_name_full(self.critic_architecture),
                 'random_state': self._rng.bit_generator.state,
@@ -340,19 +345,14 @@ class PPOAgent(Agent):
                 'critic': None,
             }
 
-            # save standard attributes automatically
-            for attribute_name in self.__slots__:
-                if attribute_name not in agent_state:
-                    agent_state[attribute_name] = getattr(self, attribute_name)
-
             # the state of the buffer should only be saved up to the last full episode
             n_valid_steps = int(np.sum(self.buffer.episode_lengths).item())
             buffer_state = {
                 'n_steps': self.buffer.n_steps,
                 'n_episodes': self.buffer.n_episodes,
-                '_steps_counter': n_valid_steps,
-                '_episode_length_counter': 0,
-                '_episode_counter': self.buffer._episode_counter,
+                'steps_counter': n_valid_steps,
+                'episode_length_counter': 0,
+                'episode_counter': self.buffer.episode_counter,
                 'states': [state.tolist() for state in self.buffer.states[:n_valid_steps+1]],
                 'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps+1])],
                 'actions_logits': self.buffer.actions_logits[:n_valid_steps+1],
