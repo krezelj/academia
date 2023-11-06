@@ -1,4 +1,3 @@
-import logging
 import os
 import zipfile
 import tempfile
@@ -21,7 +20,6 @@ from .base import Agent
 
 # PPO improvements branch todo
 # TODO [x] remove slots
-# TODO [ ] add logging
 # TODO [x] address other todos scatter around the code
 # TODO [ ] add CUDA
 # TODO [ ] add documentation
