@@ -1,3 +1,4 @@
+import logging
 import os
 import zipfile
 import tempfile
@@ -13,20 +14,111 @@ from torch.distributions import MultivariateNormal, Categorical
 
 from .base import Agent
 
-# TODO Add KL estimation
-# TODO Add GAES
-# TODO Add lr scheduler
-# TODO Add legal mask
-
-# PPO improvements branch todo
-# TODO [x] remove slots
-# TODO [x] address other todos scatter around the code
-# TODO [x] add CUDA
-# TODO [ ] add documentation
+_logger = logging.getLogger('academia.curriculum')
 
 class PPOAgent(Agent):
+    """
+    Class representing a Proximal Policy Optimization (PPO) agent for reinforcement learning tasks.
+    Paper on PPO: https://arxiv.org/pdf/1707.06347.pdf
+
+    Args:
+        discrete: Whether the agent's action space is discrete.
+        actor_architecture: Type of neural network architecture to be used for the actor.
+        critic_architecture: Type of neural network architecture to be used. for the critic.
+        batch_size: The size of the minibatch used during training.
+        n_epochs: Number of epochs per training.
+        n_actions: Number of possible actions in the environment.
+        n_steps: Minimum number of steps to take between training sessions. Note that if the minimum
+            is reached during an episode the episode will still finish and the remaining steps
+            will be included in the buffer. If set to None :attr:`n_episodes` will be used instead. 
+            Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
+            Defaults to ``None``.
+        n_episodes: Number of episodes to take between training sessions. 
+            If set to None :attr:`n_steps` will be used instead. 
+            Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
+            Defaults to ``None``.
+        clip: Clip rate hyperparameter from the PPO algorithm. Defaults to 0.2,
+        lr: Learning rate used by (Adam) optimisers. The same value is used for both actor and critic.
+            Defaults to ``3e-4``.
+        covariance_fill: Value on the diagonal in the covariance matrix used to randomly sample
+            continuous actions when :attr:`discrete` is ``False``. Defaults to 0.5.
+        entropy_coefficient: Coefficient used to control the impact of entropy on the loss function.
+            Defaults to 0.01.
+        gamma: Discount factor for future rewards. Defaults to 0.99. 
+        epsilon: Initial exploration-exploitation trade-off parameter.
+            Note that this parameter is not used in PPO. Defaults to 1.0.
+        epsilon_decay: Decay factor for epsilon over time. 
+            Note that this parameter is not used in PPO. Defaults to 0.995.
+        min_epsilon: Minimum epsilon value to ensure exploration. 
+            Note that this parameter is not used in PPO. Defaults to 0.01.
+        random_state: Seed for random number generation. Defaults to ``None``.
+        device: Device used for computation. Possible values are ``'cuda'`` and ``'cpu'``. Defaults to ``'cpu'``.
+        
+    
+    Attributes:
+        n_actions (int): Number of possible actions in the environment.
+        gamma (float): Discount factor for future rewards.
+        epsilon (float): Initial exploration-exploitation trade-off parameter.
+        epsilon_decay (float): Decay factor for epsilon over time.
+        min_epsilon (float): Minimum epsilon value to ensure exploration.
+        discrete (bool): Whether the agent's action space is discrete.
+        clip (float): Clip rate hyperparameter from the PPO algorithm.
+        lr (float): Learning rate used by (Adam) optimisers.
+        entropy_coefficient (float): Coefficient used to control the impact of entropy on the loss function.
+        batch_size (int): The size of the minibatch used during training.
+        n_epochs (int): Number of epochs per training.
+        device (Literal['cpu', 'cuda']): Device used for computation.
+        buffer (PPOAgent.PPOBuffer): Trajectory buffer. This object contains all transitions gathered since
+            the last training session.
+        actor (nn.Module): Actor neural network.
+        critic (nn.Module): Critic neural network.
+        actor_architecture (Type[nn.Module]): 
+            Type of neural network architecture to be used for the actor.
+        critic_architecture (Type[nn.Module]): 
+            Type of neural network architecture to be used for the critic.
+
+    Notes:
+        - PPOAgent currently does not support legal masks
+        - PPOAgent does not use epsilon greedy policy. As such attributes like :attr:`epsilon`
+            do not affect the training process.
+
+    Todo:
+        There are still several things that this implementation does not include. Mainly
+        - KL Estimation
+        - GAES
+        - lr scheduler
+        - legal mask support
+    """
 
     class PPOBuffer:
+        """
+        Class representing the buffer of PPOAgent
+
+        Args:
+            n_steps: Minimum number of steps to take between training sessions. Note that if the minimum
+                is reached during an episode the episode will still finish and the remaining steps
+                will be included in the buffer. If set to None :attr:`n_episodes` will be used instead. 
+                Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
+                Defaults to ``None``.
+            n_episodes: Number of episodes to take between training sessions. 
+                If set to None :attr:`n_steps` will be used instead. 
+                Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
+                Defaults to ``None``.
+ 
+        Attributes:
+            n_steps (int): Minimum number of steps to take between training sessions.
+            n_episodes (int): Number of episodes to take between training sessions.
+            episode_length_counter (int): Length of the currently running episode.
+            steps_counter (int): Number of steps stored inside the buffer.
+            episode_counter (int): Number of full episodes stored inside the buffer.
+            states (list): List containing observed states.
+            actions (list): List containing actions taken.
+            actions_logits (list): List containing logits of actions taken.
+            rewards (list): List of obtained rewards.
+            rewards_to_go (list): List of discounted rewards. Note that it is only calculated right
+                before the training and is cleared afterwards.
+            episode_lengths (list): List containing the lengths of buffered episodes.
+        """
 
         def __init__(self, 
                      n_steps: Optional[int] = None, 
@@ -39,6 +131,9 @@ class PPOAgent(Agent):
             self.n_episodes = n_episodes
 
         def __is_full(self):
+            """
+            Returns ``True`` is enough steps or episodes is stored for training.
+            """
             if self.n_episodes is not None and self.episode_counter >= self.n_episodes:
                 return True
             if self.n_steps is not None and self.steps_counter >= self.n_steps:
@@ -48,15 +143,28 @@ class PPOAgent(Agent):
         def update(self, 
                     state: Any, 
                     action: Any, 
-                    action_logits: float, 
+                    action_logit: float, 
                     reward: float, 
                     is_terminal: bool) -> bool:
+            """
+            Updates the buffer with the provided transition attriutes.
+
+            Args:
+                state: Observed state of the environment.
+                action: Action taken by the agent.
+                action_logits: Logit of the action taken by the agent.
+                reward: Reward obtained by the agent.
+                is_terminal: Whether the resulting new state is terminal.
+
+            Returns:
+                Whether the buffer is full and the current episode is terminated.
+            """
             self.steps_counter += 1
             self.episode_length_counter += 1
 
             self.states.append(state)
             self.actions.append(action)
-            self.actions_logits.append(action_logits)
+            self.actions_logits.append(action_logit)
             self.rewards.append(reward)
 
             if is_terminal:
@@ -69,6 +177,12 @@ class PPOAgent(Agent):
             return is_terminal and self.__is_full()
 
         def calculate_rewards_to_go(self, gamma: float) -> None:
+            """
+            Calculates the discounted rewards for each buffered episode.
+
+            Args:
+                gamma: Discount factor
+            """
             t_offset = 0 
             for episode_length in self.episode_lengths:
                 discounted_reward = 0
@@ -80,6 +194,9 @@ class PPOAgent(Agent):
                 t_offset += episode_length
 
         def reset(self) -> None:
+            """
+            Clears the buffer and resets it to the initial state.
+            """
             self.episode_length_counter = 0
             self.steps_counter = 0
             self.episode_counter = 0
@@ -91,8 +208,18 @@ class PPOAgent(Agent):
             self.rewards_to_go = []
             self.episode_lengths = []
 
-        def get_tensors(self, device) \
+        def get_tensors(self, device: Literal['cpu', 'cuda']) \
                 -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
+            """
+            Calculates the discounted rewards for each buffered episode
+
+            Args:
+                device: Target computation device
+
+            Returns:
+                A 4-tuple containing states, actions, actions logits and discounted rewards 
+                in that order converted to tensors.
+            """
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
             states_t = torch.tensor(np.array(self.states), dtype=torch.float).to(device)
             actions_t = torch.tensor(np.array(self.actions), dtype=torch.float).to(device)
@@ -133,6 +260,8 @@ class PPOAgent(Agent):
 
         if device == 'cuda' and torch.cuda.is_available():
             self.device = torch.device('cuda')
+        elif device == 'cuda':
+            _logger.wa("CUDA device not available. CPU will be used instead")
         else:
             self.device = torch.device('cpu')
 
@@ -143,14 +272,21 @@ class PPOAgent(Agent):
         self.__action_logit_cache = 0
 
     def __init_networks(self) -> None:
-        self.actor = self.actor_architecture()# .to(self.device)
-        self.critic = self.critic_architecture()# .to(self.device)
+        """
+        Initialises the actor and critic networks and optimisers
+        """
+        self.actor = self.actor_architecture()
+        self.critic = self.critic_architecture()
 
         self.actor_optimiser = Adam(self.actor.parameters(), lr=self.lr)
         self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+        """
+        Evaluates the provided states and actions to obtain state-values
+        and actions logits using the current network parameters.
+        """
         V = self.critic(states).squeeze(dim=1)
         if self.discrete:
             pi = self.actor(states)
@@ -164,6 +300,9 @@ class PPOAgent(Agent):
 
     def __get_discrete_action_with_logits(self, states: torch.FloatTensor, legal_mask, greedy) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
+        """
+        Gets an action and its logit for a given state assuming discrete action space.
+        """
         pi = self.actor(states)
         distribution = Categorical(pi)
         if greedy:
@@ -175,6 +314,9 @@ class PPOAgent(Agent):
 
     def __get_continuous_action_with_logits(self, states: torch.FloatTensor, greedy) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
+        """
+        Gets an action and its logit for a given state assuming continuous action space.
+        """
         mean = self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
@@ -183,6 +325,9 @@ class PPOAgent(Agent):
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
     def __get_action_with_logits(self, states: torch.FloatTensor, legal_mask=None, greedy=False):
+        """
+        Gets an action and its logit for a given state.
+        """
         with torch.no_grad():
             if self.discrete:
                 return self.__get_discrete_action_with_logits(states, legal_mask, greedy)
@@ -190,7 +335,19 @@ class PPOAgent(Agent):
                 return self.__get_continuous_action_with_logits(states, greedy)
 
     def get_action(self, state: Any, legal_mask=None, greedy=False) -> Union[float, int]:
-        # PPOAgent currently doesn't support legal_masks TODO add note in documentation
+        """
+        Selects an action based on the current state.
+
+        Args:
+            state: The current state representation used to make the action selection decision.
+            legal_mask: A binary mask indicating the legality of actions.
+                If provided, restricts the agent's choices to legal actions.
+                Note that currently PPOAgent does not support legal masks
+            greedy: A boolean flag indicating whether to force a greedy action selection.
+
+        Returns:
+            The selected action.
+        """
         
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
@@ -212,6 +369,19 @@ class PPOAgent(Agent):
                reward: float, 
                new_state: Any, 
                is_terminal: bool) -> None:
+        """
+        Updates the PPOAgent by saving the provided transition into its buffer.
+        If the buffer is full it will also perform training on the actor and critic networks
+        and clear the buffer.
+
+        Args:
+            state: Current state of the environment.
+            action: Action taken in the current state.
+            reward: Reward received after taking the action.
+            new_state: Next state of the environment after taking the action.
+                Note that PPOAgent does not actually use this value when updating.
+            is_terminal: A flag indicating whether the new state is a terminal state.
+        """
         buffer_full = self.buffer.update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
             self.buffer.calculate_rewards_to_go(self.gamma)
@@ -219,6 +389,9 @@ class PPOAgent(Agent):
             self.buffer.reset()
 
     def __train(self) -> None:
+        """
+        Performs training on the actor and critic networks.
+        """
         self.actor.to(self.device)
         self.critic.to(self.device)
 
@@ -271,6 +444,12 @@ class PPOAgent(Agent):
 
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
+        """
+        Loads the state the agent from the specified file path. 
+
+        Args:
+            path: The file path from which to load the agent state.
+        """
         if not path.endswith('.zip'):
             path += '.agent.zip'
         zf = zipfile.ZipFile(path)
@@ -320,6 +499,15 @@ class PPOAgent(Agent):
         return agent
 
     def save(self, path: str) -> str:
+        """
+        Saves the state of the agent to the specified file path.
+
+        Args:
+            path: The file path to which the agent state will be saved.
+
+        Returns:
+            Absolute path to the saved file.
+        """
         if not path.endswith('.zip'):
             path += '.agent.zip'
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -348,7 +536,6 @@ class PPOAgent(Agent):
                 'random_state': self._rng.bit_generator.state,
                 '__covariance_matrix': self.__covariance_matrix.tolist(),
                 '__action_logit_cache': self.__action_logit_cache,
-                'epsilon': self.epsilon if type(self.epsilon) is float else self.epsilon.item(),
                 'buffer': None,
                 'actor': None,
                 'critic': None,
