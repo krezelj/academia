@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -44,6 +44,7 @@ class LavaCrossing(GenericMiniGridWrapper):
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
+        random_state: Optional seed that controls randomness of the environment.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -67,12 +68,14 @@ class LavaCrossing(GenericMiniGridWrapper):
     }
     """A dictionary that maps difficulty levels to gymnasium environment ids"""
 
-    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False, **kwargs):
+    def __init__(self, difficulty: int, n_frames_stacked: int = 1, append_step_count: bool = False,
+                 random_state: Optional[int] = None, **kwargs):
         super().__init__(
             difficulty=difficulty,
             difficulty_envid_map=LavaCrossing.__difficulty_envid_map,
             n_frames_stacked=n_frames_stacked,
             append_step_count=append_step_count,
+            random_state=random_state,
             **kwargs,
         )
         

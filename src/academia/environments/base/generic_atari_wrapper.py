@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -17,6 +17,7 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
         flatten_state: Wheter ot not to flatten the state if represented by and RGB or grayscale image.
             If ``obs_type`` is set to ``"ram"`` this parameter does nothing. Defaults to ``False``.
+        random_state: Optional seed that controls randomness of the environment.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -37,11 +38,12 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
                  n_frames_stacked: int = 1,
                  append_step_count: bool = False,
                  flatten_state: bool = False,
+                 random_state: Optional[int] = None,
                  **kwargs) -> None:
         
         self.flatten_state = flatten_state
-        super().__init__(difficulty, environment_id, n_frames_stacked, append_step_count, **kwargs)
-        
+        super().__init__(difficulty, environment_id, n_frames_stacked, append_step_count,
+                         random_state, **kwargs)
 
     def _transform_state(self, raw_state: npt.NDArray) -> npt.NDArray[np.float32]:
         """
@@ -62,4 +64,3 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
             return np.moveaxis(raw_state.flatten(), -1, 0) / 255
         else:
             return np.moveaxis(raw_state, -1, 0) / 255
-

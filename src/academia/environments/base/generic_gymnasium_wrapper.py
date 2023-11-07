@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 from collections import deque
 from abc import abstractmethod
 
@@ -21,7 +21,8 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         environment_id: Gymnasium environment ID.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
-        append_step_count: Whether or not append the current step count to each state. Defaults to ``False``
+        append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
+        random_state: Optional seed that controls randomness of the environment.
         kwargs: Arguments passed down to ``gymnasium.make``
 
     Attributes:
@@ -33,7 +34,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
     """
 
     def __init__(self, difficulty: int, environment_id: str, n_frames_stacked: int = 1,
-                 append_step_count: bool = False, **kwargs):
+                 append_step_count: bool = False, random_state: Optional[int] = None, **kwargs):
         super().__init__(
             difficulty=difficulty,
             n_frames_stacked=n_frames_stacked,
@@ -45,6 +46,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
 
         self._past_n_states = deque()  # properly set in self.reset()
+        self._rng = np.random.default_rng(random_state)
         self.reset()
         self.STATE_SHAPE = self.observe().shape
 
@@ -102,7 +104,8 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
         Returns:
             The new state after resetting the environment.
         """
-        self._state = self._transform_state(self._base_env.reset()[0])
+        seed = int(self._rng.integers(0, 999999999999))
+        self._state = self._transform_state(self._base_env.reset(seed=seed)[0])
         self._past_n_states = deque([self._state for _ in range(self.n_frames_stacked)])
         self.step_count = 0
         return self.observe()
