@@ -295,7 +295,8 @@ class DQNAgent(Agent):
                 'batch_size': self.batch_size,
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
                 'random_state': self._rng.bit_generator.state,
-                'memory': memory_save_format
+                'memory': memory_save_format,
+                'device': str(self.device)
             }
             json.dump(dict(learner_state_dict), agent_temp, indent=4)
             agent_temp.flush()
