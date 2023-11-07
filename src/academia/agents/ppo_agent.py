@@ -77,17 +77,10 @@ class PPOAgent(Agent):
         critic_architecture (Type[nn.Module]): 
             Type of neural network architecture to be used for the critic.
 
-    Notes:
+    Note:
         - PPOAgent currently does not support legal masks
         - PPOAgent does not use epsilon greedy policy. As such attributes like :attr:`epsilon`
             do not affect the training process.
-
-    Todo:
-        There are still several things that this implementation does not include. Mainly
-        - KL Estimation
-        - GAES
-        - lr scheduler
-        - legal mask support
     """
 
     class PPOBuffer:
@@ -261,7 +254,7 @@ class PPOAgent(Agent):
         if device == 'cuda' and torch.cuda.is_available():
             self.device = torch.device('cuda')
         elif device == 'cuda':
-            _logger.wa("CUDA device not available. CPU will be used instead")
+            _logger.warning("CUDA device not available. CPU will be used instead")
         else:
             self.device = torch.device('cpu')
 
@@ -298,7 +291,10 @@ class PPOAgent(Agent):
         actions_logits = distribution.log_prob(actions)
         return V, actions_logits, distribution.entropy()
 
-    def __get_discrete_action_with_logits(self, states: torch.FloatTensor, legal_mask, greedy) \
+    def __get_discrete_action_with_logits(self, 
+                                          states: torch.FloatTensor, 
+                                          legal_mask: npt.NDArray[int], 
+                                          greedy: bool) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
         """
         Gets an action and its logit for a given state assuming discrete action space.
@@ -312,7 +308,7 @@ class PPOAgent(Agent):
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
-    def __get_continuous_action_with_logits(self, states: torch.FloatTensor, greedy) \
+    def __get_continuous_action_with_logits(self, states: torch.FloatTensor, greedy: bool) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
         """
         Gets an action and its logit for a given state assuming continuous action space.
@@ -324,7 +320,10 @@ class PPOAgent(Agent):
         action = distribution.sample()
         return action.detach().numpy(), distribution.log_prob(action).detach()
 
-    def __get_action_with_logits(self, states: torch.FloatTensor, legal_mask=None, greedy=False):
+    def __get_action_with_logits(self, 
+                                 states: torch.FloatTensor, 
+                                 legal_mask: npt.NDArray[int]=None, 
+                                 greedy: bool=False):
         """
         Gets an action and its logit for a given state.
         """
@@ -334,7 +333,11 @@ class PPOAgent(Agent):
             else:
                 return self.__get_continuous_action_with_logits(states, greedy)
 
-    def get_action(self, state: Any, legal_mask=None, greedy=False) -> Union[float, int]:
+    def get_action(self, 
+                   state: npt.NDArray[np.float32], 
+                   legal_mask: npt.NDArray[int]=None, 
+                   greedy: bool=False) \
+            -> Union[float, int]:
         """
         Selects an action based on the current state.
 
