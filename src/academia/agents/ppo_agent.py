@@ -80,7 +80,7 @@ class PPOAgent(Agent):
     Note:
         - PPOAgent currently does not support legal masks
         - PPOAgent does not use epsilon greedy policy. As such attributes like :attr:`epsilon`
-            do not affect the training process.
+          do not affect the training process.
     """
 
     class PPOBuffer:
