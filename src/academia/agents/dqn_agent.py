@@ -1,9 +1,10 @@
 from collections import deque, namedtuple
-from typing import Type, Optional, Any
+from typing import Type, Optional, Any, Literal
 import os
 import zipfile
 import tempfile
 import json
+import logging
 
 import numpy as np
 import numpy.typing as npt
@@ -14,8 +15,8 @@ import torch.nn.functional as F
 
 from academia.agents.base import Agent
 
-USE_CUDA = torch.cuda.is_available()
-device = torch.device("cuda" if USE_CUDA else "cpu")
+
+_logger = logging.getLogger('academia.agents')
 
 
 class DQNAgent(Agent):
@@ -36,6 +37,7 @@ class DQNAgent(Agent):
         min_epsilon: Minimum epsilon value to ensure exploration. Defaults to 0.01.
         batch_size: Size of the mini-batch used for training. Defaults to 64.
         random_state: Seed for random number generation. Defaults to ``None``.
+        device: Device to use for training. Defaults to ``cpu``.
     
     Attributes:
         nn_architecture (Type[nn.Module]): Type of neural network architecture to be used.
@@ -44,7 +46,6 @@ class DQNAgent(Agent):
         epsilon_decay (float): Decay rate for epsilon.
         n_actions (int): Number of possible actions in the environment.
         gamma (float): Discount factor.
-        random_state (int): Seed for the random number generator.
         memory (deque): Replay memory used to store experiences for training.
         batch_size (int): Size of the mini-batch used for training.
         network (nn.Module): Neural network used to approximate Q-values.
@@ -57,9 +58,10 @@ class DQNAgent(Agent):
         LR (float): Learning rate for the optimizer.
         TAU (float): Interpolation parameter for target network soft updates.
         UPDATE_EVERY (int): Frequency of network updates.
+        device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
-        >>> from models import CartPoleMLP  # Import custom neural network architecture
+        >>> from academia.models import CartPoleMLP  # Import custom neural network architecture
         
         >>> # Create an instance of the DQNAgent class with custom neural network architecture
         >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
@@ -101,7 +103,8 @@ class DQNAgent(Agent):
                  gamma: float = 0.99, epsilon: float = 1.,
                  epsilon_decay: float = 0.995,
                  min_epsilon: float = 0.01,
-                 batch_size: int = 64, random_state: Optional[int] = None
+                 batch_size: int = 64, random_state: Optional[int] = None,
+                 device: Literal['cpu', 'cuda'] = 'cpu'
                  ):
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
@@ -112,7 +115,16 @@ class DQNAgent(Agent):
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
                                                                 "next_state", "done"])
         self.train_step = 0
-        
+
+        if device == 'cuda' and not torch.cuda.is_available():
+            _logger.warning('CUDA is not available. Using CPU instead.')
+            device = torch.device('cpu')
+        elif device == 'cuda' and torch.cuda.is_available():
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
+        self.device = device
+
         if random_state is not None:
             torch.manual_seed(random_state)
         self.__build_network()
@@ -132,10 +144,10 @@ class DQNAgent(Agent):
             - The target network is initialized with the same architecture as the main network with same weights.
         """
         self.network = self.nn_architecture()
-        self.network.to(device)
+        self.network.to(self.device)
 
         self.target_network = self.nn_architecture()
-        self.target_network.to(device)
+        self.target_network.to(self.device)
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
@@ -167,15 +179,15 @@ class DQNAgent(Agent):
         Returns:
             The index of the selected action.
         """
-        state = torch.from_numpy(state).float().to(device)
+        state = torch.from_numpy(state).float().to(self.device)
         self.network.eval()
 
         with torch.no_grad():
-            q_val_act = self.network(state).to(device)
+            q_val_act = self.network(state).to(self.device)
         self.network.train()
 
         if legal_mask is not None:
-            legal_mask = torch.from_numpy(legal_mask).float().to(device)
+            legal_mask = torch.from_numpy(legal_mask).float().to(self.device)
             q_val_act = (q_val_act - torch.min(q_val_act)) * legal_mask \
                 + legal_mask
             
@@ -239,17 +251,18 @@ class DQNAgent(Agent):
         """
         batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
-        states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(device)
+        states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(self.device)
+        actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(self.device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(self.device)
         next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None]))\
-            .float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(device)
+            .float().to(self.device)
+        dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(self.device)
         return (states, actions, rewards, next_states, dones)
 
     def save(self, path: str) -> str:
         """
-        Saves the state dictionary of the neural network model to the specified file path.
+        Saves the state dictionary of the neural network model, target network model and agent parameters to 
+        the specified file path.
 
         Args:
             path: The file path (including filename and extension) where the model's state dictionary will be saved.
@@ -262,10 +275,17 @@ class DQNAgent(Agent):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with zipfile.ZipFile(path, 'w') as zf:
             # network state
-            network_temp = tempfile.NamedTemporaryFile()
+            network_temp = tempfile.NamedTemporaryFile(delete=False)
             torch.save(self.network.state_dict(), network_temp)
+            # target network state
+            target_network_temp = tempfile.NamedTemporaryFile(delete=False)
+            torch.save(self.target_network.state_dict(), target_network_temp)
             # agent config
-            agent_temp = tempfile.NamedTemporaryFile()
+            agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
+
+            memory_save_format = [{"state": exp.state.tolist(), "action": int(exp.action), "reward": float(exp.reward),
+                    "next_state": exp.next_state.tolist(), "done": bool(exp.done)} for exp in self.memory]
+            
             learner_state_dict = {
                 'n_actions': self.n_actions,
                 'gamma': self.gamma,
@@ -274,19 +294,28 @@ class DQNAgent(Agent):
                 'min_epsilon': self.min_epsilon,
                 'batch_size': self.batch_size,
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
-                'random_state': self._rng.bit_generator.state
+                'random_state': self._rng.bit_generator.state,
+                'memory': memory_save_format,
+                'device': str(self.device)
             }
-            with open(agent_temp.name, 'w') as file:
-                json.dump(dict(learner_state_dict), file, indent=4)
-            # zip both
+            json.dump(dict(learner_state_dict), agent_temp, indent=4)
+            agent_temp.flush()
+
             zf.write(network_temp.name, 'network.pth')
             zf.write(agent_temp.name, 'state.agent.json')
+            zf.write(target_network_temp.name, 'target_network.pth')
+
+            network_temp.close()
+            target_network_temp.close()
+            agent_temp.close()
+
         return os.path.abspath(path)
 
     @classmethod
     def load(cls, path: str) -> 'DQNAgent':
         """
-        Loads the state dictionary of the neural network model from the specified file path. 
+        Loads the state dictionary of the neural network model, target network model and agent parameters 
+        from the specified file path. 
 
         Args:
             path: The file path from which to load the model's state dictionary.
@@ -298,6 +327,7 @@ class DQNAgent(Agent):
             zf.extractall(tempdir)
             # network state
             network_params = torch.load(os.path.join(tempdir, 'network.pth'))
+            target_network_params = torch.load(os.path.join(tempdir, 'target_network.pth'))
             # agent config
             with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 params = json.load(file)
@@ -305,8 +335,20 @@ class DQNAgent(Agent):
         nn_architecture = cls.get_type(params['nn_architecture'])
         del params['nn_architecture']
         rng_state = params.pop('random_state')
+        memory = params.pop('memory')
+        experience = namedtuple("Experience", field_names=["state", "action", "reward",
+                                                                "next_state", "done"])
+        restored_memory = deque(maxlen=cls.REPLAY_MEMORY_SIZE)
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
+        for exp_dict in memory:
+            state = np.array(exp_dict["state"], dtype=np.float32) 
+            action = int(exp_dict["action"])
+            reward = float(exp_dict["reward"])
+            next_state = np.array(exp_dict["next_state"], dtype=np.float32)
+            done = bool(exp_dict["done"])
+            restored_memory.append(experience(state, action, reward, next_state, done))
+        agent.memory = restored_memory
         agent.network.load_state_dict(network_params)
-        agent.target_network.load_state_dict(network_params)
+        agent.target_network.load_state_dict(target_network_params)
         return agent
