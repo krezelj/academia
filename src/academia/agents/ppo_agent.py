@@ -255,6 +255,7 @@ class PPOAgent(Agent):
             self.device = torch.device('cuda')
         elif device == 'cuda':
             _logger.warning("CUDA device not available. CPU will be used instead")
+            self.device = torch.device('cpu')
         else:
             self.device = torch.device('cpu')
 
