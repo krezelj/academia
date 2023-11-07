@@ -19,14 +19,14 @@ class Curriculum(SavableLoadable):
 
     Args:
         tasks: Tasks to be run. Tasks are run one by one so their order matters.
-        output_dir: A path to a file where the agent states and training stats will be saved upon each
-            task's completion or interruption. If set to ``None``, agent's state or training stats will not
+        output_dir: A path to a file where agent states and training stats will be saved upon each task's
+            completion or interruption. If set to ``None``, an agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Attributes:
         tasks (list[LearningTask]): Tasks to be run. Tasks are run one by one so their order matters.
-        output_dir (str, optional): A path to a file where the agent states and training stats will be saved
-            upon each task's completion or interruption. If set to ``None``, agent's state or training stats
+        output_dir (str, optional): A path to a file where agent states and training stats will be saved upon
+            each task's completion or interruption. If set to ``None``, an agent's state or training stats
             will not be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Examples:
@@ -97,14 +97,13 @@ class Curriculum(SavableLoadable):
     def run(self, agent: Agent, verbose=0, render=False):
         """
         Runs all tasks for the given agent. Agent's states and training statistics will be saved upon each
-            task's completion or interruption if save paths are specified either for a specific task, or
-            for the whole curriculum through :attr:`agents_save_dir` attribute.
+        task's completion or interruption if save paths are specified either for a specific task, or
+        for the whole curriculum through :attr:`agents_save_dir` attribute.
 
         Args:
             agent: An agent to train
-            verbose: Verbosity level. Possible values: 0 - no logging (except for errors);
-                1 - Task finished/Task interrupted + warnings; 2 - Mean evaluation score at each iteration;
-                3 - Each evaluation is logged; 4 - Each episode is logged.
+            verbose: Verbosity level. These are common for the entire module - for information on
+                different levels see :mod:`academia.curriculum`.
             render: Whether or not to render the environment
         """
         total_episodes = 0
@@ -143,8 +142,7 @@ class Curriculum(SavableLoadable):
     @property
     def stats(self) -> dict[str, LearningStats]:
         """
-        Returns:
-            A dictionary that maps task name/index to task statistics for every task in this curriculum
+        A dictionary that maps task name/index to task statistics for every task in this curriculum.
         """
         return {self.__get_task_id(i): task.stats for i, task in enumerate(self.tasks)}
 
@@ -221,7 +219,7 @@ class Curriculum(SavableLoadable):
 
     def save(self, path: str) -> str:
         """
-        Saves this :class:`Curriculum`'s configuration to the file.
+        Saves this curriculum's configuration to the file.
         Configuration is stored in a YAML format.
 
         Args:
@@ -231,11 +229,13 @@ class Curriculum(SavableLoadable):
         Returns:
             A final (i.e. with an extension), absolute path where the configuration was saved.
         """
-        # dict preserves insertion order
         curr_data = {
             'order': list(range(len(self.tasks))),
+            # dict preserves insertion order
             'tasks': {i: task.to_dict() for i, task in enumerate(self.tasks)},
         }
+        if self.output_dir is not None:
+            curr_data['output_dir'] = self.output_dir
         # add file extension
         if not path.endswith('.yml'):
             path += '.curriculum.yml'
