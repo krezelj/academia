@@ -759,11 +759,11 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
     
-    episoded_lvl_x = [len(task.step_counts) for task in stats_lvl_x]
+    episodes_lvl_x = [len(task.step_counts) for task in stats_lvl_x]
     agent_time_lvl_x = [np.sum(task.episode_cpu_times) for task in stats_lvl_x]
     agent_time_lvl_y = [np.sum(task.episode_cpu_times) for task in stats_lvl_y]
     total_times_for_both = agent_time_lvl_x + agent_time_lvl_y
-    fig = px.line(x=episoded_lvl_x, y=total_times_for_both,
+    fig = px.line(x=episodes_lvl_x, y=total_times_for_both,
                           title='Impact of number of episodes in task x on total time spent in both tasks')
     fig.update_layout(
         xaxis_title="Number of episodes in task X",
