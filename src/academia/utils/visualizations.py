@@ -44,7 +44,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>> from academia.utils.visualizations import plot_task
         >>> test_task = LearningTask(
         >>>     env_type= LunarLander,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'max_episodes': 1000},
         >>>     evalutaion_interval=100,
         >>>     stats_save_path='./my_task_stats.json',
@@ -59,7 +59,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>>     nn_architecture=LunarLanderMLP,
         >>>     random_state=123,
         >>> )
-        >>> test_task.run(agent, verbose=4, render=True)
+        >>> test_task.run(agent, verbose=4)
 
         Plotting the task:
 
@@ -151,12 +151,12 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         >>> from academia.environments import LavaCrossing
         >>> task1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> curriculum = Curriculum(
@@ -173,7 +173,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         >>>     nn_architecture=LavaCrossingMLP,
         >>>     random_state=123,
         >>> )
-        >>> curriculum.run(agent, verbose=4, render=True)
+        >>> curriculum.run(agent, verbose=4)
 
         Plotting the curriculum:
 
@@ -248,12 +248,12 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         >>> from academia.environments import LavaCrossing
         >>> task1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> curriculum = Curriculum(
@@ -270,7 +270,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         >>>     nn_architecture=LavaCrossingMLP,
         >>>     random_state=123,
         >>> )
-        >>> curriculum.run(agent, verbose=4, render=True)
+        >>> curriculum.run(agent, verbose=4)
 
         Plotting the curriculum:
         
@@ -367,12 +367,12 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         >>> from academia.environments import LavaCrossing
         >>> task1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> curriculum = Curriculum(
@@ -384,7 +384,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
         >>> no_curriculum = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'max_episodes': 1500},
         >>> )
 
@@ -405,11 +405,11 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
         Running a curriculum:
 
-        >>> curriculum.run(agent_curriculum, verbose=4, render=True)
+        >>> curriculum.run(agent_curriculum, verbose=4)
 
         Running a task without curriculum:
 
-        >>> no_curriculum.run(agent_no_curriculum, verbose=4, render=True)
+        >>> no_curriculum.run(agent_no_curriculum, verbose=4)
 
         Plotting the curriculum vs no curriculum:
 
@@ -531,32 +531,32 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         >>> from academia.environments import LavaCrossing
         >>> task0_v500 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task1_v500 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task0_v700 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 700},
         >>> )
         >>> task1_v700 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task0_v1000 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task1_v1000 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
 
@@ -586,17 +586,17 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         >>>     tasks=[task0_v500, task1_v500],
         >>>     output_dir='./curriculum_v500/',
         >>> )
-        >>> curriculum_v500.run(agent, verbose=4, render=True)
+        >>> curriculum_v500.run(agent, verbose=4)
         >>> curriculum_v700 = Curriculum(
         >>>     tasks=[task0_v700, task1_v700],
         >>>     output_dir='./curriculum_v700/',
         >>> )
-        >>> curriculum_v700.run(agent, verbose=4, render=True)
+        >>> curriculum_v700.run(agent, verbose=4)
         >>> curriculum_v1000 = Curriculum(
         >>>     tasks=[task0_v1000, task1_v1000],
         >>>     output_dir='./curriculum_v1000/',
         >>> )
-        >>> curriculum_v1000.run(agent, verbose=4, render=True)
+        >>> curriculum_v1000.run(agent, verbose=4)
 
         Plotting the evaluation impact:
 
@@ -681,32 +681,32 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>> from academia.environments import LavaCrossing
         >>> task0_v500 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task1_v500 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
         >>> task0_v700 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 700},
         >>> )
         >>> task1_v700 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
         >>> task0_v1000 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task1_v1000 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
 
@@ -736,17 +736,17 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     tasks=[task0_v500, task1_v500],
         >>>     output_dir='./curriculum_v500/',
         >>> )
-        >>> curriculum_v500.run(agent, verbose=4, render=True)
+        >>> curriculum_v500.run(agent, verbose=4)
         >>> curriculum_v700 = Curriculum(
         >>>     tasks=[task0_v700, task1_v700],
         >>>     output_dir='./curriculum_v700/',
         >>> )
-        >>> curriculum_v700.run(agent, verbose=4, render=True)
+        >>> curriculum_v700.run(agent, verbose=4)
         >>> curriculum_v1000 = Curriculum(
         >>>     tasks=[task0_v1000, task1_v1000],
         >>>     output_dir='./curriculum_v1000/',
         >>> )
-        >>> curriculum_v1000.run(agent, verbose=4, render=True)
+        >>> curriculum_v1000.run(agent, verbose=4)
 
         Plotting the time impact:
 
@@ -835,17 +835,17 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         >>> from academia.environments import LavaCrossing
         >>> task_curr0_v0 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task_curr0_v1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task_curr0_v2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
         >>> curriculum0 = Curriculum(
@@ -854,17 +854,17 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         >>> )
         >>> task_curr1_v0 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 700},
         >>> )
         >>> task_curr1_v1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 1200},
         >>> )
         >>> task_curr1_v2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
         >>> curriculum1 = Curriculum(
@@ -873,17 +873,17 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         >>> )
         >>> task_curr2_v0 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> task_curr2_v1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'max_episodes': 600},
         >>> )
         >>> task_curr2_v2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
         >>> curriculum2 = Curriculum(
@@ -913,9 +913,9 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
         Running curriculums:
 
-        >>> curriculum0.run(agent0, verbose=4, render=True)
-        >>> curriculum1.run(agent1, verbose=4, render=True)
-        >>> curriculum2.run(agent2, verbose=4, render=True)
+        >>> curriculum0.run(agent0, verbose=4)
+        >>> curriculum1.run(agent1, verbose=4)
+        >>> curriculum2.run(agent2, verbose=4)
 
         Plotting the multiple evaluation impact:
 
