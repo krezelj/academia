@@ -60,6 +60,8 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
         Returns:
             An array representing a scaled and potentially flattended image or scaled RAM content.
         """
+        if self._base_env.spec.kwargs['obs_type'] == 'grayscale':
+            raw_state = np.reshape(raw_state, (210, 160, 1))
         if self.flatten_state:
             return np.moveaxis(raw_state.flatten(), -1, 0) / 255
         else:
