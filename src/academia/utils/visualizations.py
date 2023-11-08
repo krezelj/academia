@@ -602,7 +602,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
 
         >>> from academia.utils.visualizations import plot_evaluation_impact
         >>> plot_evaluation_impact([500, 700, 1000], 
-        >>>                        [curriculum_v500.stats['1'], curriculum_v700.stats['1'], curriculum_v1000.stats['1']],
+        >>>                        [curriculum_v500.stats['2'], curriculum_v700.stats['2'], curriculum_v1000.stats['2']],
         >>>                         save_path='./evaluation_impact', 
         >>>                         save_format='png')
     """
@@ -640,8 +640,10 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         return os.path.abspath(save_path)
 
 
-def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = False, 
-                     save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], 
+                     time_domain_x: Literal["steps", "episodes", "cpu_time", "wall_time"] = "episodes",
+                     time_domain_y: Literal["steps", "episodes", "cpu_time", "wall_time", "as_x"] = "as_x",
+                     show: bool = False, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of the number of episodes in task x on the total time spent in both tasks.
 
@@ -699,16 +701,6 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     env_args={'difficulty': 1},
         >>>     stop_conditions={'min_evaluation_score': 200},
         >>> )
-        >>> task0_v1000 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task1_v1000 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
 
         Initialisation of agents:
 
@@ -720,11 +712,6 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     random_state=123,
         >>> )
         >>> agent_v700 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
-        >>>     random_state=123,
-        >>> )
-        >>> agent_v1000 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
         >>>     nn_architecture=LavaCrossingMLP,
         >>>     random_state=123,
@@ -742,36 +729,38 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     output_dir='./curriculum_v700/',
         >>> )
         >>> curriculum_v700.run(agent, verbose=4)
-        >>> curriculum_v1000 = Curriculum(
-        >>>     tasks=[task0_v1000, task1_v1000],
-        >>>     output_dir='./curriculum_v1000/',
-        >>> )
-        >>> curriculum_v1000.run(agent, verbose=4)
 
         Plotting the time impact:
 
         >>> from academia.utils.visualizations import plot_time_impact
-        >>> plot_time_impact([curriculum_v500.stats['0'], curriculum_v700.stats['0'], curriculum_v1000.stats['0']], 
-        >>>                  [curriculum_v500.stats['1'], curriculum_v700.stats['1'], curriculum_v1000.stats['1']],
+        >>> plot_time_impact([curriculum_v500.stats['1'], curriculum_v700.stats['1']], 
+        >>>                  [curriculum_v500.stats['2'], curriculum_v700.stats['2']],
+        >>>                   time_domain_x="steps", 
         >>>                   save_path='./time_impact', 
         >>>                   save_format='png')
     """
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
     
-    episodes_lvl_x = [len(task.step_counts) for task in stats_lvl_x]
-    agent_time_lvl_x = [np.sum(task.episode_cpu_times) for task in stats_lvl_x]
-    agent_time_lvl_y = [np.sum(task.episode_cpu_times) for task in stats_lvl_y]
-    total_times_for_both = agent_time_lvl_x + agent_time_lvl_y
-    fig = px.line(x=episodes_lvl_x, y=total_times_for_both,
-                          title='Impact of number of episodes in task x on total time spent in both tasks')
+    if time_domain_y == "as_x":
+        time_domain_y = time_domain_x
+    
+    x_data, x_domain = _extract_time_data(stats_lvl_x, time_domain_x)
+
+    y_data, y_domain = _extract_time_data(stats_lvl_y, time_domain_y)
+
+    # we want to show total time on y-axis, so we need to add x_data to y_data
+    y_data = np.sum([x_data, y_data], axis=0) 
+
+    fig = px.line(x=x_data, y=y_data, markers=True,
+                          title='Impact of learning duration in task x on total time spent in both tasks')
     fig.update_layout(
-        xaxis_title="Number of episodes in task X",
-        yaxis_title="Total time spent in both tasks"
+        xaxis_title=f"Learning duration in task X ({x_domain})",
+        yaxis_title=f"Total time spent in both tasks ({y_domain})"
     )
     fig.update_traces(
         hovertemplate="<br>".join([
-            "Number of episodes in task X: %{x}",
+            "Learning duration in task X: %{x}",
             "Total time spent in both tasks: %{y}"
         ])
     )
@@ -784,6 +773,29 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         else:
             fig.write_html(f"{save_path}_time_impact.html")
         return os.path.abspath(save_path)
+
+
+def _extract_time_data(stats: List[LearningStats], time_domain: str):
+    """
+    Extracts the data from the learning statistics for the given time domain.
+
+    Args:
+        stats: Learning statistics for tasks in level X.
+        time_domain: Time domain to extract data for.
+
+    Returns:
+        List of data for the given time domain.
+    """
+    if time_domain == "steps":
+        return [np.sum(task.step_counts) for task in stats], "steps"
+    elif time_domain == "episodes":
+        return [len(task.step_counts) for task in stats], "episodes"
+    elif time_domain == "cpu_time":
+        return [np.sum(task.episode_cpu_times) for task in stats], "cpu_time"
+    elif time_domain == "wall_time":
+        return [np.sum(task.episode_wall_times) for task in stats], "wall_time"
+    else:
+        raise ValueError(f"Unknown time domain: {time_domain}")
 
 
 def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
@@ -921,7 +933,7 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
         >>> from academia.utils.visualizations import plot_multiple_evaluation_impact
         >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
-        >>>                                 [curriculum0.stats['2'], curriculum1.stats['2'], curriculum2.stats['2']],
+        >>>                                 [curriculum0.stats['3'], curriculum1.stats['3'], curriculum2.stats['3']],
         >>>                                 save_path='./multiple_evaluation_impact', 
         >>>                                 save_format='png')
     """
