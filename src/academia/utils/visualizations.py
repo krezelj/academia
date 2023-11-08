@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from academia.curriculum import LearningStats
 
 
-def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = None, 
+def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None, 
               save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the learning statistics for a single task.
@@ -126,7 +126,7 @@ def plot_task(task_stats: LearningStats, show: bool = True, save_path: str = Non
         return os.path.abspath(save_path)
     
     
-def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
+def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
                                save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of episode rewards for multiple tasks in the curriculum.
@@ -219,7 +219,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         return os.path.abspath(save_path)
 
 
-def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = True,
+def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
                                  save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
@@ -318,7 +318,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     
 
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
-                                    nocurriculum_stats: LearningStats, show: bool = True,
+                                    nocurriculum_stats: LearningStats, show: bool = False,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
                                     includes_init_eval: bool = False):
     """
@@ -481,7 +481,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
 
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
-                           show: bool = True, save_path: str = None, 
+                           show: bool = False, save_path: str = None, 
                            save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of learning duration in task with difficulty level = x to evaluation 
@@ -640,7 +640,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         return os.path.abspath(save_path)
 
 
-def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = True, 
+def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], show: bool = False, 
                      save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of the number of episodes in task x on the total time spent in both tasks.
@@ -787,7 +787,7 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
 
 
 def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
-                                    stats_lvl_z: List[LearningStats], show: bool = True, save_path: str = None, 
+                                    stats_lvl_z: List[LearningStats], show: bool = False, save_path: str = None, 
                                     save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of learning duration in task x and task y to evaluation of task z. The purpose of this plot is 
