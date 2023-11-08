@@ -195,7 +195,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         rewards = task_stats.episode_rewards
         fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Task {task_id}'), row=row, col=col)
         fig.update_xaxes(title_text='Step', row=row, col=col)
-        fig.update_yaxes(title_text='Episode', row=row, col=1)
+        fig.update_yaxes(title_text='Episode', row=row, col=1)  # Only the first column has y-axis labels because they are shared across rows
         col += 1
         if col > num_cols:
             col = 1
