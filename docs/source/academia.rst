@@ -12,6 +12,7 @@ Subpackages
    academia.environments
    academia.models
    academia.utils
+   academia.tools
 
 Module contents
 ---------------
