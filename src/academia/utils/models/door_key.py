@@ -2,10 +2,10 @@ import torch.nn as nn
 import torch
 
 
-class DoorKeyMLP(nn.Module):
+class MLPDQN(nn.Module):
 
     def __init__(self):
-        super(DoorKeyMLP, self).__init__()
+        super(MLPDQN, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(52, 160),
             nn.ReLU(),

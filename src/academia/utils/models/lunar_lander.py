@@ -2,18 +2,16 @@ import torch.nn as nn
 import torch
 
 
-class LavaCrossingMLP(nn.Module):
+class MLPStepDQN(nn.Module):
 
     def __init__(self):
-        super(LavaCrossingMLP, self).__init__()
+        super(MLPStepDQN, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(51, 160),
+            nn.Linear(9, 64),
             nn.ReLU(),
-            nn.Linear(160, 80),
+            nn.Linear(64, 64),
             nn.ReLU(),
-            nn.Linear(80, 40),
-            nn.ReLU(),
-            nn.Linear(40, 3),
+            nn.Linear(64, 4),
         )
 
     def forward(self, x) -> torch.Tensor:
