@@ -22,12 +22,12 @@ class PPOAgent(Agent):
     Paper on PPO: https://arxiv.org/pdf/1707.06347.pdf
 
     Args:
-        discrete: Whether the agent's action space is discrete.
         actor_architecture: Type of neural network architecture to be used for the actor.
         critic_architecture: Type of neural network architecture to be used. for the critic.
-        batch_size: The size of the minibatch used during training.
-        n_epochs: Number of epochs per training.
         n_actions: Number of possible actions in the environment.
+        discrete: Whether the agent's action space is discrete. Defaults to ``True``
+        batch_size: The size of the minibatch used during training. Defaults to 64.
+        n_epochs: Number of epochs per training. Defaults to 10.
         n_steps: Minimum number of steps to take between training sessions. Note that if the minimum
             is reached during an episode the episode will still finish and the remaining steps
             will be included in the buffer. If set to None :attr:`n_episodes` will be used instead. 
@@ -76,6 +76,24 @@ class PPOAgent(Agent):
             Type of neural network architecture to be used for the actor.
         critic_architecture (Type[nn.Module]): 
             Type of neural network architecture to be used for the critic.
+
+    Examples:
+        >>> from academia.agents import PPOAgent
+        >>> from academia.environments import LavaCrossing
+        >>> from academia.curriculum import LearningTask
+        >>> from academia.utils.models import lava_crossing
+        >>>
+        >>> task = LearningTask(
+        >>>     LavaCrossing, 
+        >>>     env_args={'difficulty': 0}, 
+        >>>     stop_conditions={'max_episodes': 100}
+        >>> )
+        >>> agent = PPOAgent(
+        >>>     actor_architecture=lava_crossing.MLPActor,
+        >>>     critic_architecture=lava_crossing.MLPCritic,
+        >>>     n_actions=3
+        >>> )
+        >>> task.run(agent)
 
     Note:
         - PPOAgent currently does not support legal masks
@@ -221,12 +239,12 @@ class PPOAgent(Agent):
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
     def __init__(self, 
-                 discrete: bool,
                  actor_architecture: Type[nn.Module],
                  critic_architecture: Type[nn.Module],
-                 batch_size: int,
-                 n_epochs: int,
                  n_actions: int,
+                 discrete: bool = True,
+                 batch_size: int = 64,
+                 n_epochs: int = 10,
                  n_steps: Optional[int] = None,
                  n_episodes: Optional[int] = None,
                  clip: float = 0.2,
