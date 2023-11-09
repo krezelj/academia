@@ -1,3 +1,21 @@
+"""
+Functions that can visualise statistics gathered from agents training through
+:mod:`academia.curriculum` module.
+
+Exported functions:
+
+- :func:`plot_task`
+- :func:`plot_rewards_curriculum`
+- :func:`plot_trajectory_curriculum`
+- :func:`plot_curriculum_vs_nocurriculum`
+- :func:`plot_evaluation_impact`
+- :func:`plot_time_impact`
+- :func:`plot_multiple_evaluation_impact`
+
+See Also:
+    - :class:`academia.curriculum.LearningTask`
+    - :class:`academia.curriculum.Curriculum`
+"""
 import os
 from typing import Dict, Literal, List
 
