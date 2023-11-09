@@ -217,7 +217,7 @@ class AgentDebugger:
                         break
                 if user_action in [self.__KEY_TERMINATE, self.__KEY_QUIT]:
                     break
-                if user_action is not None and user_action != self.__KEY_STEP:
+                if user_action is not None and user_action not in [self.__KEY_STEP, self.__KEY_TOGGLE_GREEDY]:
                     action = user_action
                 else:
                     action = self.agent.get_action(state, self.env.get_legal_mask(), self.greedy)
