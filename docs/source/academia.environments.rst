@@ -1,11 +1,11 @@
-academia.environments package
-=============================
+academia.environments module
+============================
 
-Subpackages
------------
+Submodules
+----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
    academia.environments.base
 

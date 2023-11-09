@@ -1,8 +1,13 @@
-academia.utils package
-======================
+academia.utils module
+=====================
 
-Submodules
-----------
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   academia.utils.models
 
 Module contents
 ---------------

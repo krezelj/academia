@@ -1,5 +1,5 @@
-academia.environments.base package
-==================================
+academia.environments.base module
+=================================
 
 Module contents
 ---------------

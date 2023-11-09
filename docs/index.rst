@@ -7,10 +7,14 @@ Welcome to academia's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
-   source/academia
+   source/academia.agents
+   source/academia.environments
+   source/academia.curriculum
+   source/academia.tools
+   source/academia.utils
 
 Indices and tables
 ==================
