@@ -2,10 +2,10 @@ import numpy as np
 import torch.nn as nn
 import torch
 
-class MsPacmanMLPActor(nn.Module):
+class MLPActor(nn.Module):
 
     def __init__(self):
-        super(MsPacmanMLPActor, self).__init__()
+        super(MLPActor, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(128, 512),
             nn.ReLU(),
@@ -23,10 +23,10 @@ class MsPacmanMLPActor(nn.Module):
 
         return self.network(obs)
     
-class MsPacmanMLPCritic(nn.Module):
+class MLPCritic(nn.Module):
 
     def __init__(self):
-        super(MsPacmanMLPCritic, self).__init__()
+        super(MLPCritic, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(128, 512),
             nn.ReLU(),

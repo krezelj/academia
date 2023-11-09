@@ -2,16 +2,18 @@ import torch.nn as nn
 import torch
 
 
-class LunarLanderMLP(nn.Module):
+class MLPStepDQN(nn.Module):
 
     def __init__(self):
-        super(LunarLanderMLP, self).__init__()
+        super(MLPStepDQN, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(9, 64),
+            nn.Linear(51, 160),
             nn.ReLU(),
-            nn.Linear(64, 64),
+            nn.Linear(160, 80),
             nn.ReLU(),
-            nn.Linear(64, 4),
+            nn.Linear(80, 40),
+            nn.ReLU(),
+            nn.Linear(40, 3),
         )
 
     def forward(self, x) -> torch.Tensor:
