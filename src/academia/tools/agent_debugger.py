@@ -125,7 +125,7 @@ class AgentDebugger:
     }
     """
     A class attribute that stores global list of available agent thought handlers.
-    Thought handler are functions that accept an agent object and an observed state
+    Thought handlers are functions that accept an agent object and an observed state
     and return a user defined "thought" e.g. q-values predicted by the agent.
 
     These functions are stored with the following signature::
@@ -251,10 +251,3 @@ class AgentDebugger:
         else:
             return self.key_action_map.get(key, int(key) if key.isnumeric() else None)
         return None
-
-        
-        
-            
-
-        
-
