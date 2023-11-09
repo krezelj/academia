@@ -54,10 +54,6 @@ class DQNAgent(Agent):
         experience (namedtuple): Named tuple representing an experience tuple which stores state, action, 
             reward, next_state, and done.
         train_step (int): Counter for the number of training steps performed.
-        REPLAY_MEMORY_SIZE (int): Maximum size of the replay memory.
-        LR (float): Learning rate for the optimizer.
-        TAU (float): Interpolation parameter for target network soft updates.
-        UPDATE_EVERY (int): Frequency of network updates.
         device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
@@ -89,14 +85,22 @@ class DQNAgent(Agent):
           from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
         - The __soft_update_target method updates the target network weights from the main network's weights
-        based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
+          based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
         - It is recommended to adjust hyperparameters such as gamma, epsilon, epsilon_decay, and batch_size
           based on the specific task and environment.
     """
-    REPLAY_MEMORY_SIZE:int = 100000
-    LR:float = 0.0005
-    TAU:float = 0.001  # interpolation parameter
-    UPDATE_EVERY:int = 3
+
+    REPLAY_MEMORY_SIZE: int = 100000
+    """Maximum size of the replay memory."""
+
+    LR: float = 0.0005
+    """Learning rate for the optimizer."""
+
+    TAU: float = 0.001
+    """Interpolation parameter for target network soft updates."""
+
+    UPDATE_EVERY: int = 3
+    """Frequency of network updates."""
 
     def __init__(self, nn_architecture: Type[nn.Module],
                  n_actions: int,

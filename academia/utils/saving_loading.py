@@ -5,22 +5,32 @@ import os
 
 
 class SavableLoadable(ABC):
+    """
+    Interface for classes which objects can be saved or loaded
+    """
 
     @classmethod
     @abstractmethod
     def load(cls, path: str):
+        """
+        Loads an object and returns its instance
+        """
         pass
 
     @abstractmethod
     def save(self, path: str) -> str:
         """
-        :return: an absolute path where the object was saved
+        Returns:
+             an absolute path where the object was saved
         """
         pass
 
     @staticmethod
     def get_type(type_name_full: str) -> Type:
-        """Returns a type based on its full name (e.g. academia.agents.Sarsa)"""
+        """
+        Returns:
+             a type based on its full name (e.g. academia.agents.Sarsa)
+        """
         module_name, _, qualname = type_name_full.rpartition('.')
         module = importlib.import_module(module_name)
         type_ = getattr(module, qualname)
@@ -28,7 +38,10 @@ class SavableLoadable(ABC):
 
     @staticmethod
     def get_type_name_full(type_: Type) -> str:
-        """Returns the full type name (e.g. academia.agents.Sarsa)"""
+        """
+        Returns:
+             the full type name (e.g. academia.agents.Sarsa)
+        """
         module_name = type_.__module__
         qualname = type_.__qualname__
         return module_name + '.' + qualname

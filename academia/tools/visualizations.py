@@ -1,3 +1,21 @@
+"""
+Functions that can visualise statistics gathered from agents training through
+:mod:`academia.curriculum` module.
+
+Exported functions:
+
+- :func:`plot_task`
+- :func:`plot_rewards_curriculum`
+- :func:`plot_trajectory_curriculum`
+- :func:`plot_curriculum_vs_nocurriculum`
+- :func:`plot_evaluation_impact`
+- :func:`plot_time_impact`
+- :func:`plot_multiple_evaluation_impact`
+
+See Also:
+    - :class:`academia.curriculum.LearningTask`
+    - :class:`academia.curriculum.Curriculum`
+"""
 import os
 from typing import Dict, Literal, List
 
@@ -41,7 +59,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
 
         >>> from academia.curriculum import LearningTask
         >>> from academia.environments import LunarLander 
-        >>> from academia.utils.visualizations import plot_task
+        >>> from academia.tools.visualizations import plot_task
         >>> test_task = LearningTask(
         >>>     env_type= LunarLander,
         >>>     env_args={'difficulty': 2},
@@ -53,10 +71,10 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         Running a task:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LunarLanderMLP
+        >>> from academia.utils.models import lunar_lander
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LunarLanderMLP,
+        >>>     nn_architecture=lunar_lander.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> test_task.run(agent, verbose=4)
@@ -167,17 +185,17 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         Running a curriculum:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> curriculum.run(agent, verbose=4)
 
         Plotting the curriculum:
 
-        >>> from academia.utils.visualizations import plot_rewards_curriculum
+        >>> from academia.tools.visualizations import plot_rewards_curriculum
         >>> plot_rewards_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
     """
     num_tasks = len(curriculum_stats)
@@ -264,17 +282,17 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         Running a curriculum:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> curriculum.run(agent, verbose=4)
 
         Plotting the curriculum:
         
-        >>> from academia.utils.visualizations import plot_trajectory_curriculum
+        >>> from academia.tools.visualizations import plot_trajectory_curriculum
         >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
     """
     fig = go.Figure()
@@ -340,14 +358,14 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     
     Raises:
         ValueError: If the number of evaluations is greater than the number of steps to evaluation. 
-        This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
-        is greater than the number of steps to evaluation. This may be the problem if the flag was set to
-        ``True`` in the LearningTask class.
+            This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
+            is greater than the number of steps to evaluation. This may be the problem if the flag was set to
+            ``True`` in the LearningTask class.
 
         ValueError: If the number of evaluations is smaller than the number of steps to evaluation.
-        This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
-        is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
-        ``False`` in the LearningTask class.
+            This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
+            is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
+            ``False`` in the LearningTask class.
 
     Returns:
         Absolute path to the saved plot file if the ``save_path`` was provided.
@@ -391,15 +409,15 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
         Defining an agent:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent_curriculum = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent_no_curriculum = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
 
@@ -413,7 +431,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
         Plotting the curriculum vs no curriculum:
 
-        >>> from academia.utils.visualizations import plot_curriculum_vs_nocurriculum
+        >>> from academia.tools.visualizations import plot_curriculum_vs_nocurriculum
         >>> plot_curriculum_vs_nocurriculum(curriculum.stats, 
         >>>                                 no_curriculum.stats, 
         >>>                                 save_path='./curriculum', 
@@ -563,20 +581,20 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         Initialisation of agents:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent_v500 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent_v700 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent_v1000 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         
@@ -600,7 +618,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
 
         Plotting the evaluation impact:
 
-        >>> from academia.utils.visualizations import plot_evaluation_impact
+        >>> from academia.tools.visualizations import plot_evaluation_impact
         >>> plot_evaluation_impact([500, 700, 1000], 
         >>>                        [curriculum_v500.stats['2'], curriculum_v700.stats['2'], curriculum_v1000.stats['2']],
         >>>                         save_path='./evaluation_impact', 
@@ -705,15 +723,15 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         Initialisation of agents:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent_v500 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent_v700 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
 
@@ -732,7 +750,7 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
 
         Plotting the time impact:
 
-        >>> from academia.utils.visualizations import plot_time_impact
+        >>> from academia.tools.visualizations import plot_time_impact
         >>> plot_time_impact([curriculum_v500.stats['1'], curriculum_v700.stats['1']], 
         >>>                  [curriculum_v500.stats['2'], curriculum_v700.stats['2']],
         >>>                   time_domain_x="steps", 
@@ -906,20 +924,20 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         Initialisation of agents:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent0 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent1 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> agent2 = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
 
@@ -931,7 +949,7 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
         Plotting the multiple evaluation impact:
 
-        >>> from academia.utils.visualizations import plot_multiple_evaluation_impact
+        >>> from academia.tools.visualizations import plot_multiple_evaluation_impact
         >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
         >>>                                 [curriculum0.stats['3'], curriculum1.stats['3'], curriculum2.stats['3']],
         >>>                                 save_path='./multiple_evaluation_impact', 

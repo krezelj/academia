@@ -1,3 +1,14 @@
+"""
+Base classes for all environments available in this package. All user-defined environments
+should inherit from one of these classes.
+
+Exported classes:
+
+- :class:`ScalableEnvironment`
+- :class:`GenericMiniGridWrapper`
+- :class:`GenericGymnasiumWrapper`
+- :class:`GenericAtariWrapper`
+"""
 from .scalable_env import ScalableEnvironment
 from .generic_gymnasium_wrapper import GenericGymnasiumWrapper
 from .generic_minigrid_wrapper import GenericMiniGridWrapper

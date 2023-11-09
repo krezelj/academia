@@ -6,6 +6,8 @@
 Welcome to academia's documentation!
 ====================================
 
+.. automodule:: academia
+
 .. toctree::
    :maxdepth: 1
    :caption: Contents:

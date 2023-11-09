@@ -6,7 +6,8 @@ import numpy.typing as npt
 
 class ScalableEnvironment(ABC):
     """
-    Base class for all scalable environments used in this package
+    Base class for all environments used in this package. Scalability ensures environments can be
+    used for `Curriculum Learning`.
 
     Args:
         difficulty: Difficulty level. Higher values indicate more difficult environments.

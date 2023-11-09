@@ -6,13 +6,14 @@ import numpy as np
 
 class Stopwatch:
     """A utility class for measuring and storing consecutive CPU/wall times.
-    All times are stored in seconds"""
+    All times are stored in seconds."""
 
     __slots__ = ['__wall_stopwatch', '__cpu_stopwatch']
 
     def __init__(self, start=True):
         """
-        :param start: whether or not to start a stopwatch immidiately after initialising it
+        Args:
+            start: whether or not to start a stopwatch immidiately after initialising it.
         """
         self.__wall_stopwatch = _GenericStopwatch(timestamp_func=time.perf_counter, start=start)
         self.__cpu_stopwatch = _GenericStopwatch(timestamp_func=time.process_time, start=start)
@@ -23,14 +24,18 @@ class Stopwatch:
 
     def lap(self) -> tuple[float, float]:
         """
-        :return: Wall and CPU lap times
+        Returns:
+             Wall and CPU lap times.
         """
         return self.__wall_stopwatch.lap(), self.__cpu_stopwatch.lap()
 
     def stop(self, lap=False) -> tuple[float, float]:
         """
-        :param lap: whether or not end and save the final lap
-        :return: Wall and CPU total times
+        Args:
+            lap: whether or not end and save the final lap.
+
+        Returns:
+             Wall and CPU total times.
         """
         wall_total = self.__wall_stopwatch.stop(lap=lap)
         cpu_total = self.__cpu_stopwatch.stop(lap=lap)
@@ -51,7 +56,8 @@ class _GenericStopwatch:
 
     def __init__(self, timestamp_func: Callable[[], float], start=True):
         """
-        :param start: whether or not to start a stopwatch immidiately after initialising it
+        Args:
+            start: whether or not to start a stopwatch immidiately after initialising it.
         """
         self.__timestamp_func = timestamp_func
         self.lap_times: list[float] = []
@@ -64,7 +70,8 @@ class _GenericStopwatch:
 
     def lap(self) -> float:
         """
-        :return: Lap time
+        Returns:
+             Lap time.
         """
         curr_time = self.__timestamp_func()
         lap_time = curr_time - self.__lap_start
@@ -74,8 +81,11 @@ class _GenericStopwatch:
 
     def stop(self, lap=False) -> float:
         """
-        :param lap: whether or not end and save the final lap
-        :return: Total elapsed time
+        Args:
+            lap: whether or not end and save the final lap.
+
+        Returns:
+             Total time.
         """
         if lap:
             self.lap()
