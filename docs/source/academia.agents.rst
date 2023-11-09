@@ -1,11 +1,11 @@
-academia.agents package
-=======================
+academia.agents module
+======================
 
-Subpackages
------------
+Submodules
+----------
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
    academia.agents.base
 

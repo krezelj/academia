@@ -1,5 +1,5 @@
-academia.curriculum package
-===========================
+academia.curriculum module
+==========================
 
 Module contents
 ---------------

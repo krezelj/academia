@@ -1,8 +1,5 @@
-academia.agents.base package
-============================
-
-Submodules
-----------
+academia.agents.base module
+===========================
 
 Module contents
 ---------------
