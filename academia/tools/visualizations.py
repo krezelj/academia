@@ -358,14 +358,14 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     
     Raises:
         ValueError: If the number of evaluations is greater than the number of steps to evaluation. 
-        This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
-        is greater than the number of steps to evaluation. This may be the problem if the flag was set to
-        ``True`` in the LearningTask class.
+            This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
+            is greater than the number of steps to evaluation. This may be the problem if the flag was set to
+            ``True`` in the LearningTask class.
 
         ValueError: If the number of evaluations is smaller than the number of steps to evaluation.
-        This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
-        is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
-        ``False`` in the LearningTask class.
+            This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
+            is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
+            ``False`` in the LearningTask class.
 
     Returns:
         Absolute path to the saved plot file if the ``save_path`` was provided.
