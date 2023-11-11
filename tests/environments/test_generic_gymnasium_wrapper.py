@@ -1,28 +1,30 @@
 import unittest
 from unittest.mock import Mock, patch
+
 import numpy as np
 import gymnasium
+
+from academia.environments import LavaCrossing
 from academia.environments.base import GenericGymnasiumWrapper
+
 
 class TestGenericGymnasiumWrapper(unittest.TestCase):
 
     def setUp(self):
-        # Set up the environment with mock values for testing
-        self.env = GenericGymnasiumWrapper(difficulty=1, environment_id='MiniGrid-LavaCrossingS9N1-v0')
-        self.env_stacked = GenericGymnasiumWrapper(difficulty=1, 
-                                                   environment_id='MiniGrid-LavaCrossingS9N1-v0', 
-                                                   n_frames_stacked=2)
-        self.env_step_count = GenericGymnasiumWrapper(difficulty=1,
-                                                        environment_id='MiniGrid-LavaCrossingS9N1-v0',
-                                                        append_step_count=True)
+        # Set up the subclass of GenericGymnasiumWrapper environment with mock values for testing
+        self.env = LavaCrossing(difficulty=1)
+        self.env_stacked = LavaCrossing(difficulty=1,
+                                        n_frames_stacked=2)
+        self.env_step_count = LavaCrossing(difficulty=1,
+                                           append_step_count=True)
 
     def test_step(self):
-        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)   
+        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)
         mocked_step_return = ({
-            'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
-            'image': example_image_observation,
-            'mission': 'example_mission'  # Example of mission, not important for testing
-        }, 0., False, False, {})  # Sample return values, modify based on your actual environment
+                              'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
+                              'image': example_image_observation,
+                              'mission': 'example_mission'  # Example of mission, not important for testing
+                              }, 0., False, False, {})  # Sample return values, modify based on your actual environment
         # Mock the base environment's step method
         with patch.object(self.env._base_env, 'step', return_value=mocked_step_return):
             initial_state = self.env.observe()
@@ -44,12 +46,12 @@ class TestGenericGymnasiumWrapper(unittest.TestCase):
         self.assertIsInstance(state, np.ndarray)
 
     def test_reset(self):
-        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8) * 128  
+        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8) * 128
         mocked_step_return = ({
-            'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
-            'image': example_image_observation,
-            'mission': 'example_mission'  # Example of mission, not important for testing
-        }, 0., False, False, {})  # Sample return values, modify based on your actual environment
+                              'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
+                              'image': example_image_observation,
+                              'mission': 'example_mission'  # Example of mission, not important for testing
+                              }, 0., False, False, {})  # Sample return values, modify based on your actual environment
         # Mock the base environment's reset method
         with patch.object(self.env._base_env, 'reset', return_value=mocked_step_return):
             initial_state = self.env.reset()
@@ -67,26 +69,32 @@ class TestGenericGymnasiumWrapper(unittest.TestCase):
         self.assertIsInstance(legal_mask, np.ndarray)
         self.assertEqual(legal_mask.tolist(), [1] * self.env.N_ACTIONS)
 
-    def test_transform_state(self):
-        # Implement a concrete subclass of GenericGymnasiumWrapper and test its _transform_state method
+    def test_state_representation(self):
+        # Implement a concrete subclass of GenericGymnasiumWrapper
         class TestWrapper(GenericGymnasiumWrapper):
             def _transform_state(self, raw_state):
                 return np.array(raw_state) * 2
 
-        test_wrapper = TestWrapper(difficulty=1, environment_id='test_env')
-        transformed_state = test_wrapper._transform_state([1, 2, 3])
+        # as environment_id passed sth from gymnasium library
+        test_wrapper = TestWrapper(difficulty=1, environment_id='CartPole-v1')
 
+        example_observation = np.ones(4, dtype=np.float32)
+        mocked_step_return = (example_observation, 1.0, False, False, {})
+        # Mock the base environment's step method
+        with patch.object(test_wrapper._base_env, 'step', return_value=mocked_step_return):
+            test_wrapper.reset()
+            transformed_state, reward, is_done = test_wrapper.step(0)
         self.assertIsInstance(transformed_state, np.ndarray)
-        self.assertEqual(transformed_state.tolist(), [2, 4, 6])
+        self.assertEqual(transformed_state.tolist(), [2, 2, 2, 2])
 
     def test_frame_stacking(self):
         # Test frame stacking
-        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)   
+        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)
         mocked_step_return = ({
-            'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
-            'image': example_image_observation,
-            'mission': 'example_mission'  # Example of mission, not important for testing
-        }, 0., False, False, {})  # Sample return values, modify based on your actual environment
+                              'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
+                              'image': example_image_observation,
+                              'mission': 'example_mission'  # Example of mission, not important for testing
+                              }, 0., False, False, {})  # Sample return values, modify based on your actual environment
         # Mock the base environment's step method
         with patch.object(self.env_stacked._base_env, 'step', return_value=mocked_step_return):
             self.env_stacked.reset()
@@ -105,14 +113,14 @@ class TestGenericGymnasiumWrapper(unittest.TestCase):
 
             # Ensure the environment state is stacked
             self.assertEqual(new_state.shape, ((7 * 7 + 1) * 2,))
-    
+
     def test_step_append(self):
-        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)   
+        example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)
         mocked_step_return = ({
-            'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
-            'image': example_image_observation,
-            'mission': 'example_mission'  # Example of mission, not important for testing
-        }, 0., False, False, {})
+                              'direction': gymnasium.spaces.Discrete(4).sample(),  # Example discrete direction
+                              'image': example_image_observation,
+                              'mission': 'example_mission'  # Example of mission, not important for testing
+                              }, 0., False, False, {})
         # Mock the base environment's step method
         with patch.object(self.env_step_count._base_env, 'step', return_value=mocked_step_return):
             self.env_step_count.reset()
@@ -131,6 +139,7 @@ class TestGenericGymnasiumWrapper(unittest.TestCase):
 
             # Ensure the environment state is stacked
             self.assertEqual(new_state.shape, ((7 * 7 + 1) * 1 + 1,))
-        
+
+
 if __name__ == '__main__':
     unittest.main()
