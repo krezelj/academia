@@ -18,6 +18,7 @@ class Stopwatch:
 
     @property
     def is_running(self) -> bool:
+        """Whether or not the stopwatch is running"""
         return self.__wall_stopwatch.is_running
 
     def start(self) -> None:
@@ -29,6 +30,9 @@ class Stopwatch:
         """
         Returns:
             Current time since the start.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         return self.__wall_stopwatch.peek_time(), self.__cpu_stopwatch.peek_time()
 
@@ -36,6 +40,9 @@ class Stopwatch:
         """
         Returns:
              Wall and CPU lap times.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         return self.__wall_stopwatch.lap(), self.__cpu_stopwatch.lap()
 
@@ -43,6 +50,9 @@ class Stopwatch:
         """
         Returns:
             Current lap time.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         return self.__wall_stopwatch.peek_lap_time(), self.__cpu_stopwatch.peek_lap_time()
 
@@ -53,6 +63,9 @@ class Stopwatch:
 
         Returns:
              Wall and CPU total times.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         wall_total = self.__wall_stopwatch.stop(lap=lap)
         cpu_total = self.__cpu_stopwatch.stop(lap=lap)
