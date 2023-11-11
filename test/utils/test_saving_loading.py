@@ -4,7 +4,7 @@ from academia.utils import SavableLoadable
 
 
 @mock.patch.multiple(SavableLoadable, __abstractmethods__=frozenset())
-class MyTestCase(unittest.TestCase):
+class TestSavableLoadable(unittest.TestCase):
 
     def test_get_type_name_from_class(self):
         # arrange
