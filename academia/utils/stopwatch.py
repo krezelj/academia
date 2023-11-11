@@ -8,8 +8,6 @@ class Stopwatch:
     """A utility class for measuring and storing consecutive CPU/wall times.
     All times are stored in seconds."""
 
-    __slots__ = ['__wall_stopwatch', '__cpu_stopwatch']
-
     def __init__(self, start=True):
         """
         Args:
@@ -51,8 +49,6 @@ class Stopwatch:
 
 
 class _GenericStopwatch:
-
-    __slots__ = ['lap_times', '__lap_start', '__timestamp_func']
 
     def __init__(self, timestamp_func: Callable[[], float], start=True):
         """
