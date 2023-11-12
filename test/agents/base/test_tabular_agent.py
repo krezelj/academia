@@ -38,7 +38,6 @@ class TestTabularAgent(unittest.TestCase):
         expected_action = 1
         self.assertEqual(action, expected_action)
 
-
     def test_file_path(self):
         # without suffix
         # act 
