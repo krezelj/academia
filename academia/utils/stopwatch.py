@@ -8,8 +8,6 @@ class Stopwatch:
     """A utility class for measuring and storing consecutive CPU/wall times.
     All times are stored in seconds."""
 
-    __slots__ = ['__wall_stopwatch', '__cpu_stopwatch']
-
     def __init__(self, start=True):
         """
         Args:
@@ -18,16 +16,45 @@ class Stopwatch:
         self.__wall_stopwatch = _GenericStopwatch(timestamp_func=time.perf_counter, start=start)
         self.__cpu_stopwatch = _GenericStopwatch(timestamp_func=time.process_time, start=start)
 
+    @property
+    def is_running(self) -> bool:
+        """Whether or not the stopwatch is running"""
+        return self.__wall_stopwatch.is_running
+
     def start(self) -> None:
+        """Starts or restarts the stopwatch"""
         self.__wall_stopwatch.start()
         self.__cpu_stopwatch.start()
+
+    def peek_time(self) -> tuple[float, float]:
+        """
+        Returns:
+            Current time since the start.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
+        """
+        return self.__wall_stopwatch.peek_time(), self.__cpu_stopwatch.peek_time()
 
     def lap(self) -> tuple[float, float]:
         """
         Returns:
              Wall and CPU lap times.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         return self.__wall_stopwatch.lap(), self.__cpu_stopwatch.lap()
+
+    def peek_lap_time(self) -> tuple[float, float]:
+        """
+        Returns:
+            Current lap time.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
+        """
+        return self.__wall_stopwatch.peek_lap_time(), self.__cpu_stopwatch.peek_lap_time()
 
     def stop(self, lap=False) -> tuple[float, float]:
         """
@@ -36,6 +63,9 @@ class Stopwatch:
 
         Returns:
              Wall and CPU total times.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
         wall_total = self.__wall_stopwatch.stop(lap=lap)
         cpu_total = self.__cpu_stopwatch.stop(lap=lap)
@@ -52,8 +82,6 @@ class Stopwatch:
 
 class _GenericStopwatch:
 
-    __slots__ = ['lap_times', '__lap_start', '__timestamp_func']
-
     def __init__(self, timestamp_func: Callable[[], float], start=True):
         """
         Args:
@@ -65,19 +93,57 @@ class _GenericStopwatch:
         if start:
             self.start()
 
+    @property
+    def is_running(self) -> bool:
+        return self.__lap_start is not None
+
     def start(self) -> None:
+        """Starts or restarts the stopwatch"""
+        if self.is_running:
+            self.stop()
+        self.lap_times.clear()
         self.__lap_start = self.__timestamp_func()
+
+    def peek_time(self) -> float:
+        """
+        Returns:
+            Current time since the start.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
+        """
+        if not self.is_running:
+            raise RuntimeError('Cannot peek the current time - the stopwatch is not running')
+        return self.peek_lap_time() + np.sum(self.lap_times)
 
     def lap(self) -> float:
         """
         Returns:
              Lap time.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
+        if not self.is_running:
+            raise RuntimeError('Cannot lap - the stopwatch is not running')
         curr_time = self.__timestamp_func()
         lap_time = curr_time - self.__lap_start
         self.lap_times.append(lap_time)
         self.__lap_start = curr_time
         return lap_time
+
+    def peek_lap_time(self) -> float:
+        """
+        Returns:
+            Current lap time.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
+        """
+        if not self.is_running:
+            raise RuntimeError('Cannot peek the current time - the stopwatch is not running')
+        curr_time = self.__timestamp_func()
+        return curr_time - self.__lap_start
 
     def stop(self, lap=False) -> float:
         """
@@ -86,11 +152,17 @@ class _GenericStopwatch:
 
         Returns:
              Total time.
+
+        Raises:
+            RuntimeError: if stopwatch is not running
         """
+        if not self.is_running:
+            raise RuntimeError('Cannot stop - the stopwatch is not running')
         if lap:
             self.lap()
             total_time = np.sum(self.lap_times)
         else:
             curr_time = self.__timestamp_func()
             total_time = np.sum(self.lap_times) + (curr_time - self.__lap_start)
+        self.__lap_start = None
         return total_time
