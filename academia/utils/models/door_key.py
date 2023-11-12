@@ -2,10 +2,10 @@ import torch.nn as nn
 import torch
 
 
-class MLPDQN(nn.Module):
+class MLPStepDQN(nn.Module):
 
     def __init__(self):
-        super(MLPDQN, self).__init__()
+        super(MLPStepDQN, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(52, 160),
             nn.ReLU(),
