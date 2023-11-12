@@ -8,33 +8,31 @@ from academia.utils import Stopwatch
 class TestStopwatch(unittest.TestCase):
 
     def test_is_running(self):
-        spt = Stopwatch(start=False)
-        self.assertFalse(spt.is_running)
-        spt.start()
-        self.assertTrue(spt.is_running)
-        spt.lap()
-        self.assertTrue(spt.is_running)
-        spt.stop()
-        self.assertFalse(spt.is_running)
-        spt.start()
-        self.assertTrue(spt.is_running)
-        spt.start()
-        self.assertTrue(spt.is_running)
+        sut = Stopwatch(start=False)
+        self.assertFalse(sut.is_running, "Stopwatch should not be running before it starts")
+        sut.start()
+        self.assertTrue(sut.is_running, "Stopwatch should be running after it has started")
+        sut.lap()
+        self.assertTrue(sut.is_running, "Stopwatch should be running after lap is done")
+        sut.stop()
+        self.assertFalse(sut.is_running, "Stopwatch should not be running after it has stopped")
+        sut.start()
+        self.assertTrue(sut.is_running, "Stopwatch should be running after it has been restarted")
 
     def test_autostart(self):
-        spt = Stopwatch(start=True)
-        self.assertTrue(spt.is_running)
+        sut = Stopwatch(start=True)
+        self.assertTrue(sut.is_running)
 
     def test_time_is_measured(self):
-        spt = Stopwatch(start=True)
-        wall_time, cpu_time = spt.stop()
+        sut = Stopwatch(start=True)
+        wall_time, cpu_time = sut.stop()
         self.assertGreaterEqual(wall_time, 0)
         self.assertGreaterEqual(cpu_time, 0)
 
     def test_peek_methods(self):
-        spt = Stopwatch(start=True)
-        wall_time, cpu_time = spt.peek_time()
-        wall_lap_time, cpu_lap_time = spt.peek_lap_time()
+        sut = Stopwatch(start=True)
+        wall_time, cpu_time = sut.peek_time()
+        wall_lap_time, cpu_lap_time = sut.peek_lap_time()
         self.assertGreaterEqual(wall_time, 0)
         self.assertGreaterEqual(cpu_time, 0)
         self.assertGreaterEqual(wall_lap_time, 0)
@@ -42,49 +40,49 @@ class TestStopwatch(unittest.TestCase):
 
     def test_restart_resets_lap_times(self):
         # arrange
-        spt = Stopwatch(start=False)
+        sut = Stopwatch(start=False)
         # act
-        spt.start()
-        spt.lap()
-        spt.start()
+        sut.start()
+        sut.lap()
+        sut.start()
         # assert
-        self.assertEqual(len(spt.wall_lap_times), 0)
-        self.assertEqual(len(spt.cpu_lap_times), 0)
+        self.assertEqual(len(sut.wall_lap_times), 0)
+        self.assertEqual(len(sut.cpu_lap_times), 0)
 
     def test_errors_when_no_start(self):
-        spt = Stopwatch(start=False)
+        sut = Stopwatch(start=False)
         with self.assertRaises(RuntimeError):
-            spt.peek_time()
+            sut.peek_time()
         with self.assertRaises(RuntimeError):
-            spt.peek_lap_time()
+            sut.peek_lap_time()
         with self.assertRaises(RuntimeError):
-            spt.lap()
+            sut.lap()
         with self.assertRaises(RuntimeError):
-            spt.stop()
+            sut.stop()
 
     def test_lap_adds_lap_time(self):
-        spt = Stopwatch(start=True)
-        spt.lap()
-        self.assertEqual(len(spt.wall_lap_times), 1)
-        self.assertEqual(len(spt.cpu_lap_times), 1)
+        sut = Stopwatch(start=True)
+        sut.lap()
+        self.assertEqual(1, len(sut.wall_lap_times))
+        self.assertEqual(1, len(sut.cpu_lap_times))
 
     def test_stop_with_lap_adds_lap_time(self):
-        spt = Stopwatch(start=True)
-        spt.stop(lap=True)
-        self.assertEqual(len(spt.wall_lap_times), 1)
-        self.assertEqual(len(spt.cpu_lap_times), 1)
+        sut = Stopwatch(start=True)
+        sut.stop(lap=True)
+        self.assertEqual(1, len(sut.wall_lap_times))
+        self.assertEqual(1, len(sut.cpu_lap_times))
 
     def test_stop_without_lap_doesnt_add_lap_time(self):
-        spt = Stopwatch(start=True)
-        spt.stop(lap=False)
-        self.assertEqual(len(spt.wall_lap_times), 0)
-        self.assertEqual(len(spt.cpu_lap_times), 0)
+        sut = Stopwatch(start=True)
+        sut.stop(lap=False)
+        self.assertEqual(0, len(sut.wall_lap_times))
+        self.assertEqual(0, len(sut.cpu_lap_times))
 
     def test_lap_times_sum_to_total_time(self):
-        spt = Stopwatch(start=True)
-        total_wall_time, total_cpu_time = spt.stop(lap=True)
-        self.assertEqual(np.sum(spt.wall_lap_times), total_wall_time)
-        self.assertEqual(np.sum(spt.cpu_lap_times), total_cpu_time)
+        sut = Stopwatch(start=True)
+        total_wall_time, total_cpu_time = sut.stop(lap=True)
+        self.assertEqual(total_wall_time, np.sum(sut.wall_lap_times))
+        self.assertEqual(total_cpu_time, np.sum(sut.cpu_lap_times))
 
 
 if __name__ == '__main__':
