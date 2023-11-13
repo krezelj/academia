@@ -8,6 +8,20 @@ from academia.agents.base import TabularAgent
 
 class TestTabularAgent(unittest.TestCase):
 
+    def __assert_agents_equal(self, expected: TabularAgent, returned: TabularAgent):
+        self.assertEqual(len(returned.q_table), len(expected.q_table))
+        self.assertIn(self.mock_state, returned.q_table)
+        self.assertTrue(
+            np.all(returned.q_table[self.mock_state] == expected.q_table[self.mock_state]))
+        
+        ignored_attributes = ['q_table', '_rng']
+        for attribute_name in expected.__dict__.keys():
+            if attribute_name not in ignored_attributes:
+                self.assertEqual(
+                    getattr(expected, attribute_name), 
+                    getattr(returned, attribute_name),
+                    msg=f"Attribute '{attribute_name}' not equal")
+
     def setUp(self) -> None:
         # arrange
         with mock.patch.object(TabularAgent, "__abstractmethods__", frozenset()):
@@ -65,17 +79,7 @@ class TestTabularAgent(unittest.TestCase):
         tmpfile.close()
 
         # assert
-        self.assertEqual(loaded_agent.epsilon, self.tabular_agent.epsilon)
-        self.assertEqual(loaded_agent.epsilon_decay, self.tabular_agent.epsilon_decay)
-        self.assertEqual(loaded_agent.min_epsilon, self.tabular_agent.min_epsilon)
-        self.assertEqual(loaded_agent.gamma, self.tabular_agent.gamma)
-        self.assertEqual(loaded_agent.alpha, self.tabular_agent.alpha)
-        self.assertEqual(loaded_agent.n_actions, self.tabular_agent.n_actions)
-
-        self.assertEqual(len(loaded_agent.q_table), len(self.tabular_agent.q_table))
-        self.assertIn(self.mock_state, loaded_agent.q_table)
-        self.assertTrue(
-            np.all(loaded_agent.q_table[self.mock_state] == self.tabular_agent.q_table[self.mock_state]))
+        self.__assert_agents_equal(self.tabular_agent, loaded_agent)
 
 
 if __name__ == '__main__':
