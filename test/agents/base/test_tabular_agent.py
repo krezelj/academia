@@ -38,17 +38,7 @@ class TestTabularAgent(unittest.TestCase):
         expected_action = 1
         self.assertEqual(action, expected_action)
 
-    def test_file_path(self):
-        # without suffix
-        # act 
-        tmpfile = tempfile.NamedTemporaryFile(delete=False)
-        returned_path = self.tabular_agent.save(tmpfile.name)
-        tmpfile.close()
-
-        # assert
-        self.assertEqual(returned_path, tmpfile.name + '.agent.json')
-
-        # with suffix
+    def test_file_path_suffixed(self):
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.json', delete=False)
         returned_path = self.tabular_agent.save(tmpfile.name)
@@ -56,6 +46,15 @@ class TestTabularAgent(unittest.TestCase):
 
         # assert
         self.assertEqual(returned_path, tmpfile.name)
+
+    def test_file_path_unsuffixed(self):
+        # act 
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        returned_path = self.tabular_agent.save(tmpfile.name)
+        tmpfile.close()
+
+        # assert
+        self.assertEqual(returned_path, tmpfile.name + '.agent.json')
 
     def test_saving_loading(self):
         # act
