@@ -33,7 +33,7 @@ class TestTabularAgent(unittest.TestCase):
 
     def test_legal_mask(self):
         # act
-        action = self.tabular_agent.get_action(self.mock_state, legal_mask=[0,1,0], greedy=True)
+        action = self.tabular_agent.get_action(self.mock_state, legal_mask=np.array([0,1,0]), greedy=True)
         # assert
         expected_action = 1
         self.assertEqual(action, expected_action)
