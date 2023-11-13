@@ -300,7 +300,8 @@ class DQNAgent(Agent):
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
                 'random_state': self._rng.bit_generator.state,
                 'memory': memory_save_format,
-                'device': str(self.device)
+                'device': str(self.device),
+                'train_step': self.train_step,
             }
             json.dump(dict(learner_state_dict), agent_temp, indent=4)
             agent_temp.flush()
@@ -340,6 +341,7 @@ class DQNAgent(Agent):
         del params['nn_architecture']
         rng_state = params.pop('random_state')
         memory = params.pop('memory')
+        train_step = params.pop('train_step')
         experience = namedtuple("Experience", field_names=["state", "action", "reward",
                                                                 "new_state", "done"])
         restored_memory = deque(maxlen=cls.REPLAY_MEMORY_SIZE)
@@ -355,4 +357,5 @@ class DQNAgent(Agent):
         agent.memory = restored_memory
         agent.network.load_state_dict(network_params)
         agent.target_network.load_state_dict(target_network_params)
+        agent.train_step = train_step
         return agent
