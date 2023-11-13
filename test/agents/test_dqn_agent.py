@@ -147,13 +147,11 @@ class TestDQNAgent(unittest.TestCase):
             device='cpu')
         self.assertEqual(agent.device, torch.device('cpu'))
 
-    def test_file_path(self):
+    def test_file_path_suffixed(self):
         agent = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3
         )
-
-        # without suffix
         # act 
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
         returned_path = agent.save(tmpfile.name)
@@ -162,8 +160,11 @@ class TestDQNAgent(unittest.TestCase):
         # assert
         self.assertEqual(returned_path, tmpfile.name + '.agent.zip')
 
-        # with suffix
-        # act
+    def test_file_path_unsuffixed(self):
+        agent = DQNAgent(
+            nn_architecture=lava_crossing.MLPStepDQN,
+            n_actions=3
+        )
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
         returned_path = agent.save(tmpfile.name)
         tmpfile.close()
