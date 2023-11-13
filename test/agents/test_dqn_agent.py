@@ -150,6 +150,21 @@ class TestDQNAgent(unittest.TestCase):
             self.assertNotEqual(agent.device, torch.device('cuda'))       
 
     def test_file_path_suffixed(self):
+        # arrange
+        agent = DQNAgent(
+            nn_architecture=lava_crossing.MLPStepDQN,
+            n_actions=3
+        )
+        # act
+        tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
+        returned_path = agent.save(tmpfile.name)
+        tmpfile.close()
+
+        # assert
+        self.assertEqual(returned_path, tmpfile.name)
+
+    def test_file_path_unsuffixed(self):
+        # arrange
         agent = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3
@@ -161,19 +176,7 @@ class TestDQNAgent(unittest.TestCase):
 
         # assert
         self.assertEqual(returned_path, tmpfile.name + '.agent.zip')
-
-    def test_file_path_unsuffixed(self):
-        agent = DQNAgent(
-            nn_architecture=lava_crossing.MLPStepDQN,
-            n_actions=3
-        )
-        tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
-        returned_path = agent.save(tmpfile.name)
-        tmpfile.close()
-
-        # assert
-        self.assertEqual(returned_path, tmpfile.name)
-
+        
     def test_saving_loading(self):
         # arrange
         agent = DQNAgent(
