@@ -126,7 +126,7 @@ class TestDQNAgent(unittest.TestCase):
         self.assertFalse(self.__is_model_equal(agent_1.network, agent_3.network))
         self.assertFalse(self.__is_model_equal(agent_1.target_network, agent_3.target_network))
 
-    def test_device(self):
+    def test_device_cuda(self):
         with mock.patch('torch.cuda.is_available', return_value=True):
             agent = DQNAgent(
                 nn_architecture=lava_crossing.MLPStepDQN, 
@@ -134,18 +134,20 @@ class TestDQNAgent(unittest.TestCase):
                 device='cuda')
             self.assertEqual(agent.device, torch.device('cuda'))
 
-        with mock.patch('torch.cuda.is_available', return_value=False):
-            agent = DQNAgent(
-                nn_architecture=lava_crossing.MLPStepDQN, 
-                n_actions=3, 
-                device='cuda')
-            self.assertNotEqual(agent.device, torch.device('cuda'))
-
+    def test_device_cpu(self):
         agent = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN, 
             n_actions=3, 
             device='cpu')
         self.assertEqual(agent.device, torch.device('cpu'))
+
+    def test_device_cuda_not_available(self):
+        with mock.patch('torch.cuda.is_available', return_value=False):
+            agent = DQNAgent(
+                nn_architecture=lava_crossing.MLPStepDQN, 
+                n_actions=3, 
+                device='cuda')
+            self.assertNotEqual(agent.device, torch.device('cuda'))       
 
     def test_file_path_suffixed(self):
         agent = DQNAgent(
@@ -207,7 +209,6 @@ class TestDQNAgent(unittest.TestCase):
                     getattr(agent, attribute_name), 
                     getattr(loaded_agent, attribute_name),
                     msg=f"Attribute '{attribute_name}' not equal")
-
 
 
 if __name__ == '__main__':
