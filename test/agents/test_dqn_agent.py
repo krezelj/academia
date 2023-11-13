@@ -49,6 +49,21 @@ class TestDQNAgent(unittest.TestCase):
                         return False
         return True
 
+    def __assert_agents_equal(self, expected: DQNAgent, returned: DQNAgent):
+        self.assertTrue(self.__is_model_equal(expected.network, returned.network))
+        self.assertTrue(self.__is_model_equal(expected.target_network, returned.target_network))
+        self.assertTrue(self.__is_memory_equal(expected.memory, returned.memory))
+
+        ignored_attributes = [\
+            'network', 'target_network', 'memory',\
+            '_rng', 'experience', 'train_step', 'optimizer']
+        for attribute_name in expected.__dict__.keys():
+            if attribute_name not in ignored_attributes:
+                self.assertEqual(
+                    getattr(expected, attribute_name), 
+                    getattr(returned, attribute_name),
+                    msg=f"Attribute '{attribute_name}' not equal")
+
     def test_memory(self):
         with mock.patch('academia.agents.DQNAgent.REPLAY_MEMORY_SIZE', 10):
             # arrange
@@ -199,19 +214,7 @@ class TestDQNAgent(unittest.TestCase):
         tmpfile.close()
 
         # assert
-        self.assertTrue(self.__is_model_equal(agent.network, loaded_agent.network))
-        self.assertTrue(self.__is_model_equal(agent.target_network, loaded_agent.target_network))
-        self.assertTrue(self.__is_memory_equal(agent.memory, loaded_agent.memory))
-
-        ignored_attributes = [\
-            'network', 'target_network', 'memory',\
-            '_rng', 'experience', 'train_step', 'optimizer']
-        for attribute_name in agent.__dict__.keys():
-            if attribute_name not in ignored_attributes:
-                self.assertEqual(
-                    getattr(agent, attribute_name), 
-                    getattr(loaded_agent, attribute_name),
-                    msg=f"Attribute '{attribute_name}' not equal")
+        self.__assert_agents_equal(agent, loaded_agent)
 
 
 if __name__ == '__main__':
