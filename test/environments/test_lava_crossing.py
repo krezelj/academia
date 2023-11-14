@@ -12,7 +12,7 @@ class TestLavaCrossing(unittest.TestCase):
         transformed_state = self.env.reset()
 
         # Ensure the transformed state has the correct shape
-        self.assertEqual(transformed_state.shape, (7 * 7 + 1,))
+        self.assertEqual((7 * 7 + 1,), transformed_state.shape)
 
     def test_invalid_difficulty(self):
         # Test that an invalid difficulty level raises a ValueError

@@ -27,10 +27,10 @@ class TestDoorKey(unittest.TestCase):
         transformed_state = self.env.reset()
 
         # Ensure the transformed state has the correct shape
-        self.assertEqual(transformed_state.shape, (7 * 7 + 2,))
+        self.assertEqual((7 * 7 + 2,), transformed_state.shape)
 
         # Ensure the door status is properly updated
-        self.assertEqual(self.env._door_status, 2)  # Initial state
+        self.assertEqual(2, self.env._door_status)  # Initial state
 
         # Imitate the agent opening the door
         example_image_observation = np.ones((7, 7, 3), dtype=np.uint8)
@@ -41,7 +41,7 @@ class TestDoorKey(unittest.TestCase):
                               }, 0., False, False, {})
         with patch.object(self.env._base_env, 'step', return_value=mocked_step_return):
             self.env.step(0)
-            self.assertEqual(self.env._door_status, 1)  # Door opened
+            self.assertEqual(1, self.env._door_status)  # Door opened
 
         example_image_observation = np.zeros((7, 7, 3), dtype=np.uint8)
         mocked_step_return = ({
@@ -51,7 +51,7 @@ class TestDoorKey(unittest.TestCase):
                               }, 0., False, False, {})
         with patch.object(self.env._base_env, 'step', return_value=mocked_step_return):
             self.env.step(0)
-            self.assertEqual(self.env._door_status, 0)
+            self.assertEqual(0, self.env._door_status)
 
     def test_invalid_difficulty(self):
         # Test that an invalid difficulty level raises a ValueError

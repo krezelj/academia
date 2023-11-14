@@ -31,16 +31,16 @@ class TestGenericAtariWrapper(unittest.TestCase):
 
     def test_observe(self):
         state_stacked3_step = self.wrapper_stacked3_step.reset()
-        self.assertEqual(state_stacked3_step.shape, (302401,))
+        self.assertEqual((302401,), state_stacked3_step.shape)
 
         state_step = self.wrapper_step.reset()
-        self.assertEqual(state_step.shape, (100801,))
+        self.assertEqual((100801,), state_step.shape)
 
         state_basic_flatten = self.wrapper_basic_flatten.reset()
-        self.assertEqual(state_basic_flatten.shape, (100800,))
+        self.assertEqual((100800,), state_basic_flatten.shape)
 
         state_basic = self.wrapper_basic.reset()
-        self.assertEqual(state_basic.shape, (3, 210, 160))
+        self.assertEqual((3, 210, 160), state_basic.shape)
 
     def test_observe_state_obs_type(self):
         graycale_basic = MsPacman(difficulty=2,
@@ -56,13 +56,13 @@ class TestGenericAtariWrapper(unittest.TestCase):
                              obs_type='ram')
 
         state_grayscale = graycale_basic.reset()
-        self.assertEqual(state_grayscale.shape, (1, 210, 160))
+        self.assertEqual((1, 210, 160), state_grayscale.shape)
 
         state_rgb = rgb_basic.reset()
-        self.assertEqual(state_rgb.shape, (3, 210, 160))
+        self.assertEqual((3, 210, 160), state_rgb.shape)
 
         state_ram = ram_basic.reset()
-        self.assertEqual(state_ram.shape, (128,))
+        self.assertEqual((128,), state_ram.shape)
 
 
 if __name__ == '__main__':

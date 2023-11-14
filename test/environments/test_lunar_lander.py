@@ -10,7 +10,7 @@ class TestLunarLander(unittest.TestCase):
 
     def test_observe(self):
         state = self.env.reset()
-        self.assertEqual(state.shape, (8,))
+        self.assertEqual((8,), state.shape)
 
     def test_invalid_difficulty(self):
         # Test that an invalid difficulty level raises a ValueError
