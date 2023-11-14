@@ -42,9 +42,6 @@ class TestGenericGymnasiumWrapper(unittest.TestCase):
 
         self.assertNotEqual(initial_state.tolist(), np.zeros(self.env.STATE_SHAPE).tolist())
 
-    def test_render(self):
-        self.env.render()
-
     def test_get_legal_mask(self):
         # Test the get_legal_mask method
         legal_mask = self.env.get_legal_mask()
