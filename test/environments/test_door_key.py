@@ -57,6 +57,7 @@ class TestDoorKey(unittest.TestCase):
         # Test that an invalid difficulty level raises a ValueError
         with self.assertRaises(ValueError):
             DoorKey(difficulty=4)
+            DoorKey(difficulty=-1)
 
 
 if __name__ == '__main__':
