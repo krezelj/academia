@@ -94,35 +94,35 @@ class TestPPOAgent(unittest.TestCase):
 
     def test_get_greedy_action(self):
         # arrange
-        agent = PPOAgent(
+        sut = PPOAgent(
             actor_architecture=MockModel,
             critic_architecture=MockModel,
             n_episodes=5,
             n_actions=3
         )
         # act
-        action = agent.get_action(np.zeros(1), greedy=True)
+        action = sut.get_action(np.zeros(1), greedy=True)
         # assert
         expected_action = 2
-        self.assertEqual(action, expected_action)
+        self.assertEqual(expected_action, action)
 
     def test_network_seeding(self):
         # arrange
-        agent_1 = PPOAgent(
+        sut_1 = PPOAgent(
             actor_architecture=ms_pacman.MLPActor,
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
             n_episodes=5,
             random_state=42
         )
-        agent_2 = PPOAgent(
+        sut_2 = PPOAgent(
             actor_architecture=ms_pacman.MLPActor,
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
             n_episodes=5,
             random_state=42
         )
-        agent_3 = PPOAgent(
+        sut_3 = PPOAgent(
             actor_architecture=ms_pacman.MLPActor,
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
@@ -130,40 +130,40 @@ class TestPPOAgent(unittest.TestCase):
             random_state=0
         )
         # assert
-        self.assertTrue(self.__is_model_equal(agent_1.actor, agent_2.actor))
-        self.assertTrue(self.__is_model_equal(agent_1.critic, agent_2.critic))
+        self.assertTrue(self.__is_model_equal(sut_1.actor, sut_2.actor))
+        self.assertTrue(self.__is_model_equal(sut_1.critic, sut_2.critic))
 
-        self.assertFalse(self.__is_model_equal(agent_1.actor, agent_3.actor))
-        self.assertFalse(self.__is_model_equal(agent_1.critic, agent_3.critic))
+        self.assertFalse(self.__is_model_equal(sut_1.actor, sut_3.actor))
+        self.assertFalse(self.__is_model_equal(sut_1.critic, sut_3.critic))
 
     def test_device_cuda(self):
         with mock.patch('torch.cuda.is_available', return_value=True):
-            agent = PPOAgent(
+            sut = PPOAgent(
                 actor_architecture=ms_pacman.MLPActor,
                 critic_architecture=ms_pacman.MLPCritic,
                 n_actions=9,
                 n_episodes=5, 
                 device='cuda')
-            self.assertEqual(agent.device, torch.device('cuda'))
+            self.assertEqual(torch.device('cuda'), sut.device)
 
     def test_device_cpu(self):
-        agent = PPOAgent(
+        sut = PPOAgent(
                 actor_architecture=ms_pacman.MLPActor,
                 critic_architecture=ms_pacman.MLPCritic,
                 n_actions=9,
                 n_episodes=5,
                 device='cpu')
-        self.assertEqual(agent.device, torch.device('cpu'))
+        self.assertEqual(torch.device('cpu'), sut.device)
 
     def test_device_cuda_not_available(self):
         with mock.patch('torch.cuda.is_available', return_value=False):
-            agent = PPOAgent(
+            sut = PPOAgent(
                 actor_architecture=ms_pacman.MLPActor,
                 critic_architecture=ms_pacman.MLPCritic,
                 n_actions=9,
                 n_episodes=5,
                 device='cuda')
-            self.assertNotEqual(agent.device, torch.device('cuda'))
+            self.assertNotEqual(torch.device('cuda'), sut.device)
 
     def test_no_steps_no_episodes_raises_error(self):
         with self.assertRaises(ValueError):
@@ -174,7 +174,7 @@ class TestPPOAgent(unittest.TestCase):
             
     def test_file_path_suffixed(self):
         # arrange
-        agent = PPOAgent(
+        sut = PPOAgent(
             actor_architecture=ms_pacman.MLPActor,
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
@@ -182,15 +182,15 @@ class TestPPOAgent(unittest.TestCase):
         )
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
-        returned_path = agent.save(tmpfile.name)
+        returned_path = sut.save(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.assertEqual(returned_path, tmpfile.name)
+        self.assertEqual(tmpfile.name, returned_path)
 
     def test_file_path_unsuffixed(self):
         # arrange
-        agent = PPOAgent(
+        sut = PPOAgent(
             actor_architecture=ms_pacman.MLPActor,
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
@@ -198,11 +198,11 @@ class TestPPOAgent(unittest.TestCase):
         )
         # act 
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
-        returned_path = agent.save(tmpfile.name)
+        returned_path = sut.save(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.assertEqual(returned_path, tmpfile.name + '.agent.zip')
+        self.assertEqual(tmpfile.name + '.agent.zip', returned_path)
 
     def test_saving_loading(self):
         # configuration 1
@@ -228,11 +228,11 @@ class TestPPOAgent(unittest.TestCase):
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
         agent.save(tmpfile.name)
-        loaded_agent = PPOAgent.load(tmpfile.name)
+        sut = PPOAgent.load(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.__assert_agents_equal(agent, loaded_agent)
+        self.__assert_agents_equal(agent, sut)
 
         # configuration 2
         # arrange
@@ -257,11 +257,11 @@ class TestPPOAgent(unittest.TestCase):
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
         agent.save(tmpfile.name)
-        loaded_agent = PPOAgent.load(tmpfile.name)
+        sut = PPOAgent.load(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.__assert_agents_equal(agent, loaded_agent)
+        self.__assert_agents_equal(agent, sut)
 
 class TestPPOBuffer(unittest.TestCase):
     
@@ -282,162 +282,162 @@ class TestPPOBuffer(unittest.TestCase):
 
     def test_episode_counter(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=1000)
+        sut = PPOAgent.PPOBuffer(n_steps=1000)
         # act/assert
-        self.assertEqual(buffer.episode_counter, 0)
-        self.__fill_buffer(buffer, 5, terminal=False)
-        self.assertEqual(buffer.episode_counter, 0)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.assertEqual(buffer.episode_counter, 1)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.assertEqual(buffer.episode_counter, 2)
-        self.__fill_buffer(buffer, 1, terminal=False)
-        self.assertEqual(buffer.episode_counter, 2)
+        self.assertEqual(0, sut.episode_counter)
+        self.__fill_buffer(sut, 5, terminal=False)
+        self.assertEqual(0, sut.episode_counter)
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.assertEqual(1, sut.episode_counter)
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.assertEqual(2, sut.episode_counter)
+        self.__fill_buffer(sut, 1, terminal=False)
+        self.assertEqual(2, sut.episode_counter)
 
     def test_episode_length_counter(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=1000)
+        sut = PPOAgent.PPOBuffer(n_steps=1000)
         # act/assert
-        self.assertEqual(buffer.episode_length_counter, 0)
-        self.__fill_buffer(buffer, 5, terminal=False)
-        self.assertEqual(buffer.episode_length_counter, 5)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.assertEqual(buffer.episode_length_counter, 0)
-        self.__fill_buffer(buffer, 1, terminal=False)
-        self.assertEqual(buffer.episode_length_counter, 1)
+        self.assertEqual(0, sut.episode_length_counter)
+        self.__fill_buffer(sut, 5, terminal=False)
+        self.assertEqual(5, sut.episode_length_counter)
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.assertEqual(0, sut.episode_length_counter)
+        self.__fill_buffer(sut, 1, terminal=False)
+        self.assertEqual(1, sut.episode_length_counter)
 
     def test_episode_lengths(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=1000)
+        sut = PPOAgent.PPOBuffer(n_steps=1000)
         # act/assert
-        self.assertEqual(len(buffer.episode_lengths), 0)
-        self.__fill_buffer(buffer, 5, terminal=False)
-        self.assertEqual(len(buffer.episode_lengths), 0)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.assertEqual(len(buffer.episode_lengths), 1)
-        self.assertEqual(buffer.episode_lengths[-1], 6)
+        self.assertEqual(0, len(sut.episode_lengths))
+        self.__fill_buffer(sut, 5, terminal=False)
+        self.assertEqual(0, len(sut.episode_lengths))
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.assertEqual(1, len(sut.episode_lengths))
+        self.assertEqual(6, sut.episode_lengths[-1])
 
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.assertEqual(len(buffer.episode_lengths), 2)
-        self.assertEqual(buffer.episode_lengths[-1], 1)
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.assertEqual(2, len(sut.episode_lengths))
+        self.assertEqual(1, sut.episode_lengths[-1])
 
-        self.__fill_buffer(buffer, 5, terminal=False)
-        self.assertEqual(len(buffer.episode_lengths), 2)
+        self.__fill_buffer(sut, 5, terminal=False)
+        self.assertEqual(2, len(sut.episode_lengths))
 
     def test_update(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=1000)
+        sut = PPOAgent.PPOBuffer(n_steps=1000)
 
         # act/assert
-        self.assertEqual(len(buffer.states), 0)
-        self.assertEqual(len(buffer.actions), 0)
-        self.assertEqual(len(buffer.actions_logits), 0)
-        self.assertEqual(len(buffer.rewards), 0)
-        self.assertEqual(buffer.steps_counter, 0)
+        self.assertEqual(0, len(sut.states))
+        self.assertEqual(0, len(sut.actions))
+        self.assertEqual(0, len(sut.actions_logits))
+        self.assertEqual(0, len(sut.rewards))
+        self.assertEqual(0, sut.steps_counter)
 
-        self.__fill_buffer(buffer, 10)
+        self.__fill_buffer(sut, 10)
 
-        self.assertEqual(len(buffer.states), 10)
-        self.assertEqual(len(buffer.actions), 10)
-        self.assertEqual(len(buffer.actions_logits), 10)
-        self.assertEqual(len(buffer.rewards), 10)
-        self.assertEqual(buffer.steps_counter, 10)
+        self.assertEqual(10, len(sut.states))
+        self.assertEqual(10, len(sut.actions))
+        self.assertEqual(10, len(sut.actions_logits))
+        self.assertEqual(10, len(sut.rewards))
+        self.assertEqual(10, sut.steps_counter)
 
     def test_update_return_when_using_n_episodes(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_episodes=3)
+        sut = PPOAgent.PPOBuffer(n_episodes=3)
 
         # act/assert
-        self.assertFalse(self.__fill_buffer(buffer, 1, terminal=True))
-        self.assertFalse(self.__fill_buffer(buffer, 1, terminal=True))
-        self.assertTrue(self.__fill_buffer(buffer, 1, terminal=True))
+        self.assertFalse(self.__fill_buffer(sut, 1, terminal=True))
+        self.assertFalse(self.__fill_buffer(sut, 1, terminal=True))
+        self.assertTrue(self.__fill_buffer(sut, 1, terminal=True))
     
     def test_update_return_when_using_n_steps(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=10)
+        sut = PPOAgent.PPOBuffer(n_steps=10)
 
         # act/assert
-        self.assertFalse(self.__fill_buffer(buffer, 9, terminal=False))
-        self.assertTrue(self.__fill_buffer(buffer, 1, terminal=True))
+        self.assertFalse(self.__fill_buffer(sut, 9, terminal=False))
+        self.assertTrue(self.__fill_buffer(sut, 1, terminal=True))
 
-        self.assertFalse(self.__fill_buffer(buffer, 10, terminal=False))
-        self.assertFalse(self.__fill_buffer(buffer, 1, terminal=False))
-        self.assertTrue(self.__fill_buffer(buffer, 1, terminal=True))
+        self.assertFalse(self.__fill_buffer(sut, 10, terminal=False))
+        self.assertFalse(self.__fill_buffer(sut, 1, terminal=False))
+        self.assertTrue(self.__fill_buffer(sut, 1, terminal=True))
 
     def test_calculate_rewards_to_go(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=10)
+        sut = PPOAgent.PPOBuffer(n_steps=10)
         
         # act
-        self.__fill_buffer(buffer, 2, terminal=False)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        self.__fill_buffer(buffer, 2, terminal=False)
-        self.__fill_buffer(buffer, 1, terminal=True)
-        buffer.calculate_rewards_to_go(gamma=0.8)
+        self.__fill_buffer(sut, 2, terminal=False)
+        self.__fill_buffer(sut, 1, terminal=True)
+        self.__fill_buffer(sut, 2, terminal=False)
+        self.__fill_buffer(sut, 1, terminal=True)
+        sut.calculate_rewards_to_go(gamma=0.8)
 
         # assert
-        self.assertEqual(len(buffer.rewards_to_go), 6)
+        self.assertEqual(6, len(sut.rewards_to_go))
 
         # only test the oldest ones as they depend on other
         # rewards-to-go-as well so it implictly tests
         # them as well
-        self.assertAlmostEqual(buffer.rewards_to_go[0],
-                         buffer.rewards[2] * 0.8**2\
-                        +buffer.rewards[1] * 0.8\
-                        +buffer.rewards[0], 5)
-        self.assertAlmostEqual(buffer.rewards_to_go[3],
-                         buffer.rewards[-1] * 0.8**2\
-                        +buffer.rewards[-2] * 0.8\
-                        +buffer.rewards[-3], 5)
+        self.assertAlmostEqual(sut.rewards[2] * 0.8**2\
+                        +sut.rewards[1] * 0.8\
+                        +sut.rewards[0], 
+                        sut.rewards_to_go[0], 5)
+        self.assertAlmostEqual(sut.rewards[-1] * 0.8**2\
+                        +sut.rewards[-2] * 0.8\
+                        +sut.rewards[-3],
+                        sut.rewards_to_go[3], 5)
         
     def test_reset(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=10)
+        sut = PPOAgent.PPOBuffer(n_steps=10)
 
         # act/assert
-        self.assertEqual(len(buffer.states), 0)
-        self.assertEqual(len(buffer.actions), 0)
-        self.assertEqual(len(buffer.actions_logits), 0)
-        self.assertEqual(len(buffer.rewards), 0)
-        self.assertEqual(len(buffer.episode_lengths), 0)
-        self.assertEqual(buffer.steps_counter, 0)
-        self.assertEqual(buffer.episode_counter, 0)
-        self.assertEqual(buffer.episode_length_counter, 0)
+        self.assertEqual(0, len(sut.states))
+        self.assertEqual(0, len(sut.actions))
+        self.assertEqual(0, len(sut.actions_logits))
+        self.assertEqual(0, len(sut.rewards))
+        self.assertEqual(0, len(sut.episode_lengths))
+        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, sut.episode_counter)
+        self.assertEqual(0, sut.episode_length_counter)
 
-        self.__fill_buffer(buffer, 10)
-        buffer.reset()
+        self.__fill_buffer(sut, 10)
+        sut.reset()
 
-        self.assertEqual(len(buffer.states), 0)
-        self.assertEqual(len(buffer.actions), 0)
-        self.assertEqual(len(buffer.actions_logits), 0)
-        self.assertEqual(len(buffer.rewards), 0)
-        self.assertEqual(len(buffer.episode_lengths), 0)
-        self.assertEqual(buffer.steps_counter, 0)
-        self.assertEqual(buffer.episode_counter, 0)
-        self.assertEqual(buffer.episode_length_counter, 0)
+        self.assertEqual(0, len(sut.states))
+        self.assertEqual(0, len(sut.actions))
+        self.assertEqual(0, len(sut.actions_logits))
+        self.assertEqual(0, len(sut.rewards))
+        self.assertEqual(0, len(sut.episode_lengths))
+        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, sut.episode_counter)
+        self.assertEqual(0, sut.episode_length_counter)
 
     def test_get_tensors(self):
         # arrange
-        buffer = PPOAgent.PPOBuffer(n_steps=1000)
-        self.__fill_buffer(buffer, 9)
-        self.__fill_buffer(buffer, 1, terminal=True)
+        sut = PPOAgent.PPOBuffer(n_steps=1000)
+        self.__fill_buffer(sut, 9)
+        self.__fill_buffer(sut, 1, terminal=True)
 
         # act
-        buffer.calculate_rewards_to_go(gamma=0.8)
-        states, actions, logits, rtgs = buffer.get_tensors('cpu')
+        sut.calculate_rewards_to_go(gamma=0.8)
+        states, actions, logits, rtgs = sut.get_tensors('cpu')
 
         # assert
-        self.assertEqual(type(states), torch.Tensor)
-        self.assertEqual(states.shape, (10, 128))
+        self.assertEqual(torch.Tensor, type(states))
+        self.assertEqual((10, 128), states.shape)
 
-        self.assertEqual(type(actions), torch.Tensor)
-        self.assertEqual(actions.shape, (10,))
+        self.assertEqual(torch.Tensor, type(actions))
+        self.assertEqual((10,), actions.shape)
 
         self.assertEqual(type(logits), torch.Tensor)
-        self.assertEqual(logits.shape, (10,))
+        self.assertEqual((10,), logits.shape)
 
         self.assertEqual(type(rtgs), torch.Tensor)
-        self.assertEqual(rtgs.shape, (10,))
+        self.assertEqual((10,), rtgs.shape)
 
 if __name__ == '__main__':
     unittest.main()

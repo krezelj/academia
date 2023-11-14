@@ -69,133 +69,133 @@ class TestDQNAgent(unittest.TestCase):
     def test_memory(self):
         with mock.patch('academia.agents.DQNAgent.REPLAY_MEMORY_SIZE', 10):
             # arrange
-            agent = DQNAgent(lava_crossing.MLPStepDQN, 3)
+            sut = DQNAgent(lava_crossing.MLPStepDQN, 3)
             memory_size = DQNAgent.REPLAY_MEMORY_SIZE
 
             # act/assert
-            self.assertEqual(len(agent.memory), 0)
+            self.assertEqual(0, len(sut.memory))
 
-            self.__simulate_updates(agent, memory_size)
-            self.assertEqual(len(agent.memory), memory_size)
+            self.__simulate_updates(sut, memory_size)
+            self.assertEqual(memory_size, len(sut.memory))
 
-            self.__simulate_updates(agent, 1)
-            self.assertEqual(len(agent.memory), memory_size)
+            self.__simulate_updates(sut, 1)
+            self.assertEqual(memory_size, len(sut.memory))
 
     def test_train_step(self):
         # arrange
-        agent = DQNAgent(lava_crossing.MLPStepDQN, 3)
+        sut = DQNAgent(lava_crossing.MLPStepDQN, 3)
         update_every = DQNAgent.UPDATE_EVERY
 
         # act/assert
-        self.assertEqual(agent.train_step, 0)
+        self.assertEqual(0, sut.train_step)
 
-        self.__simulate_updates(agent, update_every - 1)
-        self.assertEqual(agent.train_step, update_every - 1)
+        self.__simulate_updates(sut, update_every - 1)
+        self.assertEqual(update_every - 1, sut.train_step)
 
-        self.__simulate_updates(agent, 1)
-        self.assertEqual(agent.train_step, 0)
+        self.__simulate_updates(sut, 1)
+        self.assertEqual(0, sut.train_step)
 
     def test_get_greedy_action(self):
         # arrange
-        agent = DQNAgent(
+        sut = DQNAgent(
             nn_architecture=MockModel,
             n_actions=3
         )
         # act
-        action = agent.get_action(np.zeros(1), greedy=True)
+        action = sut.get_action(np.zeros(1), greedy=True)
         # assert
         expected_action = 2
-        self.assertEqual(action, expected_action)
+        self.assertEqual(expected_action, action)
 
     def test_legal_mask(self):
         # arrange
-        agent = DQNAgent(
+        sut = DQNAgent(
             nn_architecture=MockModel,
             n_actions=3
         )
         # act
-        action = agent.get_action(np.zeros(1), legal_mask=np.array([0, 1, 0]), greedy=True)
+        action = sut.get_action(np.zeros(1), legal_mask=np.array([0, 1, 0]), greedy=True)
         # assert
         expected_action = 1
-        self.assertEqual(action, expected_action)
+        self.assertEqual(expected_action, action)
 
     def test_network_seeding(self):
         # arrange
-        agent_1 = DQNAgent(
+        sut_1 = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3,
             random_state=42
         )
-        agent_2 = DQNAgent(
+        sut_2 = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3,
             random_state=42
         )
-        agent_3 = DQNAgent(
+        sut_3 = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3,
             random_state=0
         )
         # assert
-        self.assertTrue(self.__is_model_equal(agent_1.network, agent_2.network))
-        self.assertTrue(self.__is_model_equal(agent_1.target_network, agent_2.target_network))
+        self.assertTrue(self.__is_model_equal(sut_1.network, sut_2.network))
+        self.assertTrue(self.__is_model_equal(sut_1.target_network, sut_2.target_network))
 
-        self.assertFalse(self.__is_model_equal(agent_1.network, agent_3.network))
-        self.assertFalse(self.__is_model_equal(agent_1.target_network, agent_3.target_network))
+        self.assertFalse(self.__is_model_equal(sut_1.network, sut_3.network))
+        self.assertFalse(self.__is_model_equal(sut_1.target_network, sut_3.target_network))
 
     def test_device_cuda(self):
         with mock.patch('torch.cuda.is_available', return_value=True):
             def mock_build_network(self: DQNAgent):
                 self.network = MockModel()
             with mock.patch.object(DQNAgent, '_DQNAgent__build_network', new=mock_build_network):
-                agent = DQNAgent(
+                sut = DQNAgent(
                     nn_architecture=lava_crossing.MLPStepDQN, 
                     n_actions=3, 
                     device='cuda')
-                self.assertEqual(agent.device, torch.device('cuda'))
+                self.assertEqual(torch.device('cuda'), sut.device)
 
     def test_device_cpu(self):
-        agent = DQNAgent(
+        sut = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN, 
             n_actions=3, 
             device='cpu')
-        self.assertEqual(agent.device, torch.device('cpu'))
+        self.assertEqual(torch.device('cpu'), sut.device)
 
     def test_device_cuda_not_available(self):
         with mock.patch('torch.cuda.is_available', return_value=False):
-            agent = DQNAgent(
+            sut = DQNAgent(
                 nn_architecture=lava_crossing.MLPStepDQN, 
                 n_actions=3, 
                 device='cuda')
-            self.assertNotEqual(agent.device, torch.device('cuda'))       
+            self.assertNotEqual(torch.device('cuda'), sut.device)       
 
     def test_file_path_suffixed(self):
         # arrange
-        agent = DQNAgent(
+        sut = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3
         )
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
-        returned_path = agent.save(tmpfile.name)
+        returned_path = sut.save(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.assertEqual(returned_path, tmpfile.name)
+        self.assertEqual(tmpfile.name, returned_path)
 
     def test_file_path_unsuffixed(self):
         # arrange
-        agent = DQNAgent(
+        sut = DQNAgent(
             nn_architecture=lava_crossing.MLPStepDQN,
             n_actions=3
         )
         # act 
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
-        returned_path = agent.save(tmpfile.name)
+        returned_path = sut.save(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.assertEqual(returned_path, tmpfile.name + '.agent.zip')
+        self.assertEqual(tmpfile.name + '.agent.zip', returned_path)
         
     def test_saving_loading(self):
         # arrange
@@ -215,11 +215,11 @@ class TestDQNAgent(unittest.TestCase):
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
         agent.save(tmpfile.name)
-        loaded_agent = DQNAgent.load(tmpfile.name)
+        sut = DQNAgent.load(tmpfile.name)
         tmpfile.close()
 
         # assert
-        self.__assert_agents_equal(agent, loaded_agent)
+        self.__assert_agents_equal(agent, sut)
 
 
 if __name__ == '__main__':

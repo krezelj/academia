@@ -12,7 +12,7 @@ class TestSarsaAgent(unittest.TestCase):
         # epsilon set to 0 to make it a greedy policy
         # otherwise the test would depend on a random factor
         epsilon = 0 
-        agent = SarsaAgent(
+        sut = SarsaAgent(
             n_actions=3, 
             alpha=alpha, 
             gamma=gamma, 
@@ -26,14 +26,14 @@ class TestSarsaAgent(unittest.TestCase):
             mock_new_state: np.array([1.0, 2.0, 1.0])
         }
 
-        agent.q_table[mock_state] = init_q_values[mock_state].copy()
-        agent.q_table[mock_new_state] = init_q_values[mock_new_state].copy()
+        sut.q_table[mock_state] = init_q_values[mock_state].copy()
+        sut.q_table[mock_new_state] = init_q_values[mock_new_state].copy()
 
         action = 0
         reward = 5
 
         # act
-        agent.update(
+        sut.update(
             state=mock_state, 
             action=action, 
             reward=reward, 
@@ -47,7 +47,7 @@ class TestSarsaAgent(unittest.TestCase):
             + alpha * (reward + gamma * np.max(init_q_values[mock_new_state]))
 
         # almost equal because of floating point operations
-        self.assertAlmostEqual(agent.q_table[mock_state][action], expected_q_value, 5)
+        self.assertAlmostEqual(expected_q_value, sut.q_table[mock_state][action], 5)
 
 
 if __name__ == '__main__':

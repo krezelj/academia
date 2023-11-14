@@ -9,7 +9,7 @@ class TestQLAgent(unittest.TestCase):
         # arrange
         alpha = 0.1
         gamma = 0.9
-        agent = QLAgent(n_actions=3, alpha=alpha, gamma=gamma, random_state=0)
+        sut = QLAgent(n_actions=3, alpha=alpha, gamma=gamma, random_state=0)
 
         mock_state = "mock_state"
         mock_new_state = "mock_new_state"
@@ -18,14 +18,14 @@ class TestQLAgent(unittest.TestCase):
             mock_new_state: np.array([1.0, 2.0, 1.0])
         }
 
-        agent.q_table[mock_state] = init_q_values[mock_state].copy()
-        agent.q_table[mock_new_state] = init_q_values[mock_new_state].copy()
+        sut.q_table[mock_state] = init_q_values[mock_state].copy()
+        sut.q_table[mock_new_state] = init_q_values[mock_new_state].copy()
 
         action = 0
         reward = 5
 
         # act
-        agent.update(
+        sut.update(
             state=mock_state, 
             action=action, 
             reward=reward, 
@@ -38,7 +38,7 @@ class TestQLAgent(unittest.TestCase):
             + alpha * (reward + gamma * np.max(init_q_values[mock_new_state]))
 
         # almost equal because of floating point operations
-        self.assertAlmostEqual(agent.q_table[mock_state][action], expected_q_value, 5)
+        self.assertAlmostEqual(expected_q_value, sut.q_table[mock_state][action], 5)
 
 
 if __name__ == '__main__':
