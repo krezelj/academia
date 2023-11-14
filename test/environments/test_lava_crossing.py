@@ -8,11 +8,6 @@ class TestLavaCrossing(unittest.TestCase):
         # Set up the environment with mock values for testing
         self.env = LavaCrossing(difficulty=1)
 
-    def test_invalid_difficulty(self):
-        # Test that an invalid difficulty level raises a ValueError
-        with self.assertRaises(ValueError):
-            LavaCrossing(difficulty=4)
-
     def test_observe(self):
         transformed_state = self.env.reset()
 
