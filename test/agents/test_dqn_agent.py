@@ -143,11 +143,14 @@ class TestDQNAgent(unittest.TestCase):
 
     def test_device_cuda(self):
         with mock.patch('torch.cuda.is_available', return_value=True):
-            agent = DQNAgent(
-                nn_architecture=lava_crossing.MLPStepDQN, 
-                n_actions=3, 
-                device='cuda')
-            self.assertEqual(agent.device, torch.device('cuda'))
+            def mock_build_network(self: DQNAgent):
+                self.network = MockModel()
+            with mock.patch.object(DQNAgent, '_DQNAgent__build_network', new=mock_build_network):
+                agent = DQNAgent(
+                    nn_architecture=lava_crossing.MLPStepDQN, 
+                    n_actions=3, 
+                    device='cuda')
+                self.assertEqual(agent.device, torch.device('cuda'))
 
     def test_device_cpu(self):
         agent = DQNAgent(
