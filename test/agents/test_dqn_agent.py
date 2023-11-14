@@ -56,7 +56,7 @@ class TestDQNAgent(unittest.TestCase):
 
         ignored_attributes = [\
             'network', 'target_network', 'memory',\
-            '_rng', 'experience', 'train_step', 'optimizer']
+            '_rng', 'experience', 'optimizer']
         for attribute_name in expected.__dict__.keys():
             if attribute_name not in ignored_attributes:
                 self.assertEqual(
