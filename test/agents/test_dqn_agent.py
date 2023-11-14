@@ -9,6 +9,7 @@ import torch
 from academia.agents import DQNAgent
 from academia.utils.models import lava_crossing
 
+
 class MockModel(torch.nn.Module):
 
     def __init__(self):
@@ -17,6 +18,7 @@ class MockModel(torch.nn.Module):
     
     def forward(self, state):
         return torch.Tensor([1, -1, 2])
+
 
 class TestDQNAgent(unittest.TestCase):
 

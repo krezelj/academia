@@ -9,6 +9,7 @@ import torch
 from academia.agents import PPOAgent
 from academia.utils.models import ms_pacman
 
+
 class MockModel(torch.nn.Module):
 
     def __init__(self):
@@ -17,6 +18,7 @@ class MockModel(torch.nn.Module):
     
     def forward(self, state):
         return torch.Tensor([0.3, 0.1, 0.6])
+
 
 class TestPPOAgent(unittest.TestCase):
 
