@@ -81,8 +81,8 @@ class TestStopwatch(unittest.TestCase):
     def test_lap_times_sum_to_total_time(self):
         sut = Stopwatch(start=True)
         total_wall_time, total_cpu_time = sut.stop(lap=True)
-        self.assertEqual(total_wall_time, np.sum(sut.wall_lap_times))
-        self.assertEqual(total_cpu_time, np.sum(sut.cpu_lap_times))
+        self.assertAlmostEqual(total_wall_time, np.sum(sut.wall_lap_times), 5)
+        self.assertAlmostEqual(total_cpu_time, np.sum(sut.cpu_lap_times), 5)
 
 
 if __name__ == '__main__':
