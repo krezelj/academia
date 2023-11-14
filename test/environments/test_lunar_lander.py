@@ -3,7 +3,7 @@ import unittest
 from academia.environments import LunarLander
 
 
-class MyTestCase(unittest.TestCase):
+class TestLunarLander(unittest.TestCase):
     def setUp(self):
         # Set up the environment with mock values for testing
         self.env = LunarLander(difficulty=1)
