@@ -84,8 +84,9 @@ class TestBridgeBuilding(unittest.TestCase):
     def test_observe(self):
         initial_state = self.environment.reset()
         observed_state = self.environment.observe()
-        self.assertIsInstance(observed_state, tuple)
-        self.assertEqual(len(observed_state), 8)
+        self.assertIsInstance(tuple, observed_state)
+        self.assertEqual(8, len(observed_state))
+        self.assertEqual(initial_state, observed_state)
 
     def test_get_legal_mask(self):
         legal_mask = self.environment.get_legal_mask()
