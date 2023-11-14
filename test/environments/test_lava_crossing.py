@@ -3,7 +3,7 @@ import unittest
 from academia.environments import LavaCrossing
 
 
-class TestDoorKey(unittest.TestCase):
+class TestLavaCrossing(unittest.TestCase):
     def setUp(self):
         # Set up the environment with mock values for testing
         self.env = LavaCrossing(difficulty=1)
