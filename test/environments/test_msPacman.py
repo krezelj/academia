@@ -3,7 +3,7 @@ import unittest
 from academia.environments import MsPacman
 
 
-class TestGenericAtariWrapper(unittest.TestCase):
+class TestMsPacman(unittest.TestCase):
     def test_invalid_difficulty(self):
         # Test that an invalid difficulty level raises a ValueError
         with self.assertRaises(ValueError):
