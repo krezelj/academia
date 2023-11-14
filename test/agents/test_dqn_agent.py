@@ -39,13 +39,13 @@ class TestDQNAgent(unittest.TestCase):
         return True
 
     def __is_memory_equal(self, expected, returned):
-        for expected_transition, loaded_transition in zip(expected, returned):
-            for expected_element, loaded_element in zip(expected_transition, loaded_transition):
+        for expected_transition, returned_transition in zip(expected, returned):
+            for expected_element, returned_element in zip(expected_transition, returned_transition):
                 if type(expected_element) is np.ndarray:
-                    if not np.all(expected_element == loaded_element):
+                    if not np.all(expected_element == returned_element):
                         return False
                 else:
-                    if expected_element != loaded_element:
+                    if expected_element != returned_element:
                         return False
         return True
 
