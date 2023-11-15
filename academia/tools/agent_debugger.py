@@ -81,6 +81,8 @@ class AgentDebugger:
         paused (bool): Whether the environment is paused (allows for step-by-step execution).
         input_timeout (float): Time (in seconds) to wait for user input. If the user does not
             press any key in that time frame the execution continues (unless :attr:`paused` is ``True``).
+        episodes (int): Number of episodes run in the environment.
+        steps (int): Number of steps in the current episode.
         
     Examples:
         Initialisation:
@@ -176,6 +178,8 @@ class AgentDebugger:
                 raise ValueError(f"Reserved key '{key}' present in the keymap.")
         self.key_action_map = key_action_map
         self.input_timeout = 1_000_000_000 if self.paused else 0.05
+        self.episodes = 0
+        self.steps = 0
         if run:
             self.run(run_verbose)
 
@@ -199,15 +203,15 @@ class AgentDebugger:
             verbose: Verbosity level. 
         """
         self.__running = True
-        episodes = 0
+        self.episodes = 0
         while self.__running:
-            episodes += 1
+            self.episodes += 1
             state = self.env.reset()
-            steps = 0
+            self.steps = 0
             episode_reward = 0
             done = False
             while not done and self.__running:
-                steps += 1
+                self.steps += 1
                 if verbose > 2:
                     _logger.info(self.thoughts_handlers[type(self.agent).__qualname__](self.agent, state))
                 while True:
@@ -228,7 +232,6 @@ class AgentDebugger:
                     _logger.info(f"Step {steps} reward: {reward}")
             if verbose > 0:
                 _logger.info(f"Episode {episodes} reward: {episode_reward}")
-
 
     def __handle_key_press(self, key) -> Optional[Union[Any, int]]:
         """
