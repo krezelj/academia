@@ -190,12 +190,12 @@ class BridgeBuilding(ScalableEnvironment):
         if self.__is_on_goal(self.__player_position):
             reward = 1 - self.step_count / self.max_steps
             if self.__is_boulder_left():
-                reward = np.maximum(0, reward - 0.2)
+                reward = np.maximum(0.0, reward - 0.2)
             return self.observe(), reward, True
         elif self.__is_on_unbridged_river(self.__player_position):
             is_terminal = True
         
-        return self.observe(), 0, is_terminal
+        return self.observe(), 0.0, is_terminal
 
     def render(self) -> None:
         """
@@ -245,6 +245,8 @@ class BridgeBuilding(ScalableEnvironment):
             legal_mask[3] = 0
         if not self.__player_holds_boulder and not self.__contains_boulder(self.__player_target):
             legal_mask[3] = 0
+
+        return legal_mask
 
     def __compose_state(self):
         """
