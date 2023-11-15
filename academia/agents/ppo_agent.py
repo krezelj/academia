@@ -258,7 +258,13 @@ class PPOAgent(Agent):
                  random_state: Optional[int] = None,
                  device: Literal['cpu', 'cuda'] = 'cpu'
                  ) -> None:
-        super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
+        super(PPOAgent, self).__init__(
+            n_actions=n_actions, 
+            epsilon=epsilon, 
+            epsilon_decay=epsilon_decay, 
+            min_epsilon=min_epsilon, 
+            gamma=gamma, 
+            random_state=random_state)
         self.discrete = discrete
         self.clip = clip
         self.batch_size = batch_size
