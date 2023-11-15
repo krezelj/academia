@@ -22,17 +22,23 @@ class BridgeBuilding(ScalableEnvironment):
         offset = None
         if self.__player_direction == 0: # up
             offset = np.array([0, 1])
-        elif self.__player_direction == 0: # right
+        elif self.__player_direction == 1: # right
             offset = np.array([1, 0])
-        elif self.__player_direction == 0: # down
+        elif self.__player_direction == 2: # down
             offset = np.array([0, -1])
-        elif self.__player_direction == 0: # left
+        elif self.__player_direction == 3: # left
             offset = np.array([-1, 0])
         return self.__player_position + offset
 
     @property
     def __player_holds_boulder(self):
         return self.__held_boulder_index >= 0
+
+    @property
+    def _state(self):
+        return np.concatenate([
+            self.__player_position, self.__player_target, self.__boulder_positions.flatten()
+        ])
 
     def __init__(self, 
                  difficulty: int, 
@@ -42,6 +48,7 @@ class BridgeBuilding(ScalableEnvironment):
                  n_frames_stacked: int = 1,
                  append_step_count: bool = False, 
                  random_state: Optional[int] = None) -> None:
+        self.difficulty = difficulty
         self.__init_bridge_length = self.__RIVER_WIDTH - difficulty
         self.__boulder_positions = np.zeros(shape=(self.__N_BOULDERS,2))
         self.__player_position = np.zeros(shape=(2))
@@ -49,13 +56,13 @@ class BridgeBuilding(ScalableEnvironment):
         self.__held_boulder_index = -1
 
         self.max_steps = max_steps
-        self.render_mode: render_mode
+        self.render_mode = render_mode
         self.obs_type = obs_type
         self.n_frames_stacked = n_frames_stacked
         self.append_step_count = append_step_count
         self.step_count = 0
-        self._state = None  # properly set in self.reset()
-        """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
+        # self._state = None  # properly set in self.reset()
+        # """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
         self._past_n_states = deque()  # properly set in self.reset()
         self._rng = np.random.default_rng(random_state)
 
@@ -68,7 +75,11 @@ class BridgeBuilding(ScalableEnvironment):
         self.__init_state_rng = np.random.default_rng(self._rng.integers(0, 999999999999))
 
         self.reset()
-        self.STATE_SHAPE = self.observe().shape
+        observed_state = self.observe()
+        if self.obs_type == "string":
+            self.STATE_SHAPE = (len(observed_state),)
+        elif self.obs_type == "array":
+            self.STATE_SHAPE = observed_state.shape
 
     def reset(self) -> Union[str, npt.NDArray[np.float32]]:
         self.step_count = 0
@@ -92,6 +103,9 @@ class BridgeBuilding(ScalableEnvironment):
         is_terminal = self.step_count >= self.max_steps
 
         self.__handle_action(action)
+        self._past_n_states.append(self._state)
+        self._past_n_states.popleft()
+
         if self.__is_on_goal(self.__player_position):
             reward = 1 - self.step_count / self.max_steps
             if self.__is_boulder_left():
@@ -109,9 +123,9 @@ class BridgeBuilding(ScalableEnvironment):
         for y in range(self.__RIVER_HEIGHT - 1, -1, -1):
             for x in range(self.__TOTAL_WIDTH):
                 position = x, y
-                if position == self.__player_position:
+                if self.__are_positions_equal(position, self.__player_position):
                     str_representation += 'B' if self.__player_holds_boulder else 'P'
-                elif position == self.__player_target:
+                elif self.__are_positions_equal(position, self.__player_target):
                     str_representation += 'X'
                 elif self.__contains_boulder(position):
                     str_representation += '#'
@@ -171,7 +185,6 @@ class BridgeBuilding(ScalableEnvironment):
         if self.__held_boulder_index == -1:
             return
         self.__boulder_positions[self.__held_boulder_index, :] = (-1, -1)
-        self.__player_holds_boulder = True
 
     def __drop(self):
         # assuming valid target guaranteed by `__handle_action`
@@ -179,7 +192,6 @@ class BridgeBuilding(ScalableEnvironment):
             return
         self.__boulder_positions[self.__held_boulder_index, :] = self.__player_target
         self.__held_boulder_index = -1
-        self.__player_holds_boulder = False
         
     def __move_forward(self):
         # assuming valid target guaranteed by `__handle_action`
@@ -188,7 +200,7 @@ class BridgeBuilding(ScalableEnvironment):
 
     def __generate_initial_state(self) -> None:
         # generate initial bridge
-        bridge_y = self.__init_state_rng.randint(0, self.__RIVER_HEIGHT)
+        bridge_y = self.__init_state_rng.integers(0, self.__RIVER_HEIGHT - 1)
         for i in range(self.__init_bridge_length):
             self.__boulder_positions[i, :] = self.__LEFT_BANK_WIDTH + i, bridge_y
 
@@ -197,7 +209,7 @@ class BridgeBuilding(ScalableEnvironment):
                                      size=1 + self.difficulty, replace=False)
         self.__player_position[:] = \
             np.unravel_index(positions[0], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
-        self.__player_direction = self.__init_state_rng.randint()
+        self.__player_direction = self.__init_state_rng.integers(0, 3)
 
         for position_idx, boulder_idx in enumerate(range(self.__init_bridge_length, self.__N_BOULDERS)):
             x, y = np.unravel_index(positions[position_idx], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
@@ -233,7 +245,7 @@ class BridgeBuilding(ScalableEnvironment):
 
     def __contains_boulder(self, position):
         # assuming valid position
-        return position in self.__boulder_positions
+        return np.any(np.all(position == self.__boulder_positions, axis=1))
     
     def __boulder_index_at_target(self):
         # assuming valid position
@@ -247,3 +259,8 @@ class BridgeBuilding(ScalableEnvironment):
             if position[0] < self.__LEFT_BANK_WIDTH:
                 return True
         return False
+
+    def __are_positions_equal(self, p1, p2):
+        # since positions are numpy arrays they need np.all to assert equality
+        # this method is a human readable representation of that fact
+        return np.all(p1 == p2)
