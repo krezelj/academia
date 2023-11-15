@@ -6,10 +6,10 @@ from academia.environments import LunarLander
 class TestLunarLander(unittest.TestCase):
     def setUp(self):
         # Set up the environment with mock values for testing
-        self.env = LunarLander(difficulty=1)
+        self.sut = LunarLander(difficulty=1)
 
     def test_observe(self):
-        state = self.env.reset()
+        state = self.sut.reset()
         self.assertEqual((8,), state.shape)
 
     def test_invalid_difficulty(self):
