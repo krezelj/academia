@@ -18,7 +18,7 @@ class BridgeBuilding(ScalableEnvironment):
     The rewards is 0 if the agent runs out of time or drowns in the river.
     Otherwise if the agent reaches the goal (the right bank) it's 
     ``max(0, 1-step_count/max_steps - 0.2 * is_boulder_left)``.
-    This reward function is meant to mimic `Minigrid`'s reward function but it also forces
+    This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
     the agent to fully build the bridge by punishing it if a boulder is left on the left bank
     of the river after the agent has reached the goal.
 
