@@ -7,17 +7,17 @@ import numpy as np
 
 from academia.curriculum import LearningStats
 from academia.tools.visualizations import (
-    plot_task, 
-    plot_rewards_curriculum, 
-    plot_trajectory_curriculum, 
-    plot_curriculum_vs_nocurriculum, 
-    plot_evaluation_impact, 
-    plot_time_impact, 
+    plot_task,
+    plot_rewards_curriculum,
+    plot_trajectory_curriculum,
+    plot_curriculum_vs_nocurriculum,
+    plot_evaluation_impact,
+    plot_time_impact,
     plot_multiple_evaluation_impact
 )
 
 
-class TestAcademiaFunctions(unittest.TestCase):
+class TestVisualizations(unittest.TestCase):
     def setUp(self):
         # Dummy LearningStats objects for testing
         self.dummy_stats_x = LearningStats(evaluation_interval=5)
@@ -48,7 +48,6 @@ class TestAcademiaFunctions(unittest.TestCase):
         self.dummy_stats_z.step_counts_moving_avg = np.array([70.0, 67.5, 65.0, 62.5, 60.0])
         self.dummy_stats_z.episode_wall_times = np.array([0.12, 0.14, 0.13, 0.15, 0.12])
         self.dummy_stats_z.episode_cpu_times = np.array([0.13, 0.15, 0.14, 0.16, 0.13])
-
 
     def test_plot_task(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -88,10 +87,12 @@ class TestAcademiaFunctions(unittest.TestCase):
         nocurriculum_stats = self.dummy_stats_z
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = os.path.join(temp_dir, "test_plot_curriculum_vs_nocurriculum")
-            sut_png = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False, save_path=save_path, save_format="png")
+            sut_png = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False,
+                                                      save_path=save_path, save_format="png")
             self.assertTrue(os.path.exists(sut_png + "_curriculum_vs_no_curriculum.png"))
 
-            sut_html = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False, save_path=save_path, save_format="html")
+            sut_html = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False,
+                                                       save_path=save_path, save_format="html")
             self.assertTrue(os.path.exists(sut_html + "_curriculum_vs_no_curriculum.html"))
 
         # includes_init_eval = False but initial evaluation
@@ -100,34 +101,37 @@ class TestAcademiaFunctions(unittest.TestCase):
             longer_evaluations = np.append(curriculum_stats["X"].agent_evaluations, [145.56])
             curr_stats_invalid = copy.copy(curriculum_stats)
             curr_stats_invalid["X"].agent_evaluations = longer_evaluations
-            plot_curriculum_vs_nocurriculum(curr_stats_invalid, nocurriculum_stats, show=False, save_path=save_path, save_format="png")
-        
+            plot_curriculum_vs_nocurriculum(curr_stats_invalid, nocurriculum_stats, show=False, save_path=save_path,
+                                            save_format="png")
+
         # includes_init_eval = True but no initial evaluation
         with self.assertRaises(ValueError):
-            plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False, save_path=save_path, save_format="png", 
+            plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False, save_path=save_path,
+                                            save_format="png",
                                             includes_init_eval=True)
-        
 
     def test_plot_evaluation_impact(self):
         num_of_episodes_x = [10, 20, 30]
         stats_y = [self.dummy_stats_y] * len(num_of_episodes_x)
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = os.path.join(temp_dir, "test_plot_evaluation_impact")
-            sut_png = plot_evaluation_impact(num_of_episodes_x, stats_y, show=False, save_path=save_path, save_format="png")
+            sut_png = plot_evaluation_impact(num_of_episodes_x, stats_y, show=False, save_path=save_path,
+                                             save_format="png")
             self.assertTrue(os.path.exists(sut_png + "_evaluation_impact.png"))
 
-            sut_html = plot_evaluation_impact(num_of_episodes_x, stats_y, show=False, save_path=save_path, save_format="html")
+            sut_html = plot_evaluation_impact(num_of_episodes_x, stats_y, show=False, save_path=save_path,
+                                              save_format="html")
             self.assertTrue(os.path.exists(sut_html + "_evaluation_impact.html"))
-        
+
         # now stats_lvl_y has smaller length than num_of_episodes_x
         with self.assertRaises(ValueError):
             shorter_stats_y = stats_y[:-1]
-            plot_evaluation_impact(num_of_episodes_x, shorter_stats_y, show=False, save_path=save_path, save_format="png")
+            plot_evaluation_impact(num_of_episodes_x, shorter_stats_y)
 
         # now evaluation hasn't been done only at the end of each task
         with self.assertRaises(ValueError):
             stats_y[0].agent_evaluations = np.array([-150.66, -160.78])
-            plot_evaluation_impact(num_of_episodes_x, stats_y, show=False, save_path=save_path, save_format="png")
+            plot_evaluation_impact(num_of_episodes_x, stats_y)
 
     def test_plot_time_impact(self):
         stats_x = [self.dummy_stats_x] * 3
@@ -155,27 +159,28 @@ class TestAcademiaFunctions(unittest.TestCase):
         stats_z = [self.dummy_stats_z] * len(num_of_episodes_x)
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = os.path.join(temp_dir, "test_plot_multiple_evaluation_impact")
-            sut_png = plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z, show=False, save_path=save_path, save_format="png")
+            sut_png = plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z, show=False,
+                                                      save_path=save_path, save_format="png")
             self.assertTrue(os.path.exists(sut_png + "_multiple_evaluation_impact.png"))
-            
-            sut_html = plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z, show=False, save_path=save_path, save_format="html")
+
+            sut_html = plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z, show=False,
+                                                       save_path=save_path, save_format="html")
             self.assertTrue(os.path.exists(sut_html + "_multiple_evaluation_impact.html"))
 
         # now stats_z has smaller length than num_of_episodes_x
         with self.assertRaises(ValueError):
             shorter_stats_z = stats_z[:-1]
-            plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, shorter_stats_z, show=False, save_path=save_path, save_format="png")
+            plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, shorter_stats_z)
 
         # now num_of_episodes_x has smaller length than num_of_episodes_y
         with self.assertRaises(ValueError):
             shorter_num_of_episodes_y = num_of_episodes_y[:-1]
-            plot_multiple_evaluation_impact(num_of_episodes_x, shorter_num_of_episodes_y, stats_z, show=False, save_path=save_path, save_format="png")
+            plot_multiple_evaluation_impact(num_of_episodes_x, shorter_num_of_episodes_y, stats_z)
 
         # now evaluation hasn't been done only at the end of each task
         with self.assertRaises(ValueError):
             stats_z[0].agent_evaluations = np.array([-150.66, -160.78])
-            plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z, show=False, save_path=save_path, save_format="png")
-
+            plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z)
 
 if __name__ == '__main__':
     unittest.main()
