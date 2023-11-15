@@ -1,4 +1,5 @@
-from typing import Union, Any
+from collections import deque
+from typing import Literal, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -7,191 +8,242 @@ from .base import ScalableEnvironment
 
 
 class BridgeBuilding(ScalableEnvironment):
+    
     N_ACTIONS = 8
 
-    STEP_PENALTY = -1
-    DROWN_PENALTY = -100
-    BRIDGE_PENALTY = -50
-    BOULDER_LEFT_PENALTY = -20
-    GOAL_REWARD = 100
+    __RIVER_WIDTH = 3
+    __N_BOULDERS = __RIVER_WIDTH
+    __RIVER_HEIGHT = 3
+    __LEFT_BANK_WIDTH = 3
+    __TOTAL_WIDTH = __LEFT_BANK_WIDTH + __RIVER_WIDTH + 1
 
-    RIVER_WIDTH = 3
-    N_BOULDERS = RIVER_WIDTH
-    RIVER_HEIGHT = 3
-    LEFT_BANK_WIDTH = 3
-    TOTAL_WIDTH = LEFT_BANK_WIDTH + RIVER_WIDTH + 1
-    BRIDGE_ENTRANCE = LEFT_BANK_WIDTH - 1, -1
-    CAN_USE_BRIDGE = False
+    @property
+    def __player_target(self):
+        offset = None
+        if self.__player_direction == 0: # up
+            offset = np.array([0, 1])
+        elif self.__player_direction == 0: # right
+            offset = np.array([1, 0])
+        elif self.__player_direction == 0: # down
+            offset = np.array([0, -1])
+        elif self.__player_direction == 0: # left
+            offset = np.array([-1, 0])
+        return self.__player_position + offset
 
-    __slots__ = ['episode_steps', 'max_steps', 'n_boulders_placed', 'start_with_boulder',
-                 'player_position', 'player_has_boulder', 'boulder_positions',
-                 'active_boulder_index']
+    @property
+    def __player_holds_boulder(self):
+        return self.__held_boulder_index >= 0
 
-    def __init__(self, max_steps=100, n_boulders_placed=0, start_with_boulder=False) -> None:
+    def __init__(self, 
+                 difficulty: int, 
+                 max_steps: int = 100, 
+                 render_mode: Optional[Literal["human"]] = None,
+                 obs_type: Literal["string", "array"] = "string",
+                 n_frames_stacked: int = 1,
+                 append_step_count: bool = False, 
+                 random_state: Optional[int] = None) -> None:
+        self.__init_bridge_length = self.__RIVER_WIDTH - difficulty
+        self.__boulder_positions = np.zeros(shape=(self.__N_BOULDERS,2))
+        self.__player_position = np.zeros(shape=(2))
+        self.__player_direction = 0
+        self.__held_boulder_index = -1
+
         self.max_steps = max_steps
-        self.n_boulders_placed = n_boulders_placed
-        self.start_with_boulder = start_with_boulder
-        self.reset()
+        self.render_mode: render_mode
+        self.obs_type = obs_type
+        self.n_frames_stacked = n_frames_stacked
+        self.append_step_count = append_step_count
+        self.step_count = 0
+        self._state = None  # properly set in self.reset()
+        """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
+        self._past_n_states = deque()  # properly set in self.reset()
+        self._rng = np.random.default_rng(random_state)
 
-    def reset(self) -> Any:
-        self.episode_steps = 0
-        self.boulder_positions = [None for _ in range(self.N_BOULDERS)]
+        # using a separate rng in case other parts of the code depend
+        # on self._rng which would result in inconsistent subsequent restarts
+        # even with the same `random_state` especially if self._rng was used in self.step
+        # (which can be called a variable number of times between resets).
+        # It's probably not going to matter but I think it's good to future proof
+        # in case we want to add some randomness to the environment
+        self.__init_state_rng = np.random.default_rng(self._rng.integers(0, 999999999999))
+
+        self.reset()
+        self.STATE_SHAPE = self.observe().shape
+
+    def reset(self) -> Union[str, npt.NDArray[np.float32]]:
+        self.step_count = 0
         self.__generate_initial_state()
+        self._past_n_states = deque([self._state for _ in range(self.n_frames_stacked)])
         return self.observe()
 
-    def step(self, action):
+    def observe(self) -> Union[str, npt.NDArray[np.float32]]:
+        stacked_state = np.concatenate(list(self._past_n_states))
+        if self.append_step_count:
+            stacked_state = np.append(stacked_state, self.step_count)
+        if self.obs_type == "string":
+            str_state = ""
+            for element in stacked_state: 
+                str_state += str(element)
+            return str_state
+        return stacked_state
 
-        self.episode_steps += 1
-        reward = self.STEP_PENALTY
-        is_terminal = self.episode_steps >= self.max_steps
+    def step(self, action) -> tuple[Union[str, npt.NDArray[np.float32]], float, bool]:
+        self.step_count += 1
+        is_terminal = self.step_count >= self.max_steps
 
-        is_walk_action = (action & 4) == 0
-        action_direction = action & 3
-        position_offset = self.__get_offset_from_direction(action_direction)
-        target = self.player_position[0] + position_offset[0], self.player_position[1] + \
-                 position_offset[1]
-
-        if not self.__is_target_valid(target):
-            return self.observe(), reward, is_terminal
-        if is_walk_action:
-            if target == self.BRIDGE_ENTRANCE:
-                self.player_position = self.TOTAL_WIDTH - 1, 0
-                reward += self.BRIDGE_PENALTY
-                is_terminal = True
-                return self.observe(), reward, is_terminal
-            if self.__is_on_river(target) or not self.__collides_with_boulder(target):
-                self.player_position = target
-            if self.__is_on_river(target) and not self.__collides_with_boulder(target):
-                reward += self.DROWN_PENALTY
-                is_terminal = True
-            if target[0] == self.TOTAL_WIDTH - 1:  # GOAL POSITION
-                if self.__is_boulder_left():
-                    reward += self.BOULDER_LEFT_PENALTY
-                reward += self.GOAL_REWARD
-                is_terminal = True
-        else:
-            if self.player_has_boulder:
-                if not self.__collides_with_boulder(target):
-                    self.boulder_positions[self.active_boulder_index] = target
-                    self.active_boulder_index = None
-                    self.player_has_boulder = False
-            else:
-                self.active_boulder_index = self.__get_target_boulder_index(target)
-                if self.active_boulder_index is not None:
-                    self.boulder_positions[self.active_boulder_index] = (-1, -1)
-                    self.player_has_boulder = True
-
-        return self.observe(), reward, is_terminal
-
-    def observe(self) -> Any:
-        state = self.player_position
-        for i in range(self.N_BOULDERS):
-            state += self.boulder_positions[i]
-        return state
+        self.__handle_action(action)
+        if self.__is_on_goal(self.__player_position):
+            reward = 1 - self.step_count / self.max_steps
+            if self.__is_boulder_left():
+                reward = np.maximum(0, reward - 0.5)
+            return self.observe(), reward, True
+        elif self.__is_on_unbridged_river(self.__player_position):
+            is_terminal = True
+        
+        return self.observe(), 0, is_terminal
 
     def render(self) -> None:
-        pass
-
-    def get_legal_mask(self) -> npt.NDArray[int]:
-        mask = np.zeros(self.N_ACTIONS)
-        offsets = [self.__get_offset_from_direction(d) for d in range(4)]
-        for i, offset in enumerate(offsets):
-            target = self.player_position[0] + offset[0], self.player_position[1] + offset[1]
-            if self.__is_target_valid(target):
-                collides_with_boulder = self.__collides_with_boulder(target)
-                if not collides_with_boulder or self.__is_on_river(target):
-                    mask[i] = 1
-                if collides_with_boulder ^ self.player_has_boulder:
-                    mask[i + 4] = 1
-        return mask
-
-    def __is_boulder_left(self):
-        for position in self.boulder_positions:
-            if position[0] < self.LEFT_BANK_WIDTH:
-                return True
-        return False
-
-    def __is_on_river(self, target):
-        # assuming target is valid
-        return self.LEFT_BANK_WIDTH <= target[0] < self.LEFT_BANK_WIDTH + self.RIVER_WIDTH
-
-    def __collides_with_boulder(self, target):
-        return target in self.boulder_positions
-
-    def __get_target_boulder_index(self, target):
-        for i in range(self.N_BOULDERS):
-            if target == self.boulder_positions[i]:
-                return i
-        return None
-
-    def __is_target_valid(self, target):
-        return ((0 <= target[0] < self.TOTAL_WIDTH) and \
-                (0 <= target[1] < self.RIVER_HEIGHT)) or \
-            (self.CAN_USE_BRIDGE and \
-             target == self.BRIDGE_ENTRANCE)
-
-    def __get_offset_from_direction(self, direction_num):
-        if direction_num == 0:
-            return (0, 1)
-        elif direction_num == 1:
-            return (1, 0)
-        elif direction_num == 2:
-            return (0, -1)
-        elif direction_num == 3:
-            return (-1, 0)
-        return None
-
-    def __generate_initial_state(self):
-        def generate_non_overlapping_position(end_index):
-            # generates a postion on the left bank that does not overlap with any boulder 
-            # on the left bank up until `end_index`
-            while True:
-                x_position = np.random.randint(0, self.LEFT_BANK_WIDTH)
-                y_position = np.random.randint(0, self.RIVER_HEIGHT)
-                for j in range(self.n_boulders_placed, end_index):
-                    if self.boulder_positions[j][0] == x_position and self.boulder_positions[j][
-                        1] == y_position:
-                        break
-                else:
-                    return x_position, y_position
-
-        # generate boulders in the river
-        bridge_y_position = np.random.randint(0, self.RIVER_HEIGHT)
-        for i in range(self.n_boulders_placed):
-            self.boulder_positions[i] = (i + self.LEFT_BANK_WIDTH, bridge_y_position)
-
-        # generate boulders on the bank
-        for i in range(self.n_boulders_placed, self.N_BOULDERS):
-            self.boulder_positions[i] = generate_non_overlapping_position(i)
-
-        # generate player position
-        self.player_position = generate_non_overlapping_position(self.N_BOULDERS)
-
-        self.player_has_boulder = self.start_with_boulder
-        if self.player_has_boulder:
-            self.active_boulder_index = -1
-            self.boulder_positions[-1] = -1, -1
-
-    def __str__(self):
+        if self.render_mode != 'human':
+            return
         str_representation = ""
-        for y in range(self.RIVER_HEIGHT - 1, -1, -1):
-            for x in range(self.TOTAL_WIDTH):
-                if (x, y) == self.player_position:
-                    str_representation += 'B' if self.player_has_boulder else 'P'
-                elif (x, y) in self.boulder_positions:
+        for y in range(self.__RIVER_HEIGHT - 1, -1, -1):
+            for x in range(self.__TOTAL_WIDTH):
+                position = x, y
+                if position == self.__player_position:
+                    str_representation += 'B' if self.__player_holds_boulder else 'P'
+                elif position == self.__player_target:
+                    str_representation += 'X'
+                elif self.__contains_boulder(position):
                     str_representation += '#'
-                elif self.LEFT_BANK_WIDTH <= x < self.LEFT_BANK_WIDTH + self.RIVER_WIDTH:
+                elif self.__is_on_river(position):
                     str_representation += '~'
                 else:
                     str_representation += '.'
             str_representation += '\n'
-        return str_representation
+        print(str_representation)
 
+    def get_legal_mask(self) -> npt.NDArray[np.int32]:
+        # turning left/right is always legal
+        legal_mask = np.array([1 for _ in range(self.N_ACTIONS)])
 
-def main():
-    bb = BridgeBuilding(n_boulders_placed=2)
-    print(bb)
+        if not self.__is_valid(self.__player_target):
+            # can't move forward or pickup since it's an invalid target
+            legal_mask[2:] = 0
+            return
+        
+        # from now on we can assume target is valid
+        if not self.__is_walkable(self.__player_target):
+            legal_mask[2] = 0
+        if self.__player_holds_boulder and self.__contains_boulder(self.__player_target):
+            legal_mask[3] = 0
+        if not self.__player_holds_boulder and not self.__contains_boulder(self.__player_target):
+            legal_mask[3] = 0
 
+    def __handle_action(self, action):
+        if action == 0:
+            self.__turn_left()
+            return
+        if action == 1:
+            self.__turn_right()
+            return
+        
+        if not self.__is_valid(self.__player_target):
+            return
+        
+        if action == 2:
+            self.__move_forward()
+            return
+        if action == 3:
+            if self.__player_holds_boulder:
+                self.__drop()
+            else:
+                self.__pickup()
 
-if __name__ == '__main__':
-    main()
+    def __turn_left(self):
+        self.__player_direction = (self.__player_direction - 1) % 4
+
+    def __turn_right(self):
+        self.__player_direction = (self.__player_direction + 1) % 4
+
+    def __pickup(self):
+        # assuming valid target guaranteed by `__handle_action`
+        self.__held_boulder_index = self.__boulder_index_at_target()
+        if self.__held_boulder_index == -1:
+            return
+        self.__boulder_positions[self.__held_boulder_index, :] = (-1, -1)
+        self.__player_holds_boulder = True
+
+    def __drop(self):
+        # assuming valid target guaranteed by `__handle_action`
+        if self.__contains_boulder(self.__player_target):
+            return
+        self.__boulder_positions[self.__held_boulder_index, :] = self.__player_target
+        self.__held_boulder_index = -1
+        self.__player_holds_boulder = False
+        
+    def __move_forward(self):
+        # assuming valid target guaranteed by `__handle_action`
+        if self.__is_walkable(self.__player_target):
+            self.__player_position = self.__player_target
+
+    def __generate_initial_state(self) -> None:
+        # generate initial bridge
+        bridge_y = self.__init_state_rng.randint(0, self.__RIVER_HEIGHT)
+        for i in range(self.__init_bridge_length):
+            self.__boulder_positions[i, :] = self.__LEFT_BANK_WIDTH + i, bridge_y
+
+        # generate boulders and player postions
+        positions = self.__init_state_rng.choice(np.arange(self.__RIVER_HEIGHT * self.__LEFT_BANK_WIDTH),
+                                     size=1 + self.difficulty, replace=False)
+        self.__player_position[:] = \
+            np.unravel_index(positions[0], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
+        self.__player_direction = self.__init_state_rng.randint()
+
+        for position_idx, boulder_idx in enumerate(range(self.__init_bridge_length, self.__N_BOULDERS)):
+            x, y = np.unravel_index(positions[position_idx], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
+            self.__boulder_positions[boulder_idx, :] = x, y
+
+    def __is_valid(self, position):
+        x, y = position
+        if x < 0 or x >= self.__TOTAL_WIDTH:
+            return False
+        if y < 0 or y >= self.__RIVER_HEIGHT:
+            return False
+        return True
+
+    def __is_on_river(self, position):
+        # assuming valid position
+        return self.__LEFT_BANK_WIDTH <= position[0] < self.__LEFT_BANK_WIDTH + self.__RIVER_WIDTH
+
+    def __is_on_bridge(self, position):
+        # assuming valid position
+        return self.__is_on_river(position) and self.__contains_boulder(position)
+
+    def __is_on_unbridged_river(self, position):
+        # assuming valid position
+        return self.__is_on_river(position) and not self.__is_on_bridge(position)
+
+    def __is_walkable(self, position):
+        # assuming valid position
+        return not self.__contains_boulder(position) or self.__is_on_bridge(position)
+
+    def __is_on_goal(self, position):
+        # assuming valid position
+        return position[0] == self.__TOTAL_WIDTH - 1
+
+    def __contains_boulder(self, position):
+        # assuming valid position
+        return position in self.__boulder_positions
+    
+    def __boulder_index_at_target(self):
+        # assuming valid position
+        index = np.where(np.all(self.__player_target == self.__boulder_positions, axis=1))[0]
+        if len(index) == 0:
+            return -1
+        return index[0]
+    
+    def __is_boulder_left(self):
+        for position in self.__boulder_positions:
+            if position[0] < self.__LEFT_BANK_WIDTH:
+                return True
+        return False
