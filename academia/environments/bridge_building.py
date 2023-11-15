@@ -9,9 +9,18 @@ from .base import ScalableEnvironment
 
 class BridgeBuilding(ScalableEnvironment):
     """
-    A grid environment where an agent has to use scattered boulders to
-    build a bridge across a river to get from one side to the other. 
+    A grid environment where an agent has to use boulders scattered around the map to
+    build a bridge across a river and get from one side to the other. 
     The higher the difficulty the more work the agent has to put into building the bridge.
+    At lower difficulties the bridge is partly (or even fully) built and the 
+    agent only has to learn how to finish it and/or navigate it.
+
+    The rewards is 0 if the agent runs out of time or drowns in the river.
+    Otherwise if the agent reaches the goal (the right bank) it's 
+    ``max(0, 1-step_count/max_steps - 0.2 * is_boulder_left)``.
+    This reward function is meant to mimic `Minigrid`'s reward function but it also forces
+    the agent to fully build the bridge by punishing it if a boulder is left on the left bank
+    of the river after the agent has reached the goal.
 
     Possible actions:
 
