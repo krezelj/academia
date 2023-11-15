@@ -229,9 +229,9 @@ class AgentDebugger:
                 state, reward, done = self.env.step(action)
                 episode_reward += reward
                 if verbose > 1:
-                    _logger.info(f"Step {steps} reward: {reward}")
+                    _logger.info(f"Step {self.steps} reward: {reward}")
             if verbose > 0:
-                _logger.info(f"Episode {episodes} reward: {episode_reward}")
+                _logger.info(f"Episode {self.episodes} reward: {episode_reward}")
 
     def __handle_key_press(self, key) -> Optional[Union[Any, int]]:
         """
