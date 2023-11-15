@@ -9,7 +9,7 @@ from .base import ScalableEnvironment
 
 class BridgeBuilding(ScalableEnvironment):
     
-    N_ACTIONS = 8
+    N_ACTIONS = 4
 
     __RIVER_WIDTH = 3
     __N_BOULDERS = __RIVER_WIDTH
@@ -38,7 +38,7 @@ class BridgeBuilding(ScalableEnvironment):
     def _state(self):
         return np.concatenate([
             self.__player_position, self.__player_target, self.__boulder_positions.flatten()
-        ])
+        ]).astype(np.float32)
 
     def __init__(self, 
                  difficulty: int, 
@@ -61,8 +61,6 @@ class BridgeBuilding(ScalableEnvironment):
         self.n_frames_stacked = n_frames_stacked
         self.append_step_count = append_step_count
         self.step_count = 0
-        # self._state = None  # properly set in self.reset()
-        # """note: self._state IS NOT STACKED. To obtain a stacked state use self.observe()"""
         self._past_n_states = deque()  # properly set in self.reset()
         self._rng = np.random.default_rng(random_state)
 
@@ -94,7 +92,7 @@ class BridgeBuilding(ScalableEnvironment):
         if self.obs_type == "string":
             str_state = ""
             for element in stacked_state: 
-                str_state += str(element)
+                str_state += str(int(element))
             return str_state
         return stacked_state
 
@@ -109,7 +107,7 @@ class BridgeBuilding(ScalableEnvironment):
         if self.__is_on_goal(self.__player_position):
             reward = 1 - self.step_count / self.max_steps
             if self.__is_boulder_left():
-                reward = np.maximum(0, reward - 0.5)
+                reward = np.maximum(0, reward - 0.2)
             return self.observe(), reward, True
         elif self.__is_on_unbridged_river(self.__player_position):
             is_terminal = True
