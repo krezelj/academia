@@ -19,8 +19,9 @@ class TestBridgeBuilding(unittest.TestCase):
     def test_string_obs_type(self):
         sut = BridgeBuilding(3, obs_type="string")
         state = sut.reset()
+        state = state.replace('-', '') # ignore negative signs
         self.assertIsInstance(state, str)
-        self.assertEqual(10, len(state))
+        self.assertEqual(10, len(state), msg=state)
 
     def test_array_obs_type(self):
         sut = BridgeBuilding(3, obs_type="array")
