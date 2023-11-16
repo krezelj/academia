@@ -83,6 +83,7 @@ class AgentDebugger:
             press any key in that time frame the execution continues (unless :attr:`paused` is ``True``).
         episodes (int): Number of episodes run in the environment.
         steps (int): Number of steps in the current episode.
+        running (bool): Whether the debugger is currently running.
         
     Examples:
         Initialisation:
@@ -180,6 +181,7 @@ class AgentDebugger:
         self.input_timeout = 1_000_000_000 if self.paused else 0.05
         self.episodes = 0
         self.steps = 0
+        self.running = False
         if run:
             self.run(run_verbose)
 
@@ -202,15 +204,15 @@ class AgentDebugger:
         Args:
             verbose: Verbosity level. 
         """
-        self.__running = True
+        self.running = True
         self.episodes = 0
-        while self.__running:
+        while self.running:
             self.episodes += 1
             state = self.env.reset()
             self.steps = 0
             episode_reward = 0
             done = False
-            while not done and self.__running:
+            while not done and self.running:
                 self.steps += 1
                 if verbose > 2:
                     _logger.info(self.thoughts_handlers[type(self.agent).__qualname__](self.agent, state))
@@ -247,7 +249,7 @@ class AgentDebugger:
             self.greedy = not self.greedy
             return key
         elif key == self.__KEY_QUIT:
-            self.__running = False
+            self.running = False
             return key
         elif key == self.__KEY_TERMINATE or key == self.__KEY_STEP:
             return key
