@@ -27,7 +27,7 @@ from plotly.subplots import make_subplots
 from academia.curriculum import LearningStats
 
 
-def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None, 
+def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None,
               save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the learning statistics for a single task.
@@ -64,7 +64,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>>     env_type= LunarLander,
         >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'max_episodes': 1000},
-        >>>     evalutaion_interval=100,
+        >>>     evaluation_interval=100,
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
 
@@ -73,7 +73,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>> from academia.agents import DQNAgent
         >>> from academia.utils.models import lunar_lander
         >>> agent = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     n_actions=LunarLander.N_ACTIONS,
         >>>     nn_architecture=lunar_lander.MLPStepDQN,
         >>>     random_state=123,
         >>> )
@@ -83,23 +83,23 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
 
         >>> plot_task(test_task.stats, save_path='./test_task', save_format='png')
     """
-    fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)), 
+    fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)),
                           y=[task_stats.episode_rewards, task_stats.episode_rewards_moving_avg],
                           title='Episode Rewards and Moving Average')
-    
+
     fig_rewards.update_layout(
         xaxis_title="Episode",
         yaxis_title="Score"
     )
     fig_rewards.data[0].name = 'Episode Rewards'
-    fig_rewards.data[1].name = 'Moving Average'        
+    fig_rewards.data[1].name = 'Moving Average'
     fig_rewards.update_traces(
         hovertemplate="<br>".join([
             "Episode: %{x}",
             "Reward: %{y}"
         ])
     )
-    fig_steps = px.line(x=np.arange(len(task_stats.step_counts)), 
+    fig_steps = px.line(x=np.arange(len(task_stats.step_counts)),
                         y=task_stats.step_counts,
                         title='Steps per episode')
     fig_steps.update_layout(
@@ -107,16 +107,16 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         yaxis_title="Steps"
     )
 
-    evalutaion_interval = task_stats.evalutaion_interval
+    evaluation_interval = task_stats.evaluation_interval
     steps_count = task_stats.step_counts
     steps_cum = np.cumsum(steps_count)
-    indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+    indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
     steps_to_eval = steps_cum[indices]
     #  Add 0 to the beginning of the array if the first evaluation is at the beginning of the task
     if len(steps_to_eval) < len(task_stats.agent_evaluations):
         steps_to_eval = np.concatenate([[0], steps_to_eval])
 
-    fig_evaluations = px.line(x=steps_to_eval, 
+    fig_evaluations = px.line(x=steps_to_eval,
                               y=task_stats.agent_evaluations,
                               title='Agent evaluations')
     fig_evaluations.update_layout(
@@ -124,7 +124,6 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         yaxis_title="Evaluation score"
     )
     fig_evaluations.update_traces(mode="markers+lines")
-
 
     if show:
         fig_rewards.show()
@@ -142,10 +141,10 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
             fig_steps.write_html(f"{save_path}_steps.html")
             fig_evaluations.write_html(f"{save_path}_evaluations.html")
         return os.path.abspath(save_path)
-    
-    
+
+
 def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
-                               save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+                            save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of episode rewards for multiple tasks in the curriculum.
 
@@ -202,9 +201,9 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
     num_cols = 2
     num_rows = (num_tasks + 1) // num_cols
 
-    fig = make_subplots(rows=num_rows, 
-                        cols=num_cols, 
-                        subplot_titles=[f'Episode rewards for task {task_id}' 
+    fig = make_subplots(rows=num_rows,
+                        cols=num_cols,
+                        subplot_titles=[f'Episode rewards for task {task_id}'
                                         for task_id in curriculum_stats.keys()])
 
     row = 1
@@ -213,7 +212,8 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         rewards = task_stats.episode_rewards
         fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Task {task_id}'), row=row, col=col)
         fig.update_xaxes(title_text='Step', row=row, col=col)
-        fig.update_yaxes(title_text='Episode', row=row, col=1)  # Only the first column has y-axis labels because they are shared across rows
+        fig.update_yaxes(title_text='Episode', row=row,
+                         col=1)  # Only the first column has y-axis labels because they are shared across rows
         col += 1
         if col > num_cols:
             col = 1
@@ -226,8 +226,10 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
             "Reward: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -238,7 +240,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
 
 
 def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
-                                 save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+                               save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
 
@@ -298,23 +300,23 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evalutaion_interval
+        evaluation_interval = task_stats.evaluation_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+        indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
         steps_to_eval = steps_cum[indices]
         if len(steps_to_eval) < len(evaluations):
             steps_to_eval = np.concatenate([[0], steps_to_eval])
 
-        fig.add_trace(go.Scatter(x=steps_to_eval, 
-                                y=evaluations, 
-                                mode='lines', 
-                                name=f'Task {task_id}'))
-            
+        fig.add_trace(go.Scatter(x=steps_to_eval,
+                                 y=evaluations,
+                                 mode='lines',
+                                 name=f'Task {task_id}'))
+
         total_steps_to_last_eval = steps_to_eval[-1]
-        
+
     fig.update_layout(title_text='Curriculum evaluation trajectory',
                       xaxis_title='Total number of steps to evaluation',
                       yaxis_title='Evaluation score')
@@ -324,8 +326,10 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
             "Evaluation score: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -333,11 +337,11 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         else:
             fig.write_html(f"{save_path}_curriculum_eval_trajectory.html")
         return os.path.abspath(save_path)
-    
 
-def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
+
+def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
                                     nocurriculum_stats: LearningStats, show: bool = False,
-                                    save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
+                                    save_path: str = None, save_format: Literal['png', 'html'] = 'png',
                                     includes_init_eval: bool = False):
     """
     Plots the comparison of curriculum learning with no curriculum learning.
@@ -440,22 +444,22 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evaluation_interval
+        evaluation_interval = task_stats.evaluation_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+        indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
         steps_to_eval = steps_cum[indices]
         if includes_init_eval:
-            if len(np.concatenate([[total_steps_to_last_eval],steps_to_eval])) > len(evaluations):
+            if len(np.concatenate([[total_steps_to_last_eval], steps_to_eval])) > len(evaluations):
                 raise ValueError(
                     f"The flag includes_init_eval is set to True, but the number of evaluations "
                     f"for task {task_id} is smaller than the number of steps to evaluation. "
                     f"Make sure that the flag was set to True in the LearningTask class."
                 )
-            fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
-                                    y=evaluations, mode='lines', name=f'Task {task_id}'))
+            fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval], steps_to_eval]),
+                                     y=evaluations, mode='lines', name=f'Task {task_id}'))
         else:
             if len(steps_to_eval) < len(evaluations):
                 raise ValueError(
@@ -464,18 +468,18 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
                     f"Make sure that the flag was set to False in the LearningTask class."
                 )
             fig.add_trace(go.Scatter(x=steps_to_eval, y=evaluations, mode='lines', name=f'Task {task_id}'))
-            
+
         total_steps_to_last_eval = steps_to_eval[-1]
-    nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
-    nocurr_indices = np.arange(evalutaion_interval - 1, len(nocurr_steps_cum), evalutaion_interval)
+    nocurr_steps_cum = np.cumsum(nocurriculum_stats.step_counts)
+    nocurr_indices = np.arange(evaluation_interval - 1, len(nocurr_steps_cum), evaluation_interval)
     no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
-    
+
     if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
         no_curr_steps_to_eval = np.concatenate([[0], no_curr_steps_to_eval])
 
-    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval, 
-                             y=nocurriculum_stats.agent_evaluations, 
-                             mode='lines', 
+    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval,
+                             y=nocurriculum_stats.agent_evaluations,
+                             mode='lines',
                              name='No curriculum'
                              ))
     fig.update_layout(title_text='Curriculum vs No Curriculum',
@@ -487,8 +491,10 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
             "Evaluation score: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -499,7 +505,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
 
 
 def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
-                           show: bool = False, save_path: str = None, 
+                           show: bool = False, save_path: str = None,
                            save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of learning duration in task with difficulty level = x to evaluation 
@@ -604,17 +610,17 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         >>>     tasks=[task0_v500, task1_v500],
         >>>     output_dir='./curriculum_v500/',
         >>> )
-        >>> curriculum_v500.run(agent, verbose=4)
+        >>> curriculum_v500.run(agent_v500, verbose=4)
         >>> curriculum_v700 = Curriculum(
         >>>     tasks=[task0_v700, task1_v700],
         >>>     output_dir='./curriculum_v700/',
         >>> )
-        >>> curriculum_v700.run(agent, verbose=4)
+        >>> curriculum_v700.run(agent_v700, verbose=4)
         >>> curriculum_v1000 = Curriculum(
         >>>     tasks=[task0_v1000, task1_v1000],
         >>>     output_dir='./curriculum_v1000/',
         >>> )
-        >>> curriculum_v1000.run(agent, verbose=4)
+        >>> curriculum_v1000.run(agent_v1000, verbose=4)
 
         Plotting the evaluation impact:
 
@@ -624,11 +630,12 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         >>>                         save_path='./evaluation_impact', 
         >>>                         save_format='png')
     """
-    agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
+
+    agent_evals_lvl_y = [value for task in stats_lvl_y for value in task.agent_evaluations.tolist()]
 
     if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
-    
+
     if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
         raise ValueError(
             f"Agent evaluations should only be performed at the end of tasks with a level "
@@ -636,7 +643,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         )
 
     fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
-                          title='Impact of learning duration in task x to evaluation of task y')
+                  title='Impact of learning duration in task x to evaluation of task y')
     fig.update_layout(
         xaxis_title="Number of episodes in task X",
         yaxis_title="Evaluation score in task Y"
@@ -647,8 +654,10 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
             "Evaluation score in task Y: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -658,7 +667,7 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         return os.path.abspath(save_path)
 
 
-def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], 
+def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats],
                      time_domain_x: Literal["steps", "episodes", "cpu_time", "wall_time"] = "episodes",
                      time_domain_y: Literal["steps", "episodes", "cpu_time", "wall_time", "as_x"] = "as_x",
                      show: bool = False, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
@@ -677,6 +686,8 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
     Args:
         stats_lvl_x: Learning statistics for tasks in level X.
         stats_lvl_y: Learning statistics for tasks in level Y.
+        time_domain_x: Time domain over which time will be displayed on the X-axis.
+        time_domain_y: Time domain over which time will be displayed on the Y-axis.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -741,12 +752,12 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     tasks=[task0_v500, task1_v500],
         >>>     output_dir='./curriculum_v500/',
         >>> )
-        >>> curriculum_v500.run(agent, verbose=4)
+        >>> curriculum_v500.run(agent_v500, verbose=4)
         >>> curriculum_v700 = Curriculum(
         >>>     tasks=[task0_v700, task1_v700],
         >>>     output_dir='./curriculum_v700/',
         >>> )
-        >>> curriculum_v700.run(agent, verbose=4)
+        >>> curriculum_v700.run(agent_v700, verbose=4)
 
         Plotting the time impact:
 
@@ -759,19 +770,19 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
     """
     if len(stats_lvl_x) != len(stats_lvl_y):
         raise ValueError("The number of tasks at level x and level y should be equal.")
-    
+
     if time_domain_y == "as_x":
         time_domain_y = time_domain_x
-    
+
     x_data, x_domain = _extract_time_data(stats_lvl_x, time_domain_x)
 
     y_data, y_domain = _extract_time_data(stats_lvl_y, time_domain_y)
 
     # we want to show total time on y-axis, so we need to add x_data to y_data
-    y_data = np.sum([x_data, y_data], axis=0) 
+    y_data = np.sum([x_data, y_data], axis=0)
 
     fig = px.line(x=x_data, y=y_data, markers=True,
-                          title='Impact of learning duration in task x on total time spent in both tasks')
+                  title='Impact of learning duration in task x on total time spent in both tasks')
     fig.update_layout(
         xaxis_title=f"Learning duration in task X ({x_domain})",
         yaxis_title=f"Total time spent in both tasks ({y_domain})"
@@ -782,8 +793,10 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
             "Total time spent in both tasks: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -816,8 +829,8 @@ def _extract_time_data(stats: List[LearningStats], time_domain: str):
         raise ValueError(f"Unknown time domain: {time_domain}")
 
 
-def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
-                                    stats_lvl_z: List[LearningStats], show: bool = False, save_path: str = None, 
+def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int],
+                                    stats_lvl_z: List[LearningStats], show: bool = False, save_path: str = None,
                                     save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the impact of learning duration in task x and task y to evaluation of task z. The purpose of this plot is 
@@ -955,29 +968,28 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         >>>                                 save_path='./multiple_evaluation_impact', 
         >>>                                 save_format='png')
     """
-    agent_evals_lvl_z = [task.agent_evaluations for task in stats_lvl_z]
+    agent_evals_lvl_z = [value for task in stats_lvl_z for value in task.agent_evaluations.tolist()]
 
     if len(num_of_episodes_lvl_x) != len(num_of_episodes_lvl_y) or \
-       len(num_of_episodes_lvl_x) != len(stats_lvl_z) or \
-       len(num_of_episodes_lvl_y) != len(stats_lvl_z):
+            len(num_of_episodes_lvl_x) != len(stats_lvl_z) or \
+            len(num_of_episodes_lvl_y) != len(stats_lvl_z):
         raise ValueError("The number of tasks at level x, level y and level z should be equal.")
-    
-    
+
     if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_z) or len(num_of_episodes_lvl_y) != len(agent_evals_lvl_z):
         raise ValueError(
             f"Agent evaluations should only be performed at the end of tasks with a level "
             f"of difficulty z."
         )
 
-    fig = px.scatter(x=num_of_episodes_lvl_x, 
-                     y=num_of_episodes_lvl_y, 
+    fig = px.scatter(x=num_of_episodes_lvl_x,
+                     y=num_of_episodes_lvl_y,
                      color=agent_evals_lvl_z,
                      color_continuous_scale='Greens',
-                     labels = {'color': 'Evaluation score in task Z'},
+                     labels={'color': 'Evaluation score in task Z'},
                      text=np.round(agent_evals_lvl_z, 1),
                      title='Impact of learning duration in task x and task y to evaluation of task z'
                      )
-    
+
     fig.update_traces(
         marker_size=48,
         hovertemplate="<br>".join(["Number of episodes in task X: %{x}",
@@ -985,12 +997,14 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
                                    "Evaluation score in task Z: %{marker.color:.3f}"
                                    ]),
         textfont_color='black'
-        )
-    
+    )
+
     fig.update_xaxes(title_text='Number of Episodes Level X')
     fig.update_yaxes(title_text='Number of Episodes Level Y')
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -998,4 +1012,3 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         else:
             fig.write_html(f"{save_path}_multiple_evaluation_impact.html")
         return os.path.abspath(save_path)
-    
