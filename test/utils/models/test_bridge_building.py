@@ -6,7 +6,7 @@ from academia.utils.models import bridge_building
 from academia.environments import BridgeBuilding
 
 
-class TestMsPacmanModels(unittest.TestCase):
+class TestBridgeBuildingModels(unittest.TestCase):
 
     def test_mlpactor(self):
         sut = bridge_building.MLPActor()

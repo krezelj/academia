@@ -21,6 +21,7 @@ class MLPActor(nn.Module):
 
         return self.network(obs)
     
+
 class MLPCritic(nn.Module):
 
     def __init__(self):
@@ -38,3 +39,4 @@ class MLPCritic(nn.Module):
             obs = torch.tensor(obs, dtype=torch.float)
             
         return self.network(obs)
+    

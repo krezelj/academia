@@ -200,8 +200,9 @@ class BridgeBuilding(ScalableEnvironment):
             reward = 1 - self.step_count / self.max_steps
             if self.__is_boulder_left():
                 reward = np.maximum(0.0, reward - 0.2)
-            return self.observe(), reward, True
+            is_terminal = True
         elif self.__is_on_unbridged_river(self.__player_position):
+            reward = 0
             is_terminal = True
         
         return self.observe(), 0.0, is_terminal
@@ -245,7 +246,7 @@ class BridgeBuilding(ScalableEnvironment):
         if not self.__is_valid(self.__player_target):
             # can't move forward or pickup since it's an invalid target
             legal_mask[2:] = 0
-            return
+            return legal_mask
         
         # from now on we can assume target is valid
         if not self.__is_walkable(self.__player_target):
@@ -267,7 +268,7 @@ class BridgeBuilding(ScalableEnvironment):
 
     def __handle_action(self, action):
         """
-        Updates the agent and the environment based on the specifed action
+        Updates the agent and the environment based on the specified action
         """
         if action == 0:
             self.__turn_left()
@@ -339,7 +340,7 @@ class BridgeBuilding(ScalableEnvironment):
         for i in range(self.__init_bridge_length):
             self.__boulder_positions[i, :] = self.__LEFT_BANK_WIDTH + i, bridge_y
 
-        # generate boulders and player postions
+        # generate boulders and player positions
         positions = self.__init_state_rng.choice(np.arange(self.__RIVER_HEIGHT * self.__LEFT_BANK_WIDTH),
                                      size=1 + self.difficulty, replace=False)
         self.__player_position[:] = \
@@ -425,10 +426,12 @@ class BridgeBuilding(ScalableEnvironment):
                 return True
         return False
 
-    def __are_positions_equal(self, p1, p2):
+    @staticmethod
+    def __are_positions_equal(p1, p2):
         """
-        Checks if two given positons are the same.
+        Checks if two given positions are the same.
         """
         # since positions are numpy arrays they need np.all to assert equality
         # this method is a human readable representation of that fact
         return np.all(p1 == p2)
+    

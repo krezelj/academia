@@ -7,8 +7,8 @@ from academia.environments import BridgeBuilding
 
 
 class TestBridgeBuilding(unittest.TestCase):
+    
     def setUp(self):
-
         self.max_steps = 100
         self.difficulty = 3
         self.sut = BridgeBuilding(
