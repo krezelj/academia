@@ -73,7 +73,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>> from academia.agents import DQNAgent
         >>> from academia.utils.models import lunar_lander
         >>> agent = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
+        >>>     n_actions=LunarLander.N_ACTIONS,
         >>>     nn_architecture=lunar_lander.MLPStepDQN,
         >>>     random_state=123,
         >>> )
@@ -226,8 +226,10 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
             "Reward: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -324,8 +326,10 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
             "Evaluation score: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -487,8 +491,10 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
             "Evaluation score: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -648,8 +654,10 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
             "Evaluation score in task Y: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -678,6 +686,8 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
     Args:
         stats_lvl_x: Learning statistics for tasks in level X.
         stats_lvl_y: Learning statistics for tasks in level Y.
+        time_domain_x: Time domain over which time will be displayed on the X-axis.
+        time_domain_y: Time domain over which time will be displayed on the Y-axis.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -742,12 +752,12 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         >>>     tasks=[task0_v500, task1_v500],
         >>>     output_dir='./curriculum_v500/',
         >>> )
-        >>> curriculum_v500.run(agent, verbose=4)
+        >>> curriculum_v500.run(agent_v500, verbose=4)
         >>> curriculum_v700 = Curriculum(
         >>>     tasks=[task0_v700, task1_v700],
         >>>     output_dir='./curriculum_v700/',
         >>> )
-        >>> curriculum_v700.run(agent, verbose=4)
+        >>> curriculum_v700.run(agent_v700, verbose=4)
 
         Plotting the time impact:
 
@@ -783,8 +793,10 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
             "Total time spent in both tasks: %{y}"
         ])
     )
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -989,8 +1001,10 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
     fig.update_xaxes(title_text='Number of Episodes Level X')
     fig.update_yaxes(title_text='Number of Episodes Level Y')
+
     if show:
         fig.show()
+
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
