@@ -182,5 +182,6 @@ class TestVisualizations(unittest.TestCase):
             stats_z[0].agent_evaluations = np.array([-150.66, -160.78])
             plot_multiple_evaluation_impact(num_of_episodes_x, num_of_episodes_y, stats_z)
 
+
 if __name__ == '__main__':
     unittest.main()
