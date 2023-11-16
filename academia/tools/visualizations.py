@@ -107,7 +107,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         yaxis_title="Steps"
     )
 
-    evalutaion_interval = task_stats.evalutaion_interval
+    evalutaion_interval = task_stats.evaluation_interval
     steps_count = task_stats.step_counts
     steps_cum = np.cumsum(steps_count)
     indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
