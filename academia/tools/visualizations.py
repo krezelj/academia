@@ -64,7 +64,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         >>>     env_type= LunarLander,
         >>>     env_args={'difficulty': 2},
         >>>     stop_conditions={'max_episodes': 1000},
-        >>>     evalutaion_interval=100,
+        >>>     evaluation_interval=100,
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
 
@@ -107,10 +107,10 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         yaxis_title="Steps"
     )
 
-    evalutaion_interval = task_stats.evaluation_interval
+    evaluation_interval = task_stats.evaluation_interval
     steps_count = task_stats.step_counts
     steps_cum = np.cumsum(steps_count)
-    indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+    indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
     steps_to_eval = steps_cum[indices]
     #  Add 0 to the beginning of the array if the first evaluation is at the beginning of the task
     if len(steps_to_eval) < len(task_stats.agent_evaluations):
@@ -298,12 +298,12 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evalutaion_interval
+        evaluation_interval = task_stats.evaluation_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+        indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
         steps_to_eval = steps_cum[indices]
         if len(steps_to_eval) < len(evaluations):
             steps_to_eval = np.concatenate([[0], steps_to_eval])
@@ -440,12 +440,12 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
     fig = go.Figure()
     total_steps_to_last_eval = 0
     for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evaluation_interval
+        evaluation_interval = task_stats.evaluation_interval
         evaluations = task_stats.agent_evaluations
         steps_count = task_stats.step_counts
         steps_count[0] += total_steps_to_last_eval
         steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
+        indices = np.arange(evaluation_interval - 1, len(steps_cum), evaluation_interval)
         steps_to_eval = steps_cum[indices]
         if includes_init_eval:
             if len(np.concatenate([[total_steps_to_last_eval],steps_to_eval])) > len(evaluations):
@@ -467,7 +467,7 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
             
         total_steps_to_last_eval = steps_to_eval[-1]
     nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
-    nocurr_indices = np.arange(evalutaion_interval - 1, len(nocurr_steps_cum), evalutaion_interval)
+    nocurr_indices = np.arange(evaluation_interval - 1, len(nocurr_steps_cum), evaluation_interval)
     no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
     
     if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
