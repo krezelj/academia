@@ -95,7 +95,7 @@ class LearningTask(SavableLoadable):
         >>> from academia.environments import LavaCrossing
         >>> task = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 1000},
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
@@ -111,6 +111,7 @@ class LearningTask(SavableLoadable):
             env_args:
                 difficulty: 2
                 render_mode: human
+                append_step_count: True
             stop_conditions:
                 max_episodes: 1000
             stats_save_path: ./my_task_stats.json
@@ -118,10 +119,10 @@ class LearningTask(SavableLoadable):
         Running a task:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> task.run(agent, verbose=4, render=True)

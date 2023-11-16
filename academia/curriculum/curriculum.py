@@ -36,12 +36,12 @@ class Curriculum(SavableLoadable):
         >>> from academia.environments import LavaCrossing
         >>> task1 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 0, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 500},
         >>> )
         >>> task2 = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 1, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 1000},
         >>> )
         >>> curriculum = Curriculum(
@@ -65,6 +65,7 @@ class Curriculum(SavableLoadable):
                 env_args:
                   difficulty: 0
                   render_mode: human
+                  append_step_count: True
                 env_type: academia.environments.LavaCrossing
                 evaluation_interval: 100
                 stop_conditions:
@@ -73,6 +74,7 @@ class Curriculum(SavableLoadable):
                 env_args:
                   difficulty: 1
                   render_mode: human
+                  append_step_count: True
                 env_type: academia.environments.LavaCrossing
                 evaluation_interval: 100
                 stop_conditions:
@@ -81,10 +83,10 @@ class Curriculum(SavableLoadable):
         Running a curriculum:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
         >>> curriculum.run(agent, verbose=4, render=True)
