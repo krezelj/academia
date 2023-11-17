@@ -127,7 +127,7 @@ class TestAgentDebugger(unittest.TestCase):
 
         # assert
         # prevent episode from terminating
-        with mock.patch.object(BridgeBuilding, 'reset', return_value=("", 0.0, False)):
+        with mock.patch.object(BridgeBuilding, 'step', return_value=("", 0.0, False)):
             with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
                 sut.run()
 
