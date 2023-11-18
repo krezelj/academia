@@ -33,7 +33,7 @@ def _mock_save(path: str):
     # create an empty file
     with open(path, 'w'):
         pass
-    return 'adsdadsd'
+    return path
 
 
 @mock.patch(
