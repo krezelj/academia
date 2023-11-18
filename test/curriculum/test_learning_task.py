@@ -2,12 +2,17 @@ import unittest
 from unittest import mock
 import tempfile
 import os
+import logging
 
 import numpy as np
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.curriculum import LearningTask, LearningStats
+
+
+# otherwise errors are logged when testing task interruption behaviour
+logging.disable(logging.ERROR)
 
 
 def _get_mock_learning_task(mock_env, stop_conditions=None, other_task_args=None):
@@ -102,34 +107,34 @@ class TestLearningTask(unittest.TestCase):
         """
         ``LearningTask`` should be able to load a configuration from a YAML file
         """
-        task_config = ("env_type: placeholder\n"
-                       "env_args:\n"
-                       "  difficulty: 0\n"
-                       "stop_conditions:\n"
-                       "  max_episodes: 2\n"
-                       "evaluation_interval: 24\n"
-                       "name: Reece James\n"
-                       "agent_save_path: ./secret_agent_123\n"
-                       "stats_save_path: ./super_stats_321")
-        tmpfile = tempfile.NamedTemporaryFile(suffix='.task.yml', delete=False)
-        with open(tmpfile.name, 'w') as f:
-            f.write(task_config)
-        # load config - it should be identical to the task defined above
-        # patch to avoid error when loading the mock environment
-        with mock.patch.object(LearningTask, 'get_type',
-                               mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-            sut = LearningTask.load(tmpfile.name)
-        tmpfile.close()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            task_config = ("env_type: placeholder\n"
+                           "env_args:\n"
+                           "  difficulty: 0\n"
+                           "stop_conditions:\n"
+                           "  max_episodes: 2\n"
+                           "evaluation_interval: 24\n"
+                           "name: Reece James\n"
+                           f"agent_save_path: {temp_dir}/secret_agent_123\n"
+                           f"stats_save_path: {temp_dir}/super_stats_321")
+            config_file_path = os.path.join(temp_dir, 'config.task.yml')
+            with open(config_file_path, 'w') as f:
+                f.write(task_config)
+            # load config - it should be identical to the task defined above
+            # patch to avoid error when loading the mock environment
+            with mock.patch.object(LearningTask, 'get_type',
+                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
+                sut = LearningTask.load(config_file_path)
 
-        # run the task to be able to check some of the parameters validity later
-        sut.run(mock_agent)
+            # run the task to be able to check some of the parameters validity later
+            sut.run(mock_agent)
 
-        self.assertEqual('Reece James', sut.name)
-        self.assertEqual(24, sut.stats.evaluation_interval)
-        self.assertEqual('./secret_agent_123', sut.agent_save_path)
-        self.assertEqual('./super_stats_321', sut.stats_save_path)
-        # stop condition
-        self.assertEqual(2, len(sut.stats.episode_rewards))
+            self.assertEqual('Reece James', sut.name)
+            self.assertEqual(24, sut.stats.evaluation_interval)
+            self.assertEqual(f'{temp_dir}/secret_agent_123', sut.agent_save_path)
+            self.assertEqual(f'{temp_dir}/super_stats_321', sut.stats_save_path)
+            # stop condition
+            self.assertEqual(2, len(sut.stats.episode_rewards))
 
     def test_saving_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
