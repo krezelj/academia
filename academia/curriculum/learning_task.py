@@ -496,7 +496,7 @@ class LearningStats(SavableLoadable):
         Updates and logs training statistics for a given episode
 
         Args:
-            episode_no: Episode number
+            episode_no: Episode number (only for logging)
             episode_reward: Total reward after the episode
             steps_count: Steps count of the episode
             wall_time: Actual time it took for the episode to finish

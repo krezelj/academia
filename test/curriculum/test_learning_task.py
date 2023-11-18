@@ -1,22 +1,34 @@
 import unittest
 from unittest import mock
+import tempfile
+import os
 
 import numpy as np
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
-from academia.curriculum import LearningTask
+from academia.curriculum import LearningTask, LearningStats
 
 
-def _get_mock_learning_task(mock_env, stop_conditions=None):
+def _get_mock_learning_task(mock_env, stop_conditions=None, other_task_args=None):
     if stop_conditions is None:
-        stop_conditions = {}
+        stop_conditions = {'max_episodes': 1}
+    if other_task_args is None:
+        other_task_args = {}
     return LearningTask(
         # type mismatch for env_type but passing a callable will work the same as passing a class
-        env_type=lambda: mock_env,
+        env_type=lambda *args, **kwargs: mock_env,
         env_args={},
         stop_conditions=stop_conditions,
+        **other_task_args,
     )
+
+
+def _mock_save(path: str):
+    # create an empty file
+    with open(path, 'w'):
+        pass
+    return 'adsdadsd'
 
 
 @mock.patch(
@@ -24,6 +36,7 @@ def _get_mock_learning_task(mock_env, stop_conditions=None):
     **{
         'get_action.return_value': 0,
         'update.return_value': None,
+        'save': _mock_save,
     }
 )
 @mock.patch(
@@ -36,6 +49,7 @@ def _get_mock_learning_task(mock_env, stop_conditions=None):
         'get_legal_mask.return_value': np.array([1]),
     }
 )
+@mock.patch.object(LearningStats, 'save', lambda self, path: _mock_save(path))
 class TestLearningTask(unittest.TestCase):
 
     def test_max_episodes_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -83,6 +97,237 @@ class TestLearningTask(unittest.TestCase):
         sut = _get_mock_learning_task(mock_env, stop_conditions={'min_evaluation_score': 100})
         sut.run(mock_agent)
         self.assertGreaterEqual(sut.stats.agent_evaluations[-1], 100)
+
+    def test_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        ``LearningTask`` should be able to load a configuration from a YAML file
+        """
+        task_config = ("env_type: placeholder\n"
+                       "env_args:\n"
+                       "  difficulty: 0\n"
+                       "stop_conditions:\n"
+                       "  max_episodes: 2\n"
+                       "evaluation_interval: 24\n"
+                       "name: Reece James\n"
+                       "agent_save_path: ./secret_agent_123\n"
+                       "stats_save_path: ./super_stats_321")
+        tmpfile = tempfile.NamedTemporaryFile(suffix='.task.yml', delete=False)
+        with open(tmpfile.name, 'w') as f:
+            f.write(task_config)
+        # load config - it should be identical to the task defined above
+        # patch to avoid error when loading the mock environment
+        with mock.patch.object(LearningTask, 'get_type',
+                               mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
+            sut = LearningTask.load(tmpfile.name)
+        tmpfile.close()
+
+        # run the task to be able to check some of the parameters validity later
+        sut.run(mock_agent)
+
+        self.assertEqual('Reece James', sut.name)
+        self.assertEqual(24, sut.stats.evaluation_interval)
+        self.assertEqual('./secret_agent_123', sut.agent_save_path)
+        self.assertEqual('./super_stats_321', sut.stats_save_path)
+        # stop condition
+        self.assertEqual(2, len(sut.stats.episode_rewards))
+
+    def test_saving_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Task's configuration should be saved in a way that loading it will produce a task of
+        identical configuration
+        """
+        task_to_save = _get_mock_learning_task(mock_env, other_task_args={
+            'name': 'Frank Lampard',
+            'evaluation_interval': 8,
+        })
+        with tempfile.TemporaryDirectory() as temp_dir:
+            save_path = task_to_save.save(os.path.join(temp_dir, 'test.task.yml'))
+            self.assertTrue(os.path.exists(save_path))
+            # load config - it should be identical to the task defined above
+            # patch to avoid error when loading the mock environment
+            with mock.patch.object(LearningTask, 'get_type',
+                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
+                sut = LearningTask.load(save_path)
+            self.assertEqual(task_to_save.name, sut.name)
+            self.assertEqual(task_to_save.stats.evaluation_interval, sut.stats.evaluation_interval)
+
+    def test_saving_loading_path(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Saving and loading using the same path should always work, regardless whether an expected
+        extension is provided or not.
+        """
+        sut_save = _get_mock_learning_task(mock_env)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path_no_extension = os.path.join(temp_dir, 'config')
+            path_extension = os.path.join(temp_dir, 'config.task.yml')
+            sut_save.save(path_no_extension)
+            sut_save.save(path_extension)
+            # patch to avoid error when loading the mock environment
+            with mock.patch.object(LearningTask, 'get_type',
+                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
+                try:
+                    LearningTask.load(path_no_extension)
+                    LearningTask.load(path_extension)
+                except FileNotFoundError:
+                    self.fail('save() and load() path resolving should match')
+
+    def test_include_init_eval_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        # arrange
+        sut_init_eval = _get_mock_learning_task(
+            mock_env,
+            other_task_args={
+                'include_init_eval': True,
+            }
+        )
+        sut_no_init_eval = _get_mock_learning_task(
+            mock_env,
+            other_task_args={
+                'include_init_eval': False,
+            }
+        )
+        # act
+        sut_init_eval.run(mock_agent)
+        sut_no_init_eval.run(mock_agent)
+
+        # assert
+        self.assertEqual(0, len(sut_no_init_eval.stats.agent_evaluations))
+        self.assertEqual(1, len(sut_init_eval.stats.agent_evaluations))
+
+    def test_evaluation_count_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        # arrange
+        sut = _get_mock_learning_task(
+            mock_env,
+            other_task_args={
+                'evaluation_count': 28,
+                'include_init_eval': True,
+            }
+        )
+        # configure mock agent to count evaluations (to validate evaluation_count)
+        eval_counter = [0]
+
+        def agent_get_action(state, legal_mask, greedy):
+            if greedy:
+                eval_counter[0] += 1
+            return 0
+
+        mock_agent.get_action = agent_get_action
+
+        # act
+        sut.run(mock_agent)
+        # assert
+        self.assertEqual(28, eval_counter[0])
+
+    def test_agent_state_saving_normal(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Save path should not have 'backup' prepended when saving normally
+        """
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent_save_path = os.path.join(temp_dir, 'test')
+            sut = _get_mock_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            # act
+            sut.run(mock_agent)
+            # assert
+            expected_save_path = os.path.join(temp_dir, 'test')
+            self.assertTrue(os.path.isfile(expected_save_path))
+
+    def test_agent_state_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Save path should have 'backup' prepended when training interrupted
+        """
+        mock_agent.get_action.side_effect = Exception()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            agent_save_path = os.path.join(temp_dir, 'test')
+            sut = _get_mock_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            # act
+            try:
+                sut.run(mock_agent)
+            except SystemExit:
+                pass
+            # assert
+            expected_save_path = os.path.join(temp_dir, 'backup_test')
+            self.assertTrue(os.path.isfile(expected_save_path))
+
+    def test_stats_saving_normal(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Save path should not have 'backup' prepended when saving normally
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
+            sut = _get_mock_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            # act
+            sut.run(mock_agent)
+            # assert
+            expected_save_path = os.path.join(temp_dir, 'test.stats.json')
+            self.assertTrue(os.path.isfile(expected_save_path))
+
+    def test_stats_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Save path should have 'backup' prepended when training interrupted
+        """
+        mock_agent.get_action.side_effect = Exception()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
+            sut = _get_mock_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            # act
+            try:
+                sut.run(mock_agent)
+            except SystemExit:
+                pass
+            # assert
+            expected_save_path = os.path.join(temp_dir, 'backup_test.stats.json')
+            self.assertTrue(os.path.isfile(expected_save_path))
+
+
+class TestLearningStats(unittest.TestCase):
+
+    def test_saving_loading(self):
+        """
+        Stats should be saved in a way that loading them will produce a LearningStats object with
+        identical stats
+        """
+        # arrange
+        sut_to_save = LearningStats(evaluation_interval=24)
+        sut_to_save.episode_rewards = np.array([1, 2, 3])
+        sut_to_save.step_counts = np.array([1, 2, 3])
+        sut_to_save.episode_rewards_moving_avg = np.array([1, 2, 3])
+        sut_to_save.step_counts_moving_avg = np.array([1, 2, 3])
+        sut_to_save.agent_evaluations = np.array([1, 2, 3])
+        sut_to_save.episode_wall_times = np.array([1, 2, 3])
+        sut_to_save.episode_cpu_times = np.array([1, 2, 3])
+        # act
+        tmpfile = tempfile.NamedTemporaryFile(delete=False)
+        save_path = sut_to_save.save(tmpfile.name)
+        sut_loaded = LearningStats.load(save_path)
+        # assert
+        self.assertEqual(sut_to_save.evaluation_interval, sut_loaded.evaluation_interval)
+        self.assertTrue(np.all(sut_to_save.episode_rewards == sut_loaded.episode_rewards))
+        self.assertTrue(np.all(sut_to_save.step_counts == sut_loaded.step_counts))
+        self.assertTrue(np.all(sut_to_save.episode_rewards_moving_avg == sut_loaded.episode_rewards_moving_avg))
+        self.assertTrue(np.all(sut_to_save.step_counts_moving_avg == sut_loaded.step_counts_moving_avg))
+        self.assertTrue(np.all(sut_to_save.agent_evaluations == sut_loaded.agent_evaluations))
+        self.assertTrue(np.all(sut_to_save.episode_wall_times == sut_loaded.episode_wall_times))
+        self.assertTrue(np.all(sut_to_save.episode_cpu_times == sut_loaded.episode_cpu_times))
+
+    def test_updating(self):
+        sut = LearningStats(evaluation_interval=26)
+        sut.update(
+            episode_no=0,
+            episode_reward=111,
+            steps_count=222,
+            wall_time=333,
+            cpu_time=444,
+        )
+        self.assertEqual(111, sut.episode_rewards[-1])
+        self.assertEqual(222, sut.step_counts[-1])
+        self.assertEqual(333, sut.episode_wall_times[-1])
+        self.assertEqual(444, sut.episode_cpu_times[-1])
+        self.assertEqual(1, len(sut.episode_rewards))
+        self.assertEqual(1, len(sut.step_counts))
+        self.assertEqual(1, len(sut.episode_wall_times))
+        self.assertEqual(1, len(sut.episode_cpu_times))
+        self.assertEqual(1, len(sut.episode_rewards_moving_avg))
+        self.assertEqual(1, len(sut.step_counts_moving_avg))
 
 
 if __name__ == '__main__':
