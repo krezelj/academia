@@ -15,7 +15,7 @@ from academia.curriculum import LearningTask, LearningStats
 logging.disable(logging.ERROR)
 
 
-def _get_mock_learning_task(mock_env, stop_conditions=None, other_task_args=None):
+def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None):
     if stop_conditions is None:
         stop_conditions = {'max_episodes': 1}
     if other_task_args is None:
@@ -58,7 +58,7 @@ def _mock_save(path: str):
 class TestLearningTask(unittest.TestCase):
 
     def test_max_episodes_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        sut = _get_mock_learning_task(mock_env, stop_conditions={'max_episodes': 3})
+        sut = _get_learning_task(mock_env, stop_conditions={'max_episodes': 3})
         sut.run(mock_agent)
         self.assertEqual(3, len(sut.stats.episode_rewards))
 
@@ -77,7 +77,7 @@ class TestLearningTask(unittest.TestCase):
             return 0, 100, False
 
         mock_env.step = env_step
-        sut = _get_mock_learning_task(mock_env, stop_conditions={'max_steps': 30})
+        sut = _get_learning_task(mock_env, stop_conditions={'max_steps': 30})
         # # act
         sut.run(mock_agent)
         # # assert
@@ -85,21 +85,21 @@ class TestLearningTask(unittest.TestCase):
         self.assertLess(np.sum(sut.stats.step_counts[:-1]), 30, msg='Training should have ended earlier')
 
     def test_min_avg_reward_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        sut = _get_mock_learning_task(mock_env, stop_conditions={'min_avg_reward': 1})
+        sut = _get_learning_task(mock_env, stop_conditions={'min_avg_reward': 1})
         sut.run(mock_agent)
         self.assertGreaterEqual(len(sut.stats.episode_rewards), 5,
                                 msg='Condition should be triggered after at least 5 episodes')
         self.assertGreaterEqual(sut.stats.episode_rewards_moving_avg[-1], 1)
 
     def test_max_reward_std_dev_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        sut = _get_mock_learning_task(mock_env, stop_conditions={'max_reward_std_dev': 1})
+        sut = _get_learning_task(mock_env, stop_conditions={'max_reward_std_dev': 1})
         sut.run(mock_agent)
         self.assertGreaterEqual(len(sut.stats.episode_rewards), 10,
                                 msg='Std dev should be calculated from at least 10 episodes')
         self.assertLessEqual(np.std(sut.stats.episode_rewards[-10:]), 1)
 
     def test_min_evaluation_score_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        sut = _get_mock_learning_task(mock_env, stop_conditions={'min_evaluation_score': 100})
+        sut = _get_learning_task(mock_env, stop_conditions={'min_evaluation_score': 100})
         sut.run(mock_agent)
         self.assertGreaterEqual(sut.stats.agent_evaluations[-1], 100)
 
@@ -141,7 +141,7 @@ class TestLearningTask(unittest.TestCase):
         Task's configuration should be saved in a way that loading it will produce a task of
         identical configuration
         """
-        task_to_save = _get_mock_learning_task(mock_env, other_task_args={
+        task_to_save = _get_learning_task(mock_env, other_task_args={
             'name': 'Frank Lampard',
             'evaluation_interval': 8,
         })
@@ -161,7 +161,7 @@ class TestLearningTask(unittest.TestCase):
         Saving and loading using the same path should always work, regardless whether an expected
         extension is provided or not.
         """
-        sut_save = _get_mock_learning_task(mock_env)
+        sut_save = _get_learning_task(mock_env)
         with tempfile.TemporaryDirectory() as temp_dir:
             path_no_extension = os.path.join(temp_dir, 'config')
             path_extension = os.path.join(temp_dir, 'config.task.yml')
@@ -178,13 +178,13 @@ class TestLearningTask(unittest.TestCase):
 
     def test_include_init_eval_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         # arrange
-        sut_init_eval = _get_mock_learning_task(
+        sut_init_eval = _get_learning_task(
             mock_env,
             other_task_args={
                 'include_init_eval': True,
             }
         )
-        sut_no_init_eval = _get_mock_learning_task(
+        sut_no_init_eval = _get_learning_task(
             mock_env,
             other_task_args={
                 'include_init_eval': False,
@@ -200,7 +200,7 @@ class TestLearningTask(unittest.TestCase):
 
     def test_evaluation_count_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         # arrange
-        sut = _get_mock_learning_task(
+        sut = _get_learning_task(
             mock_env,
             other_task_args={
                 'evaluation_count': 28,
@@ -229,7 +229,7 @@ class TestLearningTask(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_mock_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
             # act
             sut.run(mock_agent)
             # assert
@@ -243,7 +243,7 @@ class TestLearningTask(unittest.TestCase):
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
             agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_mock_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
             # act
             try:
                 sut.run(mock_agent)
@@ -259,7 +259,7 @@ class TestLearningTask(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_mock_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
             # act
             sut.run(mock_agent)
             # assert
@@ -273,7 +273,7 @@ class TestLearningTask(unittest.TestCase):
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
             stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_mock_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
             # act
             try:
                 sut.run(mock_agent)
