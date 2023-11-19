@@ -189,6 +189,7 @@ class BridgeBuilding(ScalableEnvironment):
         """
         self.step_count += 1
         is_terminal = self.step_count >= self.max_steps
+        reward = 0.0
 
         self.__handle_action(action)
         self.__compose_state()
@@ -205,7 +206,7 @@ class BridgeBuilding(ScalableEnvironment):
             reward = 0
             is_terminal = True
         
-        return self.observe(), 0.0, is_terminal
+        return self.observe(), reward, is_terminal
 
     def render(self) -> None:
         """
