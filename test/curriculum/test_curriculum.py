@@ -4,7 +4,6 @@ from unittest import mock
 import tempfile
 import os
 
-from academia.agents.base import Agent
 from academia.curriculum import LearningTask, Curriculum
 
 
