@@ -313,6 +313,8 @@ class TestLearningStats(unittest.TestCase):
         self.assertTrue(np.all(sut_to_save.agent_evaluations == sut_loaded.agent_evaluations))
         self.assertTrue(np.all(sut_to_save.episode_wall_times == sut_loaded.episode_wall_times))
         self.assertTrue(np.all(sut_to_save.episode_cpu_times == sut_loaded.episode_cpu_times))
+        # cleanup
+        tmpfile.close()
 
     def test_updating(self):
         sut = LearningStats(evaluation_interval=26)
