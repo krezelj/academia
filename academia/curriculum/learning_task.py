@@ -662,6 +662,10 @@ class LearningStatsAggregator:
         and :attr:`evaluation_interval` will be set to ``1``.
     """
 
+    __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
+    __allowed_value_domains = ["agent_evaluations", "episode_rewards"]
+    __allowed_agg_func_names = ["mean", "min", "max", "std"]
+
     @property
     def __time_domain_full_name(self):
         if self.time_domain == 'steps': return 'step_counts'
@@ -693,6 +697,16 @@ class LearningStatsAggregator:
             A :class:``LearningStats`` object representing the aggregated trajectory.
         """
         # set variables to self so that they don't have to be passed as arguments for each method
+        if time_domain not in self.__allowed_time_domains:
+            raise ValueError(f"Provided time domain is not allowed. "
+                       + f"Allowed values are: {self.__allowed_time_domains}")
+        if value_domain not in self.__allowed_value_domains:
+            raise ValueError(f"Provided value domain is not allowed. "
+                       + f"Allowed values are: {self.__allowed_value_domains}")
+        if agg_func_name not in self.__allowed_agg_func_names:
+            raise ValueError(f"Provided aggregation function name is not allowed. "
+                       + f"Allowed values are: {self.__allowed_agg_func_names}")
+
         self.time_domain = time_domain
         self.value_domain = value_domain
         self.agg_func_name = agg_func_name
@@ -700,7 +714,7 @@ class LearningStatsAggregator:
             return self.__handle_dict_aggregation()
         
         interpolated_stats, timestamps = self.__interpolate()
-        aggregated_stats = self.__aggregate(interpolated_stats)
+        aggregated_stats = self.__aggregated_stats(interpolated_stats)
         return self.__get_learning_stats_object(aggregated_stats, timestamps)
         
     def __handle_dict_aggregation(self):
@@ -766,7 +780,7 @@ class LearningStatsAggregator:
             evaluation_timestamps = evaluation_timestamps[::task_stats.evaluation_interval]
             return evaluation_timestamps
 
-    def __aggregate(self, interpolated_stats) -> npt.NDArray[np.float32]:
+    def __aggregated_stats(self, interpolated_stats) -> npt.NDArray[np.float32]:
         def get_agg_func():
             if self.agg_func_name == 'max': return np.max
             if self.agg_func_name == 'min': return np.min
@@ -790,6 +804,7 @@ class LearningStatsAggregator:
         setattr(aggregate, self.value_domain, aggregated_stats)
         if self.__time_domain_full_name != 'episode_counts':
             intervals = np.diff(timestamps)
+            intervals = np.insert(intervals, 0, timestamps[0])
             setattr(aggregate, self.__time_domain_full_name, intervals)
         return aggregate
         
