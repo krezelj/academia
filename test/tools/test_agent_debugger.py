@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 import unittest
 from unittest import mock
 from collections import deque
@@ -6,34 +6,40 @@ from collections import deque
 import numpy as np
 
 from academia.tools import AgentDebugger
-from academia.environments import BridgeBuilding
-from academia.agents import QLAgent
+from academia.environments.base import ScalableEnvironment
 
 
-class MockEnvironment:
+class MockEnvironment(ScalableEnvironment):
     """
-    Mock environment that always terminates if action ``BridgeBuilding.N_ACTIONS`` 
-    was taken (to avoid agent accidentally taking this action) and never terminates otherwise.
+    Mock environment that always terminates if action 0 was taken and never terminates otherwise.
     """
+    N_ACTIONS = 2
 
     def __init__(self):
-        self.reset()
-    
-    def reset(self):
         self.state = ""
 
+    def reset(self) -> Any:
+        self.state = ""
+        return self.state
+
     def step(self, action):
-        return self.state, 0, action == BridgeBuilding.N_ACTIONS
-    
+        return self.state, 0, action == 0
+
     def get_legal_mask(self):
-        return np.ones(shape=BridgeBuilding.N_ACTIONS)
+        return np.ones(shape=self.N_ACTIONS)
+
+    def observe(self) -> Any:
+        return self.state
+
+    def render(self) -> None:
+        pass
 
 
 class InjectedAsserter:
 
-    def __init__(self, 
-                 tester: unittest.TestCase, 
-                 debugger: AgentDebugger,
+    def __init__(self,
+                 tester: unittest.TestCase,
+                 debugger: Optional[AgentDebugger],
                  assertions: list[Callable],
                  input_sequence: list[str]):
         self.tester = tester
@@ -51,7 +57,7 @@ class InjectedAsserter:
 class TestAgentDebugger(unittest.TestCase):
 
     @staticmethod
-    def assert_nothing(teset, agent):
+    def assert_nothing(tester, agent):
         """
         dummy asserter that always passes
         """
@@ -65,9 +71,11 @@ class TestAgentDebugger(unittest.TestCase):
         return dynamic_assert
 
     def setUp(self) -> None:
-        self.agent = QLAgent(n_actions=BridgeBuilding.N_ACTIONS)
-        self.env = BridgeBuilding()
-    
+        agent = mock.MagicMock()
+        agent.get_action.return_value = 1
+        self.agent = agent
+        self.env = MockEnvironment()
+
     def test_pausing(self):
         # arrange
         sut = AgentDebugger(self.agent, self.env)
@@ -126,10 +134,8 @@ class TestAgentDebugger(unittest.TestCase):
         ], input_sequence=[' ', '\x1b'])
 
         # assert
-        # prevent episode from terminating
-        with mock.patch.object(BridgeBuilding, 'step', return_value=("", 0.0, False)):
-            with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
-                sut.run()
+        with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
+            sut.run()
 
     def test_terminate(self):
         sut = AgentDebugger(self.agent, self.env, start_paused=True)
@@ -166,20 +172,21 @@ class TestAgentDebugger(unittest.TestCase):
 
     def test_key_action_map(self):
         env = MockEnvironment()
-        sut = AgentDebugger(self.agent, env, start_paused=True, 
-            key_action_map={'a': BridgeBuilding.N_ACTIONS, 'b': 1}
+        sut = AgentDebugger(
+            self.agent, env, start_paused=True,
+            key_action_map={'a': 0, 'b': 1}
         )
         injected_asserter = InjectedAsserter(self, sut, [
-            self.assert_attribute_equal_factory("episodes", 1),  #a terminate
-            self.assert_attribute_equal_factory("episodes", 2),  #b step     
-            self.assert_attribute_equal_factory("episodes", 2),  #b step
-            self.assert_attribute_equal_factory("steps", 3),     #c (maps to None) step
-            self.assert_attribute_equal_factory("steps", 4),     #a terminate
-            self.assert_attribute_equal_factory("episodes", 3),  #0 terminate
-            self.assert_attribute_equal_factory("episodes", 4),  #1 step
-            self.assert_attribute_equal_factory("episodes", 4),  #c (maps to None) step
-            self.assert_attribute_equal_factory("episodes", 4),  #quit
-        ], input_sequence=['a', 'b', 'b', 'c', 'a', f'{BridgeBuilding.N_ACTIONS}', '1', 'c', '\x1b'])
+            self.assert_attribute_equal_factory("episodes", 1),  # a terminate
+            self.assert_attribute_equal_factory("episodes", 2),  # b step
+            self.assert_attribute_equal_factory("episodes", 2),  # b step
+            self.assert_attribute_equal_factory("steps", 3),     # c (maps to None) step
+            self.assert_attribute_equal_factory("steps", 4),     # a terminate
+            self.assert_attribute_equal_factory("episodes", 3),  # 0 terminate
+            self.assert_attribute_equal_factory("episodes", 4),  # 1 step
+            self.assert_attribute_equal_factory("episodes", 4),  # c (maps to None) step
+            self.assert_attribute_equal_factory("episodes", 4),  # quit
+        ], input_sequence=['a', 'b', 'b', 'c', 'a', '0', '1', 'c', '\x1b'])
 
         # assert
         with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
@@ -193,6 +200,6 @@ class TestAgentDebugger(unittest.TestCase):
                     reserved_key: 0
                 })
 
+
 if __name__ == '__main__':
     unittest.main()
-    
