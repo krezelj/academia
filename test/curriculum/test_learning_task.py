@@ -158,6 +158,8 @@ class TestLearningTask(unittest.TestCase):
         task_to_save = _get_learning_task(mock_env, other_task_args={
             'name': 'Frank Lampard',
             'evaluation_interval': 8,
+            'agent_save_path': './agent_path',
+            'stats_save_path': './stats_path',
         })
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = task_to_save.save(os.path.join(temp_dir, 'test.task.yml'))
@@ -169,6 +171,8 @@ class TestLearningTask(unittest.TestCase):
                 sut = LearningTask.load(save_path)
             self.assertEqual(task_to_save.name, sut.name)
             self.assertEqual(task_to_save.stats.evaluation_interval, sut.stats.evaluation_interval)
+            self.assertEqual(task_to_save.agent_save_path, sut.agent_save_path)
+            self.assertEqual(task_to_save.stats_save_path, sut.stats_save_path)
 
     def test_saving_loading_path(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
