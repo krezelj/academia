@@ -27,11 +27,12 @@ throughout the entire module and are as follows:
 | 4               | Each episode                              |
 +-----------------+-------------------------------------------+
 """
-from .learning_task import LearningTask, LearningStats
+from .learning_task import LearningTask, LearningStats, LearningStatsAggregator
 from .curriculum import Curriculum
 
 __all__ = [
     'LearningTask',
     'Curriculum',
     'LearningStats',
+    'LearningStatsAggregator',
 ]
