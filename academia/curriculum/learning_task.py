@@ -1,11 +1,12 @@
 import sys
-from typing import Optional, Type, Callable, Any
+from typing import Dict, Literal, Optional, Type, Callable, Any, Union
 import os
 import logging
 import json
 from functools import partial
 
 import numpy as np
+import numpy.typing as npt
 import yaml
 
 from academia.environments.base import ScalableEnvironment
@@ -478,6 +479,10 @@ class LearningStats(SavableLoadable):
         episode_cpu_times (numpy.ndarray): An array of floats which stores elapsed CPU times for
             each episode (excluding evaluations).
         evaluation_interval (int): How often evaluations were conducted.
+
+    Note:
+        if obtained using :class:`LearningStatsAggregator` all attributes except those used during
+        the aggregation will be ``None`` and :attr:`evaluation_interval` will be set to ``1``.
     """
 
     def __init__(self, evaluation_interval: int):
@@ -489,6 +494,13 @@ class LearningStats(SavableLoadable):
         self.episode_wall_times = np.array([])
         self.episode_cpu_times = np.array([])
         self.evaluation_interval = evaluation_interval
+
+    def __len__(self):
+        """
+        Returns the length of saved statistics
+        """
+        # simply return length of one of the statistics
+        return len(self.episode_rewards) 
 
     def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
                cpu_time: float, verbose: int = 0) -> None:
@@ -602,3 +614,169 @@ class LearningStats(SavableLoadable):
             }
             json.dump(data, file, indent=4)
         return path
+
+
+class LearningStatsAggregator:
+    """
+    
+    
+    """
+
+
+    @property
+    def __time_domain_full_name(self):
+        if self.time_domain == 'steps': return 'step_counts'
+        if self.time_domain == 'episodes': return 'episode_counts'
+        if self.time_domain == 'wall_time': return 'episode_wall_times'
+        if self.time_domain == 'cpu_time': return 'episode_cpu_times'
+
+    def __init__(self, stats: Union[list[LearningStats], list[Dict[str, LearningStats]]]) -> None:
+        self.stats = stats        
+
+    def get_aggregate(self, 
+                      time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
+                      value_domain: Literal["agent_evaluations", "episode_rewards"] = "agent_evaluations",
+                      agg_func_name: Literal["mean", "min", "max", "std"] = "mean") \
+            -> Union[LearningStats, Dict[str, LearningStats]]:
+        """
+        Creates an aggregate trajectory from a list of trajectories
+
+        Args:
+            time_domain: The time domain along which to aggregate the data. Defaults to ``"steps"```.
+            value_domain: The value domain across which to aggregate the data. Defaults to ``agent_evaluations``.
+            agg_func_name: Name of the aggregation function used to aggregate the data. Defaults to ``"mean"``.
+
+        Returns:
+            A :class:``LearningStats`` object representing the aggregated trajectory.
+
+        Examples:
+            Aggregating multiple single task trajectories
+
+            >>> # assuming `agent` is defined by the user (see :mod:`academia.agents` for examples)
+            >>> # assuming a list of `tasks` with the 
+            >>> # same configuration is defined and run using the agent
+            >>> stats = [task.stats for task in tasks]
+            >>> aggregator = LearningStatsAggregator(stats)
+            >>> mean_trajectory = aggregator.get_aggregate(
+            >>>     time_domain = 'steps',
+            >>>     value_domain = 'agent_evaluations',
+            >>>     agg_func_name = 'mean',
+            >>> )
+
+            Aggregating multiple curricula trajectories
+            >>> # assuming `agent` is defined by the user (see :mod:`academia.agents` for examples)
+            >>> # assuming a list of `curricula` with the 
+            >>> # same configuration is defined and run using the agent
+            >>> stats = [curriculum.stats for curriculum in curricula]
+            >>> aggregatro = LearningStatsAggregator(stats)
+            >>> mean_trajectory = aggregator.get_aggregate(
+            >>>     time_domain = 'steps',
+            >>>     value_domain = 'agent_evaluations',
+            >>>     agg_func_name = 'mean',
+            >>> )
+            >>> # `mean_trajectory` is a a dictionary with the same keys as 
+            >>> # all `curriculum.stats`
+            >>> print(mean_trajectory['task_1']) # assuming `"task_1"` is name of one the tasks
+
+        Note:
+            All attributes of the returned :class:`LearningStats` object except 
+            those corresponding to the selected ``value_domain`` and ``time_domain``
+            will be ``None`` and ``evaluation_interval`` will be set to ``1``.
+        """
+        # set variables to self so that they don't have to be passed as arguments for each method
+        self.time_domain = time_domain
+        self.value_domain = value_domain
+        self.agg_func_name = agg_func_name
+        if self.stats is dict:
+            return self.__handle_dict_aggregation()
+        
+        interpolated_stats, timestamps = self.__interpolate()
+        aggregated_stats = self.__aggregate(interpolated_stats)
+        return self.__get_learning_stats_object(aggregated_stats, timestamps)
+        
+    def __handle_dict_aggregation(self):
+        """
+        When a list of dicts (curricula trajectories) is passed create an aggregator for each
+        task (assuming common task names) separately.
+        """
+        self.stats: list[Dict[str, LearningTask]]
+        for i in range(len(self.stats) - 1):
+            if self.stats[i].keys() != self.stats[i + 1].keys():
+                raise ValueError("Task keys do not match across trajectories")
+            
+        keys = self.stats[0].keys()
+        aggregate = {}
+        for key in keys:
+            tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
+            tmp_aggregator = LearningStatsAggregator(tasks_stats)
+            aggregate[key] = tmp_aggregator.get_aggregate(
+                tasks_stats, self.time_domain, self.value_domain, self.agg_func_name)
+        return aggregate
+
+    def __interpolate(self) -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
+        """
+        Interpolates selected values (evaluations or rewards) 
+        for all tasks over a union of all timestamps
+
+        Returns:
+             A tuple of an array of shape ``(N_TASK, N_TIMESTAMPS)`` filled with interpolated values
+             and an array of size ``N_TIMESTAMPS`` that is a union of all timestamps.
+        """
+        all_timestamps = np.empty()
+        tasks_timestamps = []
+        for task_stats in self.stats:
+            task_timestamps = self.__get_timestamps(task_stats)
+            tasks_timestamps.append(task_timestamps)
+            all_timestamps = np.append(all_timestamps, task_timestamps)
+        timestamps_union = np.unique(all_timestamps)
+
+        interpolated_stats = np.zeros(shape=(len(self.stats), len(timestamps_union)))
+        for i in range(len(self.stats)):
+            interpolated_stats[i,:] = np.interp(
+                timestamps_union, tasks_timestamps[i], getattr(task_stats, self.value_domain))
+        return interpolated_stats, timestamps_union
+
+    def __get_timestamps(self, task_stats: LearningStats) -> npt.NDArray[Union[np.int32, np.float32]]:
+        """
+        Returns:
+            Timestamps at which evaluation or reward was obtained as a cumulative sum of episode durations
+        """
+        def get_episode_durations():
+            if self.__time_domain_full_name == 'episode_counts':
+                return np.ones(shape=len(task_stats))
+            else:
+                return getattr(task_stats, self.__time_domain_full_name)
+
+        episode_durations = get_episode_durations()
+        episode_timestamps = np.cumsum(episode_durations)
+        if self.value_domain == 'episode_rewards':
+            return episode_timestamps
+        if self.value_domain == 'agent_evaluations':
+            return episode_timestamps[::task_stats.evaluation_interval]
+
+    def __aggregate(self, interpolated_stats) -> npt.NDArray[np.float32]:
+        def agg_func():
+            if self.agg_func_name == 'max': return np.max
+            if self.agg_func_name == 'min': return np.min
+            if self.agg_func_name == 'mean': return np.mean
+            if self.agg_func_name == 'std': return np.std
+        return agg_func(interpolated_stats, axis=0)
+
+    def __get_learning_stats_object(self, 
+                                    aggregated_stats: npt.NDArray[np.float32], 
+                                    timestamps: npt.NDArray[Union[np.int32, np.float32]]) \
+            -> LearningStats:
+        """
+        Returns:
+            A :class:`LearningStats` object which represented an aggregated trajectory
+        
+        Note:
+            All attributes except those corresponding to the selected ``value_domain`` and ``time_domain``
+            will be ``None`` and ``evaluation_interval`` will be set to ``1``.
+        """
+        aggregate = LearningStats(evaluation_interval=1)
+        setattr(aggregate, self.value_domain, aggregated_stats)
+        if self.__time_domain_full_name != 'episode_counts':
+            setattr(aggregate, self.__time_domain_full_name, timestamps)
+        return aggregate
+        
