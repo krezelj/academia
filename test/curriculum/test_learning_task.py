@@ -8,7 +8,7 @@ import numpy as np
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
-from academia.curriculum import LearningTask, LearningStats
+from academia.curriculum import LearningTask, LearningStats, LearningStatsAggregator
 
 
 # otherwise errors are logged when testing task interruption behaviour
@@ -335,6 +335,148 @@ class TestLearningStats(unittest.TestCase):
         self.assertEqual(1, len(sut.episode_cpu_times))
         self.assertEqual(1, len(sut.episode_rewards_moving_avg))
         self.assertEqual(1, len(sut.step_counts_moving_avg))
+
+
+class TestLearningStatsAggregator(unittest.TestCase):
+
+    def test_invalid_parameters(self):
+        mock_stats = [LearningStats(1)]
+        sut = LearningStatsAggregator(mock_stats)
+        with self.assertRaises(ValueError):
+            sut.get_aggregate(time_domain='Karma')
+        with self.assertRaises(ValueError):
+            sut.get_aggregate(value_domain='Ivy')
+        with self.assertRaises(ValueError):
+            sut.get_aggregate(agg_func_name='Evermore')
+        
+    def test_timestamp_count(self):
+        # arrange
+        stats_1 = mock.MagicMock()
+        stats_1.step_counts = np.array([0, 5, 3])
+        stats_1.episode_rewards = np.array([0, 0, 0])
+        stats_2 = mock.MagicMock()
+        # cumulative sum is 5 for second episode, the same as for stats_1
+        stats_2.step_counts = np.array([1, 4, 2])
+        stats_2.episode_rewards = np.array([0, 0, 0])
+        stats = [stats_1, stats_2]
+        sut = LearningStatsAggregator(stats)
+
+        # act
+        aggregate = sut.get_aggregate(value_domain='episode_rewards')
+
+        # assert
+        self.assertEqual(5, len(aggregate.episode_rewards))
+
+    def test_episodes_time_domain(self):
+        # arrange
+        stats_1 = mock.MagicMock()
+        stats_1.step_counts = np.ones(shape=200)
+        stats_1.episode_rewards = np.ones(shape=200)
+        stats_2 = mock.MagicMock()
+        stats_2.step_counts = np.ones(shape=250)
+        stats_2.episode_rewards = np.ones(shape=250) * 2
+        stats = [stats_1, stats_2]
+        sut = LearningStatsAggregator(stats)
+
+        # act
+        aggregate = sut.get_aggregate(time_domain='episodes', value_domain='episode_rewards')
+
+        # assert
+        self.assertTrue(np.all(aggregate.episode_rewards == 1.5))
+        self.assertEqual(250, len(aggregate.episode_rewards))
+
+    def test_wall_cpu_time_domains(self):
+        for time_domain in ['episode_wall_times', 'episode_cpu_times']:
+            # arrange
+            stats_1 = mock.MagicMock()
+            stats_1.step_counts = np.ones(shape=200)
+            stats_1.episode_rewards = np.ones(shape=200)
+            setattr(stats_1, time_domain, np.random.random(size=200))
+            stats_2 = mock.MagicMock()
+            stats_2.step_counts = np.ones(shape=250)
+            stats_2.episode_rewards = np.ones(shape=250) * 2
+            setattr(stats_2, time_domain, np.random.random(size=250))
+            stats = [stats_1, stats_2]
+            sut = LearningStatsAggregator(stats)
+
+            # act
+            short_name = 'wall_time' if time_domain == 'episode_wall_times' else 'cpu_time'
+            aggregate = sut.get_aggregate(time_domain=short_name, value_domain='episode_rewards')
+
+            # assert
+            union = np.union1d(
+                np.cumsum(getattr(stats_1, time_domain)), 
+                np.cumsum(getattr(stats_2, time_domain)))
+            expected_timestamps = np.insert(np.diff(union), 0, union[0])
+            self.assertEqual(len(expected_timestamps), len(getattr(aggregate, time_domain)))
+            self.assertTrue(np.all(expected_timestamps == getattr(aggregate, time_domain)))
+
+    def test_single_task_aggregation(self):
+        # arrange
+        stats_1 = mock.MagicMock()
+        stats_1.step_counts = np.ones(100)
+        stats_1.agent_evaluations = np.array([0.0, 0.5])
+        stats_1.evaluation_interval = 100
+        stats_2 = mock.MagicMock()
+        stats_2.step_counts = np.ones(200)
+        stats_2.agent_evaluations = np.array([0.0, 1.0, 2.0])
+        stats_2.evaluation_interval = 100
+        stats = [stats_1, stats_2]
+        sut = LearningStatsAggregator(stats, includes_init_eval=True)
+
+        # act
+        aggregate = sut.get_aggregate()
+
+        # assert
+        self.assertIsInstance(aggregate, LearningStats)
+        self.assertEqual(3, len(aggregate.agent_evaluations))
+        self.assertTrue(np.all(np.array([0.0, 0.75, 1.25]) == aggregate.agent_evaluations))
+
+    def test_curriculum_aggregation(self):
+        # arrange
+        stats = [
+            {
+                '1': mock.MagicMock(step_counts = np.ones(200), episode_rewards=np.ones(200)), 
+                '2': mock.MagicMock(step_counts = np.ones(250), episode_rewards=np.ones(250))
+            },
+            {
+                '1': mock.MagicMock(step_counts = np.ones(180), episode_rewards=np.ones(180) * 2), 
+                '2': mock.MagicMock(step_counts = np.ones(270), episode_rewards=np.ones(270) * 3)
+            }
+        ]
+        sut = LearningStatsAggregator(stats)
+
+        # act
+        aggregate = sut.get_aggregate(value_domain='episode_rewards')
+
+        # assert
+        self.assertIsInstance(aggregate, dict)
+        self.assertEqual(2, len(aggregate))
+        self.assertIn('1', aggregate)
+        self.assertIn('2', aggregate)
+
+        self.assertEqual(200, len(aggregate['1'].step_counts))
+        self.assertEqual(270, len(aggregate['2'].step_counts))
+
+        self.assertTrue(np.all(aggregate['1'].episode_rewards == 1.5))
+        self.assertTrue(np.all(aggregate['2'].episode_rewards == 2))
+
+    def test_inconsistent_curriculum(self):
+        # arrange
+        stats = [
+            {
+                '1': mock.MagicMock(step_counts = np.ones(200), episode_rewards=np.ones(200)), 
+                '2': mock.MagicMock(step_counts = np.ones(250), episode_rewards=np.ones(250))
+            },
+            {
+                '1': mock.MagicMock(step_counts = np.ones(180), episode_rewards=np.ones(180) * 2), 
+                'All Too Well': mock.MagicMock(step_counts = np.ones(270), episode_rewards=np.ones(270) * 3)
+            }
+        ]
+        sut = LearningStatsAggregator(stats)
+        # act/assert
+        with self.assertRaises(ValueError):
+            sut.get_aggregate(value_domain='episode_rewards')
 
 
 if __name__ == '__main__':
