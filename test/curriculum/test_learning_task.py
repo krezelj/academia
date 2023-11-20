@@ -15,7 +15,8 @@ from academia.curriculum import LearningTask, LearningStats
 logging.disable(logging.ERROR)
 
 
-def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None):
+def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None) -> LearningTask:
+    """Sample LearningTask"""
     if stop_conditions is None:
         stop_conditions = {'max_episodes': 1}
     if other_task_args is None:
@@ -27,6 +28,19 @@ def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None):
         stop_conditions=stop_conditions,
         **other_task_args,
     )
+
+
+def _get_learning_stats() -> LearningStats:
+    """Sample LearningStats"""
+    stats = LearningStats(evaluation_interval=24)
+    stats.episode_rewards = np.array([1, 2, 3])
+    stats.step_counts = np.array([1, 2, 3])
+    stats.episode_rewards_moving_avg = np.array([1, 2, 3])
+    stats.step_counts_moving_avg = np.array([1, 2, 3])
+    stats.agent_evaluations = np.array([1, 2, 3])
+    stats.episode_wall_times = np.array([1, 2, 3])
+    stats.episode_cpu_times = np.array([1, 2, 3])
+    return stats
 
 
 def _mock_save(path: str):
@@ -292,14 +306,7 @@ class TestLearningStats(unittest.TestCase):
         identical stats
         """
         # arrange
-        sut_to_save = LearningStats(evaluation_interval=24)
-        sut_to_save.episode_rewards = np.array([1, 2, 3])
-        sut_to_save.step_counts = np.array([1, 2, 3])
-        sut_to_save.episode_rewards_moving_avg = np.array([1, 2, 3])
-        sut_to_save.step_counts_moving_avg = np.array([1, 2, 3])
-        sut_to_save.agent_evaluations = np.array([1, 2, 3])
-        sut_to_save.episode_wall_times = np.array([1, 2, 3])
-        sut_to_save.episode_cpu_times = np.array([1, 2, 3])
+        sut_to_save = _get_learning_stats()
         # act
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
         save_path = sut_to_save.save(tmpfile.name)
@@ -315,6 +322,23 @@ class TestLearningStats(unittest.TestCase):
         self.assertTrue(np.all(sut_to_save.episode_cpu_times == sut_loaded.episode_cpu_times))
         # cleanup
         tmpfile.close()
+
+    def test_saving_loading_path(self):
+        """
+        Saving and loading using the same path should always work, regardless whether an expected
+        extension is provided or not.
+        """
+        sut_save = _get_learning_stats()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path_no_extension = os.path.join(temp_dir, 'test')
+            path_extension = os.path.join(temp_dir, 'test.stats.json')
+            sut_save.save(path_no_extension)
+            sut_save.save(path_extension)
+            try:
+                LearningStats.load(path_no_extension)
+                LearningStats.load(path_extension)
+            except FileNotFoundError:
+                self.fail('save() and load() path resolving should match')
 
     def test_updating(self):
         sut = LearningStats(evaluation_interval=26)
