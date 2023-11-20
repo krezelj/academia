@@ -618,10 +618,52 @@ class LearningStats(SavableLoadable):
 
 class LearningStatsAggregator:
     """
-    
-    
-    """
+    Aggregator of :class:`LearningStats` objects.
+    Accepts both a list of task stats and a list of curriculum stats stored
+    as dictionaries (task-stats mapping).
 
+    Args:
+        stats: statistics to be aggregated. These statistics can either come from 
+            different runs of a single task or different runs of a single curriculum.
+
+    Attributes:
+        stats (Union[list[LearningStats], list[Dict[str, LearningStats]]]): statistics to be aggregated
+
+    Examples:
+        Aggregating multiple single task trajectories.
+        
+        We are assuming that ``agent`` is defined by the user (see :mod:`academia.agents` for examples),
+        and that a list of ``tasks`` with the same configuration is defined and run using the agent
+
+        >>> stats = [task.stats for task in tasks]
+        >>> aggregator = LearningStatsAggregator(stats)
+        >>> mean_trajectory = aggregator.get_aggregate(
+        >>>     time_domain = 'steps',
+        >>>     value_domain = 'agent_evaluations',
+        >>>     agg_func_name = 'mean',
+        >>> )
+
+        Aggregating multiple curricula trajectories.
+
+        We are assuming that ``agent`` is defined by the user (see :mod:`academia.agents` for examples),
+        and that a list of ``curricula`` with the same configuration is defined and run using the agent
+
+        >>> stats = [curriculum.stats for curriculum in curricula]
+        >>> aggregator = LearningStatsAggregator(stats)
+        >>> mean_trajectory = aggregator.get_aggregate(
+        >>>     time_domain = 'steps',
+        >>>     value_domain = 'agent_evaluations',
+        >>>     agg_func_name = 'mean',
+        >>> )
+        >>> # `mean_trajectory` is a a dictionary with the same keys as 
+        >>> # all `curriculum.stats`
+        >>> print(mean_trajectory['task_1']) # assuming `"task_1"` is name of one the tasks
+
+    Note:
+        for :class:`LearningStats` objects obtained using the aggregator all attributes 
+        except those used during the aggregation will be ``None`` 
+        and :attr:`evaluation_interval` will be set to ``1``.
+    """
 
     @property
     def __time_domain_full_name(self):
@@ -648,40 +690,6 @@ class LearningStatsAggregator:
 
         Returns:
             A :class:``LearningStats`` object representing the aggregated trajectory.
-
-        Examples:
-            Aggregating multiple single task trajectories
-
-            >>> # assuming `agent` is defined by the user (see :mod:`academia.agents` for examples)
-            >>> # assuming a list of `tasks` with the 
-            >>> # same configuration is defined and run using the agent
-            >>> stats = [task.stats for task in tasks]
-            >>> aggregator = LearningStatsAggregator(stats)
-            >>> mean_trajectory = aggregator.get_aggregate(
-            >>>     time_domain = 'steps',
-            >>>     value_domain = 'agent_evaluations',
-            >>>     agg_func_name = 'mean',
-            >>> )
-
-            Aggregating multiple curricula trajectories
-            >>> # assuming `agent` is defined by the user (see :mod:`academia.agents` for examples)
-            >>> # assuming a list of `curricula` with the 
-            >>> # same configuration is defined and run using the agent
-            >>> stats = [curriculum.stats for curriculum in curricula]
-            >>> aggregatro = LearningStatsAggregator(stats)
-            >>> mean_trajectory = aggregator.get_aggregate(
-            >>>     time_domain = 'steps',
-            >>>     value_domain = 'agent_evaluations',
-            >>>     agg_func_name = 'mean',
-            >>> )
-            >>> # `mean_trajectory` is a a dictionary with the same keys as 
-            >>> # all `curriculum.stats`
-            >>> print(mean_trajectory['task_1']) # assuming `"task_1"` is name of one the tasks
-
-        Note:
-            All attributes of the returned :class:`LearningStats` object except 
-            those corresponding to the selected ``value_domain`` and ``time_domain``
-            will be ``None`` and ``evaluation_interval`` will be set to ``1``.
         """
         # set variables to self so that they don't have to be passed as arguments for each method
         self.time_domain = time_domain

@@ -7,6 +7,7 @@ Exported classes:
 - :class:`LearningTask`
 - :class:`Curriculum`
 - :class:`LearningStats`
+- :class:`LearningStatsAggregator`
 
 In this module logging is used, which is handled using built-in ``logging`` library. Besides standard logging
 configuration, in certain methods such as :func:`LearningTask.run` and :func:`Curriculum.run` a user can
