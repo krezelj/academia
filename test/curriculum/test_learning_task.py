@@ -117,6 +117,10 @@ class TestLearningTask(unittest.TestCase):
         sut.run(mock_agent)
         self.assertGreaterEqual(sut.stats.agent_evaluations[-1], 100)
 
+    def test_unknown_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        with self.assertRaises(ValueError, msg='Unknown stop condition should raise an error'):
+            _get_learning_task(mock_env, stop_conditions={'unknown_stop': 123})
+
     def test_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
         ``LearningTask`` should be able to load a configuration from a YAML file
@@ -319,7 +323,8 @@ class TestLearningStats(unittest.TestCase):
         self.assertEqual(sut_to_save.evaluation_interval, sut_loaded.evaluation_interval)
         self.assertTrue(np.all(sut_to_save.episode_rewards == sut_loaded.episode_rewards))
         self.assertTrue(np.all(sut_to_save.step_counts == sut_loaded.step_counts))
-        self.assertTrue(np.all(sut_to_save.episode_rewards_moving_avg == sut_loaded.episode_rewards_moving_avg))
+        self.assertTrue(
+            np.all(sut_to_save.episode_rewards_moving_avg == sut_loaded.episode_rewards_moving_avg))
         self.assertTrue(np.all(sut_to_save.step_counts_moving_avg == sut_loaded.step_counts_moving_avg))
         self.assertTrue(np.all(sut_to_save.agent_evaluations == sut_loaded.agent_evaluations))
         self.assertTrue(np.all(sut_to_save.episode_wall_times == sut_loaded.episode_wall_times))
