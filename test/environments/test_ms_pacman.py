@@ -8,6 +8,7 @@ class TestMsPacman(unittest.TestCase):
         # Test that an invalid difficulty level raises a ValueError
         with self.assertRaises(ValueError):
             MsPacman(difficulty=4)
+        with self.assertRaises(ValueError):
             MsPacman(difficulty=-1)
 
 

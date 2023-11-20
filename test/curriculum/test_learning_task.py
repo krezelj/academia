@@ -15,7 +15,8 @@ from academia.curriculum import LearningTask, LearningStats
 logging.disable(logging.ERROR)
 
 
-def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None):
+def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None) -> LearningTask:
+    """Sample LearningTask"""
     if stop_conditions is None:
         stop_conditions = {'max_episodes': 1}
     if other_task_args is None:
@@ -27,6 +28,19 @@ def _get_learning_task(mock_env, stop_conditions=None, other_task_args=None):
         stop_conditions=stop_conditions,
         **other_task_args,
     )
+
+
+def _get_learning_stats() -> LearningStats:
+    """Sample LearningStats"""
+    stats = LearningStats(evaluation_interval=24)
+    stats.episode_rewards = np.array([1, 2, 3])
+    stats.step_counts = np.array([1, 2, 3])
+    stats.episode_rewards_moving_avg = np.array([1, 2, 3])
+    stats.step_counts_moving_avg = np.array([1, 2, 3])
+    stats.agent_evaluations = np.array([1, 2, 3])
+    stats.episode_wall_times = np.array([1, 2, 3])
+    stats.episode_cpu_times = np.array([1, 2, 3])
+    return stats
 
 
 def _mock_save(path: str):
@@ -103,6 +117,10 @@ class TestLearningTask(unittest.TestCase):
         sut.run(mock_agent)
         self.assertGreaterEqual(sut.stats.agent_evaluations[-1], 100)
 
+    def test_unknown_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        with self.assertRaises(ValueError, msg='Unknown stop condition should raise an error'):
+            _get_learning_task(mock_env, stop_conditions={'unknown_stop': 123})
+
     def test_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
         ``LearningTask`` should be able to load a configuration from a YAML file
@@ -144,6 +162,8 @@ class TestLearningTask(unittest.TestCase):
         task_to_save = _get_learning_task(mock_env, other_task_args={
             'name': 'Frank Lampard',
             'evaluation_interval': 8,
+            'agent_save_path': './agent_path',
+            'stats_save_path': './stats_path',
         })
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = task_to_save.save(os.path.join(temp_dir, 'test.task.yml'))
@@ -155,6 +175,8 @@ class TestLearningTask(unittest.TestCase):
                 sut = LearningTask.load(save_path)
             self.assertEqual(task_to_save.name, sut.name)
             self.assertEqual(task_to_save.stats.evaluation_interval, sut.stats.evaluation_interval)
+            self.assertEqual(task_to_save.agent_save_path, sut.agent_save_path)
+            self.assertEqual(task_to_save.stats_save_path, sut.stats_save_path)
 
     def test_saving_loading_path(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
@@ -292,14 +314,7 @@ class TestLearningStats(unittest.TestCase):
         identical stats
         """
         # arrange
-        sut_to_save = LearningStats(evaluation_interval=24)
-        sut_to_save.episode_rewards = np.array([1, 2, 3])
-        sut_to_save.step_counts = np.array([1, 2, 3])
-        sut_to_save.episode_rewards_moving_avg = np.array([1, 2, 3])
-        sut_to_save.step_counts_moving_avg = np.array([1, 2, 3])
-        sut_to_save.agent_evaluations = np.array([1, 2, 3])
-        sut_to_save.episode_wall_times = np.array([1, 2, 3])
-        sut_to_save.episode_cpu_times = np.array([1, 2, 3])
+        sut_to_save = _get_learning_stats()
         # act
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
         save_path = sut_to_save.save(tmpfile.name)
@@ -308,13 +323,31 @@ class TestLearningStats(unittest.TestCase):
         self.assertEqual(sut_to_save.evaluation_interval, sut_loaded.evaluation_interval)
         self.assertTrue(np.all(sut_to_save.episode_rewards == sut_loaded.episode_rewards))
         self.assertTrue(np.all(sut_to_save.step_counts == sut_loaded.step_counts))
-        self.assertTrue(np.all(sut_to_save.episode_rewards_moving_avg == sut_loaded.episode_rewards_moving_avg))
+        self.assertTrue(
+            np.all(sut_to_save.episode_rewards_moving_avg == sut_loaded.episode_rewards_moving_avg))
         self.assertTrue(np.all(sut_to_save.step_counts_moving_avg == sut_loaded.step_counts_moving_avg))
         self.assertTrue(np.all(sut_to_save.agent_evaluations == sut_loaded.agent_evaluations))
         self.assertTrue(np.all(sut_to_save.episode_wall_times == sut_loaded.episode_wall_times))
         self.assertTrue(np.all(sut_to_save.episode_cpu_times == sut_loaded.episode_cpu_times))
         # cleanup
         tmpfile.close()
+
+    def test_saving_loading_path(self):
+        """
+        Saving and loading using the same path should always work, regardless whether an expected
+        extension is provided or not.
+        """
+        sut_save = _get_learning_stats()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path_no_extension = os.path.join(temp_dir, 'test')
+            path_extension = os.path.join(temp_dir, 'test.stats.json')
+            sut_save.save(path_no_extension)
+            sut_save.save(path_extension)
+            try:
+                LearningStats.load(path_no_extension)
+                LearningStats.load(path_extension)
+            except FileNotFoundError:
+                self.fail('save() and load() path resolving should match')
 
     def test_updating(self):
         sut = LearningStats(evaluation_interval=26)

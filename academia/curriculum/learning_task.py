@@ -555,14 +555,14 @@ class LearningStats(SavableLoadable):
             }
 
         Args:
-            path: Path to a stats file. If the specified file does not end with '.stats.json' extension,
+            path: Path to a stats file. If the specified file does not end with '.json' extension,
                 this extension will be appended to the specified path (for consistency with :func:`save()`
                 method).
 
         Returns:
             A :class:`LearningStats` instance with statistics from the specified file.
         """
-        if not path.endswith('.stats.json'):
+        if not path.endswith('.json'):
             path += '.stats.json'
         with open(path, 'r') as file:
             stats_dict = json.load(file)
@@ -587,7 +587,7 @@ class LearningStats(SavableLoadable):
         Returns:
             A final (i.e. with an extension), absolute path where the configuration was saved.
         """
-        if not path.endswith('.stats.json'):
+        if not path.endswith('.json'):
             path += '.stats.json'
         with open(path, 'w') as file:
             data = {

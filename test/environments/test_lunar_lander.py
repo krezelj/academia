@@ -16,6 +16,7 @@ class TestLunarLander(unittest.TestCase):
         # Test that an invalid difficulty level raises a ValueError
         with self.assertRaises(ValueError):
             LunarLander(difficulty=6)
+        with self.assertRaises(ValueError):
             LunarLander(difficulty=-1)
 
 

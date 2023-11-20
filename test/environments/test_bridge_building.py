@@ -75,9 +75,10 @@ class TestBridgeBuilding(unittest.TestCase):
         self.assertEqual(20, len(state))
 
     def test_invalid_difficulty(self):
-        with self.assertRaises(ValueError):
-            with mock.patch.object(BridgeBuilding, '_BridgeBuilding__RIVER_WIDTH', 3):
+        with mock.patch.object(BridgeBuilding, '_BridgeBuilding__RIVER_WIDTH', 3):
+            with self.assertRaises(ValueError):
                 BridgeBuilding(difficulty=4)
+            with self.assertRaises(ValueError):
                 BridgeBuilding(difficulty=-1)
 
     def test_get_legal_mask(self):
