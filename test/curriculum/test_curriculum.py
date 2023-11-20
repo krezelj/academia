@@ -25,15 +25,9 @@ def _get_mock_learning_tasks(task_names: list[Optional[str]]):
     """Tuple of mock LearningTasks"""
     result = []
     for name in task_names:
-        def _learning_task_save(path: str):
-            with open(path, 'w') as file:
-                file.write(name)
-            return path
-
         mock_task = mock.MagicMock()
         mock_task.name = name
         mock_task.run = lambda *args, **kwargs: None
-        mock_task.save = _learning_task_save
         mock_task.to_dict.return_value = {'name': name}
         result.append(mock_task)
     return tuple(result)
