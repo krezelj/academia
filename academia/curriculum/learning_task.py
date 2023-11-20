@@ -495,13 +495,6 @@ class LearningStats(SavableLoadable):
         self.episode_cpu_times = np.array([])
         self.evaluation_interval = evaluation_interval
 
-    def __len__(self):
-        """
-        Returns the length of saved statistics
-        """
-        # simply return length of one of the statistics
-        return len(self.episode_rewards) 
-
     def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
                cpu_time: float, verbose: int = 0) -> None:
         """
@@ -759,7 +752,7 @@ class LearningStatsAggregator:
         """
         def get_episode_durations():
             if self.__time_domain_full_name == 'episode_counts':
-                return np.ones(shape=len(task_stats))
+                return np.ones(shape=task_stats.step_counts.shape)
             else:
                 return getattr(task_stats, self.__time_domain_full_name)
 
@@ -796,6 +789,7 @@ class LearningStatsAggregator:
         aggregate = LearningStats(evaluation_interval=1)
         setattr(aggregate, self.value_domain, aggregated_stats)
         if self.__time_domain_full_name != 'episode_counts':
-            setattr(aggregate, self.__time_domain_full_name, timestamps)
+            intervals = np.diff(timestamps)
+            setattr(aggregate, self.__time_domain_full_name, intervals)
         return aggregate
         
