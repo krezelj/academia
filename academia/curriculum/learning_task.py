@@ -623,11 +623,15 @@ class LearningStatsAggregator:
     as dictionaries (task-stats mapping).
 
     Args:
-        stats: statistics to be aggregated. These statistics can either come from 
+        stats: Statistics to be aggregated. These statistics can either come from 
             different runs of a single task or different runs of a single curriculum.
+        includes_init_eval: Whether the statistics include an evaluation at the start
+            of the task. Defaults to ``True``.
 
     Attributes:
-        stats (Union[list[LearningStats], list[Dict[str, LearningStats]]]): statistics to be aggregated
+        stats (Union[list[LearningStats], list[Dict[str, LearningStats]]]): Statistics to be aggregated
+        includes_init_eval (bool): Whether the statistics include an evaluation at the start
+            of the task.
 
     Examples:
         Aggregating multiple single task trajectories.
@@ -672,8 +676,12 @@ class LearningStatsAggregator:
         if self.time_domain == 'wall_time': return 'episode_wall_times'
         if self.time_domain == 'cpu_time': return 'episode_cpu_times'
 
-    def __init__(self, stats: Union[list[LearningStats], list[Dict[str, LearningStats]]]) -> None:
-        self.stats = stats        
+    def __init__(self, 
+                 stats: Union[list[LearningStats], list[Dict[str, LearningStats]]],
+                 includes_init_eval: bool = True) \
+                    -> None:
+        self.stats = stats
+        self.includes_init_eval = includes_init_eval
 
     def get_aggregate(self, 
                       time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
@@ -716,7 +724,7 @@ class LearningStatsAggregator:
         aggregate = {}
         for key in keys:
             tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
-            tmp_aggregator = LearningStatsAggregator(tasks_stats)
+            tmp_aggregator = LearningStatsAggregator(tasks_stats, self.includes_init_eval)
             aggregate[key] = tmp_aggregator.get_aggregate(
                 self.time_domain, self.value_domain, self.agg_func_name)
         return aggregate
@@ -739,7 +747,7 @@ class LearningStatsAggregator:
         timestamps_union = np.unique(all_timestamps)
 
         interpolated_stats = np.zeros(shape=(len(self.stats), len(timestamps_union)))
-        for i in range(len(self.stats)):
+        for i, task_stats in enumerate(self.stats):
             interpolated_stats[i,:] = np.interp(
                 timestamps_union, tasks_timestamps[i], getattr(task_stats, self.value_domain))
         return interpolated_stats, timestamps_union
@@ -760,7 +768,10 @@ class LearningStatsAggregator:
         if self.value_domain == 'episode_rewards':
             return episode_timestamps
         if self.value_domain == 'agent_evaluations':
-            return episode_timestamps[::task_stats.evaluation_interval]
+            if self.includes_init_eval:
+                evaluation_timestamps = np.insert(episode_timestamps, 0, 0)
+            evaluation_timestamps = evaluation_timestamps[::task_stats.evaluation_interval]
+            return evaluation_timestamps
 
     def __aggregate(self, interpolated_stats) -> npt.NDArray[np.float32]:
         def get_agg_func():
