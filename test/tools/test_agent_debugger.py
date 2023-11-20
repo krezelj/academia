@@ -134,10 +134,8 @@ class TestAgentDebugger(unittest.TestCase):
         ], input_sequence=[' ', '\x1b'])
 
         # assert
-        # prevent episode from terminating
-        with mock.patch.object(MockEnvironment, 'step', return_value=("", 0.0, False)):
-            with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
-                sut.run()
+        with mock.patch('academia.tools.agent_debugger.timedKey', new=injected_asserter):
+            sut.run()
 
     def test_terminate(self):
         sut = AgentDebugger(self.agent, self.env, start_paused=True)
