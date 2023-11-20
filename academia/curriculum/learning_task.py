@@ -687,7 +687,7 @@ class LearningStatsAggregator:
         self.time_domain = time_domain
         self.value_domain = value_domain
         self.agg_func_name = agg_func_name
-        if self.stats is dict:
+        if type(self.stats[0]) == dict:
             return self.__handle_dict_aggregation()
         
         interpolated_stats, timestamps = self.__interpolate()
@@ -710,7 +710,7 @@ class LearningStatsAggregator:
             tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
             tmp_aggregator = LearningStatsAggregator(tasks_stats)
             aggregate[key] = tmp_aggregator.get_aggregate(
-                tasks_stats, self.time_domain, self.value_domain, self.agg_func_name)
+                self.time_domain, self.value_domain, self.agg_func_name)
         return aggregate
 
     def __interpolate(self) -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
@@ -722,7 +722,7 @@ class LearningStatsAggregator:
              A tuple of an array of shape ``(N_TASK, N_TIMESTAMPS)`` filled with interpolated values
              and an array of size ``N_TIMESTAMPS`` that is a union of all timestamps.
         """
-        all_timestamps = np.empty()
+        all_timestamps = np.empty(0)
         tasks_timestamps = []
         for task_stats in self.stats:
             task_timestamps = self.__get_timestamps(task_stats)
@@ -755,12 +755,12 @@ class LearningStatsAggregator:
             return episode_timestamps[::task_stats.evaluation_interval]
 
     def __aggregate(self, interpolated_stats) -> npt.NDArray[np.float32]:
-        def agg_func():
+        def get_agg_func():
             if self.agg_func_name == 'max': return np.max
             if self.agg_func_name == 'min': return np.min
             if self.agg_func_name == 'mean': return np.mean
             if self.agg_func_name == 'std': return np.std
-        return agg_func(interpolated_stats, axis=0)
+        return get_agg_func()(interpolated_stats, axis=0)
 
     def __get_learning_stats_object(self, 
                                     aggregated_stats: npt.NDArray[np.float32], 
