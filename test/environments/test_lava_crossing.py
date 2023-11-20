@@ -18,6 +18,7 @@ class TestLavaCrossing(unittest.TestCase):
         # Test that an invalid difficulty level raises a ValueError
         with self.assertRaises(ValueError):
             LavaCrossing(difficulty=4)
+        with self.assertRaises(ValueError):
             LavaCrossing(difficulty=-1)
 
 if __name__ == '__main__':
