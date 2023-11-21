@@ -57,23 +57,28 @@ class DQNAgent(EpsilonGreedyAgent):
         device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
-        >>> from academia.models import CartPoleMLP  # Import custom neural network architecture
-        
+        >>> from academia.agents import DQNAgent
+        >>> from academia.environments import DoorKey
+        >>> from academia.utils.models import door_key  # Import custom neural network architecture
+        >>>
+        >>> # Create an environment:
+        >>> env = DoorKey(difficulty=0, append_step_count=True)
         >>> # Create an instance of the DQNAgent class with custom neural network architecture
-        >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
-        >>>                     epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
+        >>> dqn_agent = DQNAgent(nn_architecture=door_key.MLPStepDQN, n_actions=DoorKey.N_ACTIONS, gamma=0.99,
+        >>>                      epsilon=1.0, epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
         >>> # Training loop: Update the agent using experiences (state, action, reward, new_state, done)
+        >>> num_episodes = 100
         >>> for episode in range(num_episodes):
         >>>    state = env.reset()
         >>>    done = False
         >>>    while not done:
         >>>        action = dqn_agent.get_action(state)
-        >>>        new_state, reward, terminated, truncated, info = env.step(action)
-        >>>        if terminated or truncated:
+        >>>        new_state, reward, terminated = env.step(action)
+        >>>        if terminated:
         >>>            done = True 
         >>>        dqn_agent.update(state, action, reward, new_state, done)
         >>>        state = new_state
-
+        >>>
         >>> # Save the agent's state dictionary to a file
         >>> dqn_agent.save('dqn_agent')
 

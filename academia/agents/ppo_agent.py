@@ -154,7 +154,7 @@ class PPOAgent(Agent):
             Args:
                 state: Observed state of the environment.
                 action: Action taken by the agent.
-                action_logits: Logit of the action taken by the agent.
+                action_logit: Logit of the action taken by the agent.
                 reward: Reward obtained by the agent.
                 is_terminal: Whether the resulting new state is terminal.
 
