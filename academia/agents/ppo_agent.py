@@ -229,6 +229,13 @@ class PPOAgent(Agent):
             rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float).to(device)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
 
+        def __len__(self) -> int:
+            """
+            Returns:
+                Buffer size
+            """
+            return self.steps_counter
+
     def __init__(self, 
                  actor_architecture: Type[nn.Module],
                  critic_architecture: Type[nn.Module],
@@ -413,9 +420,9 @@ class PPOAgent(Agent):
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            idx_permutation = np.arange(self.buffer.steps_counter)
+            idx_permutation = np.arange(len(self.buffer))
             self._rng.shuffle(idx_permutation)
-            n_batches = np.ceil(self.buffer.steps_counter / self.batch_size).astype(np.int32)
+            n_batches = np.ceil(len(self.buffer) / self.batch_size).astype(np.int32)
             for batch_idx in range(n_batches):
                 idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
                 batch_states = states[idx_in_batch]
