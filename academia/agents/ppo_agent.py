@@ -342,7 +342,7 @@ class PPOAgent(Agent):
                 return self.__get_continuous_action_with_logits(states, greedy)
 
     def get_action(self, 
-                   state: npt.NDArray[np.float32], 
+                   state: Any,
                    legal_mask: npt.NDArray[np.int32] = None,
                    greedy: bool = False) \
             -> Union[float, int]:
@@ -375,10 +375,10 @@ class PPOAgent(Agent):
         return action
 
     def update(self, 
-               state: npt.NDArray[np.float32],
+               state: Any,
                action: int,
                reward: float, 
-               new_state: npt.NDArray[np.float32],
+               new_state: Any,
                is_terminal: bool) -> None:
         """
         Updates the PPOAgent by saving the provided transition into its buffer.
