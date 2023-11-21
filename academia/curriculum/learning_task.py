@@ -634,7 +634,7 @@ class LearningStatsAggregator:
 
         >>> stats = [task.stats for task in tasks]
         >>> aggregator = LearningStatsAggregator(stats)
-        >>> task_aggregation, intervals = aggregator.get_aggregate(
+        >>> task_aggregate, intervals = aggregator.get_aggregate(
         >>>     time_domain = 'steps',
         >>>     value_domain = 'agent_evaluations',
         >>>     agg_func_name = 'mean',
@@ -647,14 +647,14 @@ class LearningStatsAggregator:
 
         >>> stats = [curriculum.stats for curriculum in curricula]
         >>> aggregator = LearningStatsAggregator(stats)
-        >>> curriculum_aggregation = aggregator.get_aggregate(
+        >>> curriculum_aggregate = aggregator.get_aggregate(
         >>>     time_domain = 'steps',
         >>>     value_domain = 'agent_evaluations',
         >>>     agg_func_name = 'mean',
         >>> )
-        >>> # `curriculum_aggregation` is a a dictionary with the same keys as 
+        >>> # `curriculum_aggregate` is a a dictionary with the same keys as 
         >>> # all `curriculum.stats`
-        >>> print(curriculum_aggregation['task_1']) # assuming `"task_1"` is name of one the tasks
+        >>> print(curriculum_aggregate['task_1']) # assuming `"task_1"` is name of one the tasks
 
     Raises:
         ValueError: If provided ``stats`` is not list-like.
@@ -703,7 +703,7 @@ class LearningStatsAggregator:
         Args:
             time_domain: The time domain along which to aggregate the data. Defaults to ``"steps"```.
             value_domain: The value domain across which to aggregate the data. Defaults to ``agent_evaluations``.
-            agg_func_name: Name of the aggregation function used to aggregate the data. Defaults to ``"mean"``.
+            agg_func_name: Name of the aggregate function used to aggregate the data. Defaults to ``"mean"``.
 
         Returns:
             Either a tuple of aggregated values and the time intervals between them
@@ -721,7 +721,7 @@ class LearningStatsAggregator:
             raise ValueError(f"Provided value domain is not allowed. "
                        + f"Allowed values are: {self.__allowed_value_domains}")
         if agg_func_name not in self.__allowed_agg_func_names:
-            raise ValueError(f"Provided aggregation function name is not allowed. "
+            raise ValueError(f"Provided aggregate function name is not allowed. "
                        + f"Allowed values are: {self.__allowed_agg_func_names}")
 
         self.time_domain = time_domain
