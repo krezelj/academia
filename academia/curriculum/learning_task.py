@@ -796,8 +796,8 @@ class LearningStatsAggregator:
             return episode_timestamps
         if value_domain == 'agent_evaluations':
             if self.includes_init_eval:
-                evaluation_timestamps = np.insert(episode_timestamps, 0, 0)
-            evaluation_timestamps = evaluation_timestamps[::task_stats.evaluation_interval]
+                episode_timestamps = np.insert(episode_timestamps, 0, 0)
+            evaluation_timestamps = episode_timestamps[::task_stats.evaluation_interval]
             return evaluation_timestamps
 
     def __aggregated_stats(self, 

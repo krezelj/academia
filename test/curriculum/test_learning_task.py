@@ -401,7 +401,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
             self.assertEqual(len(expected_timestamps), len(intervals))
             self.assertTrue(np.all(expected_timestamps == intervals))
 
-    def test_single_task_evaluation_aggregation(self):
+    def test_single_task_evaluation_with_init_aggregation(self):
         # arrange
         stats_1 = mock.MagicMock(spec=LearningStats)
         stats_1.step_counts = np.ones(100)
@@ -424,6 +424,29 @@ class TestLearningStatsAggregator(unittest.TestCase):
         self.assertTrue(np.all(np.array([0.0, 0.75, 1.25]) == aggregate))
         self.assertEqual(0, intervals[0])
 
+    def test_single_task_evaluation_without_init_aggregation(self):
+        # arrange
+        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1.step_counts = np.ones(100)
+        stats_1.agent_evaluations = np.array([0.5])
+        stats_1.evaluation_interval = 100
+        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2.step_counts = np.ones(200)
+        stats_2.agent_evaluations = np.array([1.0, 2.0])
+        stats_2.evaluation_interval = 100
+        stats = [stats_1, stats_2]
+        sut = LearningStatsAggregator(stats, includes_init_eval=False)
+
+        # act
+        aggregate, intervals = sut.get_aggregate()
+
+        # assert
+        self.assertIsInstance(aggregate, np.ndarray)
+        self.assertIsInstance(intervals, np.ndarray)
+        self.assertEqual(2, len(aggregate))
+        self.assertTrue(np.all(np.array([0.75, 1.25]) == aggregate))
+        self.assertEqual(1.0, intervals[0])
+
     def test_single_task_reward_aggregation(self):
         # arrange
         stats_1 = mock.MagicMock(spec=LearningStats)
@@ -433,7 +456,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats_2.step_counts = np.ones(200)
         stats_2.episode_rewards = np.ones(200) * 2
         stats = [stats_1, stats_2]
-        sut = LearningStatsAggregator(stats, includes_init_eval=True)
+        sut = LearningStatsAggregator(stats, includes_init_eval=False)
 
         # act
         aggregate, intervals = sut.get_aggregate(value_domain='episode_rewards')
