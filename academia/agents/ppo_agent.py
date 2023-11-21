@@ -303,7 +303,6 @@ class PPOAgent(Agent):
 
     def __get_discrete_action_with_logits(self, 
                                           states: torch.FloatTensor, 
-                                          legal_mask: npt.NDArray[int], 
                                           greedy: bool) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
         """
@@ -332,21 +331,20 @@ class PPOAgent(Agent):
 
     def __get_action_with_logits(self, 
                                  states: torch.FloatTensor, 
-                                 legal_mask: npt.NDArray[int]=None, 
-                                 greedy: bool=False):
+                                 greedy: bool = False):
         """
         Gets an action and its logit for a given state.
         """
         with torch.no_grad():
             if self.discrete:
-                return self.__get_discrete_action_with_logits(states, legal_mask, greedy)
+                return self.__get_discrete_action_with_logits(states, greedy)
             else:
                 return self.__get_continuous_action_with_logits(states, greedy)
 
     def get_action(self, 
                    state: npt.NDArray[np.float32], 
-                   legal_mask: npt.NDArray[int]=None, 
-                   greedy: bool=False) \
+                   legal_mask: npt.NDArray[np.int32] = None,
+                   greedy: bool = False) \
             -> Union[float, int]:
         """
         Selects an action based on the current state.
@@ -366,7 +364,7 @@ class PPOAgent(Agent):
         # but we prefer to operate on batches of states so we add one dimension
         # to `state`` so that it behaves like a batch with single sample
         state = torch.unsqueeze(torch.tensor(state), dim=0)
-        action, action_logit = self.__get_action_with_logits(state, legal_mask, greedy)
+        action, action_logit = self.__get_action_with_logits(state, greedy)
 
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
         # Otherwise gym environments return new states as batches which we try to unsqueeze again

@@ -30,7 +30,7 @@ class Agent(SavableLoadable):
         self._rng = np.random.default_rng(seed=random_state)
 
     @abstractmethod
-    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[np.int32] = None, greedy: bool = False) -> int:
         """
         Gets an action for the given state.
 

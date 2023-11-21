@@ -174,7 +174,7 @@ class DQNAgent(EpsilonGreedyAgent):
         e = self.experience(state, action, reward, new_state, done)
         self.memory.append(e)
 
-    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[np.int32] = None, greedy: bool = False) -> int:
         """
         Selects an action based on the current state using the epsilon-greedy strategy.
 
