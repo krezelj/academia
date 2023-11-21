@@ -667,13 +667,6 @@ class LearningStatsAggregator:
     __allowed_value_domains = ["agent_evaluations", "episode_rewards"]
     __allowed_agg_func_names = ["mean", "min", "max", "std"]
 
-    @property
-    def __time_domain_full_name(self):
-        if self.time_domain == 'steps': return 'step_counts'
-        if self.time_domain == 'episodes': return 'episode_counts'
-        if self.time_domain == 'wall_time': return 'episode_wall_times'
-        if self.time_domain == 'cpu_time': return 'episode_cpu_times'
-
     def __init__(self, 
                  stats: Union[list[LearningStats], list[dict[str, LearningStats]]],
                  includes_init_eval: bool = True) \
@@ -713,7 +706,6 @@ class LearningStatsAggregator:
             ValueError: If an incorrect ``time_domain``, ``value_domain`` or ``agg_func_name`` is passed.
             
         """
-        # set variables to self so that they don't have to be passed as arguments for each method
         if time_domain not in self.__allowed_time_domains:
             raise ValueError(f"Provided time domain is not allowed. "
                        + f"Allowed values are: {self.__allowed_time_domains}")
@@ -724,19 +716,25 @@ class LearningStatsAggregator:
             raise ValueError(f"Provided aggregate function name is not allowed. "
                        + f"Allowed values are: {self.__allowed_agg_func_names}")
 
-        self.time_domain = time_domain
-        self.value_domain = value_domain
-        self.agg_func_name = agg_func_name
         if isinstance(self.stats[0], dict):
-            return self.__handle_dict_aggregation()
+            return self.__handle_dict_aggregation(time_domain, value_domain, agg_func_name)
         
-        interpolated_stats, timestamps = self.__interpolate()
-        aggregated_stats = self.__aggregated_stats(interpolated_stats)
+        interpolated_stats, timestamps = self.__interpolate(time_domain, value_domain)
+        aggregated_stats = self.__aggregated_stats(interpolated_stats, agg_func_name)
         intervals = np.diff(timestamps)
         intervals = np.insert(intervals, 0, timestamps[0])
         return aggregated_stats, intervals
+    
+    def __time_domain_full_name(self, time_domain):
+        if time_domain == 'steps': return 'step_counts'
+        if time_domain == 'episodes': return 'episode_counts'
+        if time_domain == 'wall_time': return 'episode_wall_times'
+        if time_domain == 'cpu_time': return 'episode_cpu_times'
         
-    def __handle_dict_aggregation(self):
+    def __handle_dict_aggregation(self,
+                                  time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"], 
+                                  value_domain: Literal["agent_evaluations", "episode_rewards"], 
+                                  agg_func_name: Literal["mean", "min", "max", "std"]):
         """
         When a list of dicts (curricula trajectories) is passed create an aggregator for each
         task (assuming common task names) separately.
@@ -748,10 +746,13 @@ class LearningStatsAggregator:
             tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
             tmp_aggregator = LearningStatsAggregator(tasks_stats, self.includes_init_eval)
             aggregate[key] = tmp_aggregator.get_aggregate(
-                self.time_domain, self.value_domain, self.agg_func_name)
+                time_domain, value_domain, agg_func_name)
         return aggregate
 
-    def __interpolate(self) -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
+    def __interpolate(self,
+                      time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"],
+                      value_domain: Literal["agent_evaluations", "episode_rewards"]) \
+            -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
         """
         Interpolates selected values (evaluations or rewards) 
         for all tasks over a union of all timestamps
@@ -763,7 +764,7 @@ class LearningStatsAggregator:
         all_timestamps = np.empty(0)
         tasks_timestamps = []
         for task_stats in self.stats:
-            task_timestamps = self.__get_timestamps(task_stats)
+            task_timestamps = self.__get_timestamps(task_stats, time_domain, value_domain)
             tasks_timestamps.append(task_timestamps)
             all_timestamps = np.append(all_timestamps, task_timestamps)
         timestamps_union = np.unique(all_timestamps)
@@ -771,35 +772,42 @@ class LearningStatsAggregator:
         interpolated_stats = np.zeros(shape=(len(self.stats), len(timestamps_union)))
         for i, task_stats in enumerate(self.stats):
             interpolated_stats[i,:] = np.interp(
-                timestamps_union, tasks_timestamps[i], getattr(task_stats, self.value_domain))
+                timestamps_union, tasks_timestamps[i], getattr(task_stats, value_domain))
         return interpolated_stats, timestamps_union
 
-    def __get_timestamps(self, task_stats: LearningStats) -> npt.NDArray[Union[np.int32, np.float32]]:
+    def __get_timestamps(self, 
+                         task_stats: LearningStats,
+                         time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"],
+                         value_domain: Literal["agent_evaluations", "episode_rewards"]) \
+            -> npt.NDArray[Union[np.int32, np.float32]]:
         """
         Returns:
             Timestamps at which evaluation or reward was obtained as a cumulative sum of episode durations
         """
         def get_episode_durations():
-            if self.__time_domain_full_name == 'episode_counts':
+            if self.__time_domain_full_name(time_domain) == 'episode_counts':
                 return np.ones(shape=len(task_stats))
             else:
-                return getattr(task_stats, self.__time_domain_full_name)
+                return getattr(task_stats, self.__time_domain_full_name(time_domain))
 
         episode_durations = get_episode_durations()
         episode_timestamps = np.cumsum(episode_durations)
-        if self.value_domain == 'episode_rewards':
+        if value_domain == 'episode_rewards':
             return episode_timestamps
-        if self.value_domain == 'agent_evaluations':
+        if value_domain == 'agent_evaluations':
             if self.includes_init_eval:
                 evaluation_timestamps = np.insert(episode_timestamps, 0, 0)
             evaluation_timestamps = evaluation_timestamps[::task_stats.evaluation_interval]
             return evaluation_timestamps
 
-    def __aggregated_stats(self, interpolated_stats) -> npt.NDArray[np.float32]:
+    def __aggregated_stats(self, 
+                           interpolated_stats : npt.NDArray[np.float32], 
+                           agg_func_name: Literal["mean", "min", "max", "std"]) \
+            -> npt.NDArray[np.float32]:
         def get_agg_func():
-            if self.agg_func_name == 'max': return np.max
-            if self.agg_func_name == 'min': return np.min
-            if self.agg_func_name == 'mean': return np.mean
-            if self.agg_func_name == 'std': return np.std
+            if agg_func_name == 'max': return np.max
+            if agg_func_name == 'min': return np.min
+            if agg_func_name == 'mean': return np.mean
+            if agg_func_name == 'std': return np.std
         return get_agg_func()(interpolated_stats, axis=0)
         
