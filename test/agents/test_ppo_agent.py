@@ -22,7 +22,7 @@ class MockModel(torch.nn.Module):
 
 class TestPPOAgent(unittest.TestCase):
 
-    def __simulate_updates(self, agent: Type[PPOAgent], n_samples: int):
+    def __simulate_updates(self, agent: PPOAgent, n_samples: int):
         # disable training during testing
         with mock.patch.object(PPOAgent.PPOBuffer, '_PPOBuffer__is_full', return_value=False):
             for i in range(n_samples):
@@ -217,9 +217,6 @@ class TestPPOAgent(unittest.TestCase):
             n_steps=10,
             clip=0.1,
             gamma=0.8,
-            epsilon=0.9,
-            epsilon_decay=0.95,
-            min_epsilon=0.03,
             random_state=0,
             device='cpu'
         )
@@ -246,9 +243,6 @@ class TestPPOAgent(unittest.TestCase):
             n_episodes=5,
             clip=0.1,
             gamma=0.8,
-            epsilon=0.9,
-            epsilon_decay=0.95,
-            min_epsilon=0.03,
             random_state=0,
             device='cpu'
         )

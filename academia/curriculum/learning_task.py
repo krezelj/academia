@@ -282,7 +282,7 @@ class LearningTask(SavableLoadable):
 
             if not evaluation_mode:
                 agent.update(state, action, reward, new_state, done)
-                agent.decay_epsilon()
+                agent.update_exploration()
 
             state = new_state
             episode_reward += reward

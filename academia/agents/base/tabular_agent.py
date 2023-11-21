@@ -7,10 +7,10 @@ import json
 import numpy as np
 import numpy.typing as npt
 
-from .agent import Agent
+from . import EpsilonGreedyAgent
 
 
-class TabularAgent(Agent):
+class TabularAgent(EpsilonGreedyAgent):
     """
     TabularAgent class implements a reinforcement learning agent for tabular environments.
 

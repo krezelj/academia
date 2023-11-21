@@ -44,13 +44,7 @@ class PPOAgent(Agent):
             continuous actions when :attr:`discrete` is ``False``. Defaults to 0.5.
         entropy_coefficient: Coefficient used to control the impact of entropy on the loss function.
             Defaults to 0.01.
-        gamma: Discount factor for future rewards. Defaults to 0.99. 
-        epsilon: Initial exploration-exploitation trade-off parameter.
-            Note that this parameter is not used in PPO. Defaults to 1.0.
-        epsilon_decay: Decay factor for epsilon over time. 
-            Note that this parameter is not used in PPO. Defaults to 0.995.
-        min_epsilon: Minimum epsilon value to ensure exploration. 
-            Note that this parameter is not used in PPO. Defaults to 0.01.
+        gamma: Discount factor for future rewards. Defaults to 0.99.
         random_state: Seed for random number generation. Defaults to ``None``.
         device: Device used for computation. Possible values are ``'cuda'`` and ``'cpu'``. Defaults to ``'cpu'``.
         
@@ -58,9 +52,6 @@ class PPOAgent(Agent):
     Attributes:
         n_actions (int): Number of possible actions in the environment.
         gamma (float): Discount factor for future rewards.
-        epsilon (float): Initial exploration-exploitation trade-off parameter.
-        epsilon_decay (float): Decay factor for epsilon over time.
-        min_epsilon (float): Minimum epsilon value to ensure exploration.
         discrete (bool): Whether the agent's action space is discrete.
         clip (float): Clip rate hyperparameter from the PPO algorithm.
         lr (float): Learning rate used by (Adam) optimisers.
@@ -251,18 +242,12 @@ class PPOAgent(Agent):
                  lr: float = 3e-4,
                  covariance_fill: float = 0.5,
                  entropy_coefficient: float = 0.01,
-                 gamma: float = 0.99, 
-                 epsilon: float = 1.,
-                 epsilon_decay: float = 0.99,
-                 min_epsilon: float = 0.01,
+                 gamma: float = 0.99,
                  random_state: Optional[int] = None,
                  device: Literal['cpu', 'cuda'] = 'cpu'
                  ) -> None:
         super(PPOAgent, self).__init__(
-            n_actions=n_actions, 
-            epsilon=epsilon, 
-            epsilon_decay=epsilon_decay, 
-            min_epsilon=min_epsilon, 
+            n_actions=n_actions,
             gamma=gamma, 
             random_state=random_state)
         self.discrete = discrete
@@ -470,6 +455,12 @@ class PPOAgent(Agent):
         self.actor.to('cpu')
         self.critic.to('cpu')
 
+    def update_exploration(self):
+        pass
+
+    def reset_exploration(self, value):
+        pass
+
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
         """
@@ -549,9 +540,6 @@ class PPOAgent(Agent):
             agent_state = {
                 'n_actions': self.n_actions,
                 'gamma': self.gamma,
-                'epsilon': self.epsilon,
-                'epsilon_decay': self.epsilon_decay,
-                'min_epsilon': self.min_epsilon,
                 'discrete': self.discrete,
                 'clip': self.clip,
                 'lr': self.lr,

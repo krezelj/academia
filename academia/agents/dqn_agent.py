@@ -13,13 +13,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from academia.agents.base import Agent
+from .base import EpsilonGreedyAgent
 
 
 _logger = logging.getLogger('academia.agents')
 
 
-class DQNAgent(Agent):
+class DQNAgent(EpsilonGreedyAgent):
     """
     Class representing a Deep Q-Network (DQN) agent for reinforcement learning tasks.
 
