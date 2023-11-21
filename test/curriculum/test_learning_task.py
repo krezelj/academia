@@ -362,10 +362,10 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats)
 
         # act
-        aggregate = sut.get_aggregate(value_domain='episode_rewards')
+        aggregate, _ = sut.get_aggregate(value_domain='episode_rewards')
 
         # assert
-        self.assertEqual(5, len(aggregate.episode_rewards))
+        self.assertEqual(5, len(aggregate))
 
     def test_episodes_time_domain(self):
         # arrange
@@ -379,11 +379,11 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats)
 
         # act
-        aggregate = sut.get_aggregate(time_domain='episodes', value_domain='episode_rewards')
+        aggregate, _ = sut.get_aggregate(time_domain='episodes', value_domain='episode_rewards')
 
         # assert
-        self.assertTrue(np.all(aggregate.episode_rewards == 1.5))
-        self.assertEqual(250, len(aggregate.episode_rewards))
+        self.assertTrue(np.all(aggregate == 1.5))
+        self.assertEqual(250, len(aggregate))
 
     def test_wall_cpu_time_domains(self):
         for time_domain in ['episode_wall_times', 'episode_cpu_times']:
@@ -401,17 +401,17 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
             # act
             short_name = 'wall_time' if time_domain == 'episode_wall_times' else 'cpu_time'
-            aggregate = sut.get_aggregate(time_domain=short_name, value_domain='episode_rewards')
+            _, intervals = sut.get_aggregate(time_domain=short_name, value_domain='episode_rewards')
 
             # assert
             union = np.union1d(
                 np.cumsum(getattr(stats_1, time_domain)), 
                 np.cumsum(getattr(stats_2, time_domain)))
             expected_timestamps = np.insert(np.diff(union), 0, union[0])
-            self.assertEqual(len(expected_timestamps), len(getattr(aggregate, time_domain)))
-            self.assertTrue(np.all(expected_timestamps == getattr(aggregate, time_domain)))
+            self.assertEqual(len(expected_timestamps), len(intervals))
+            self.assertTrue(np.all(expected_timestamps == intervals))
 
-    def test_single_task_aggregation(self):
+    def test_single_task_evaluation_aggregation(self):
         # arrange
         stats_1 = mock.MagicMock()
         stats_1.step_counts = np.ones(100)
@@ -425,12 +425,35 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats, includes_init_eval=True)
 
         # act
-        aggregate = sut.get_aggregate()
+        aggregate, intervals = sut.get_aggregate()
 
         # assert
-        self.assertIsInstance(aggregate, LearningStats)
-        self.assertEqual(3, len(aggregate.agent_evaluations))
-        self.assertTrue(np.all(np.array([0.0, 0.75, 1.25]) == aggregate.agent_evaluations))
+        self.assertIsInstance(aggregate, np.ndarray)
+        self.assertIsInstance(intervals, np.ndarray)
+        self.assertEqual(3, len(aggregate))
+        self.assertTrue(np.all(np.array([0.0, 0.75, 1.25]) == aggregate))
+        self.assertEqual(0, intervals[0])
+
+    def test_single_task_reward_aggregation(self):
+        # arrange
+        stats_1 = mock.MagicMock()
+        stats_1.step_counts = np.ones(100)
+        stats_1.episode_rewards = np.ones(100)
+        stats_2 = mock.MagicMock()
+        stats_2.step_counts = np.ones(200)
+        stats_2.episode_rewards = np.ones(200) * 2
+        stats = [stats_1, stats_2]
+        sut = LearningStatsAggregator(stats, includes_init_eval=True)
+
+        # act
+        aggregate, intervals = sut.get_aggregate(value_domain='episode_rewards')
+
+        # assert
+        self.assertIsInstance(aggregate, np.ndarray)
+        self.assertIsInstance(intervals, np.ndarray)
+        self.assertEqual(200, len(aggregate))
+        self.assertTrue(np.all(1.5 == aggregate))
+        self.assertEqual(1, intervals[0])
 
     def test_curriculum_aggregation(self):
         # arrange
@@ -447,19 +470,19 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats)
 
         # act
-        aggregate = sut.get_aggregate(value_domain='episode_rewards')
+        aggregate_dict = sut.get_aggregate(value_domain='episode_rewards')
 
         # assert
-        self.assertIsInstance(aggregate, dict)
-        self.assertEqual(2, len(aggregate))
-        self.assertIn('1', aggregate)
-        self.assertIn('2', aggregate)
+        self.assertIsInstance(aggregate_dict, dict)
+        self.assertEqual(2, len(aggregate_dict))
+        self.assertIn('1', aggregate_dict)
+        self.assertIn('2', aggregate_dict)
 
-        self.assertEqual(200, len(aggregate['1'].step_counts))
-        self.assertEqual(270, len(aggregate['2'].step_counts))
+        self.assertEqual(200, len(aggregate_dict['1'][1]))
+        self.assertEqual(270, len(aggregate_dict['2'][1]))
 
-        self.assertTrue(np.all(aggregate['1'].episode_rewards == 1.5))
-        self.assertTrue(np.all(aggregate['2'].episode_rewards == 2))
+        self.assertTrue(np.all(aggregate_dict['1'][0] == 1.5))
+        self.assertTrue(np.all(aggregate_dict['2'][0] == 2))
 
     def test_inconsistent_curriculum(self):
         # arrange

@@ -13,7 +13,7 @@ from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable, Stopwatch
 
-
+AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
 _logger = logging.getLogger('academia.curriculum')
 
 
@@ -479,10 +479,6 @@ class LearningStats(SavableLoadable):
         episode_cpu_times (numpy.ndarray): An array of floats which stores elapsed CPU times for
             each episode (excluding evaluations).
         evaluation_interval (int): How often evaluations were conducted.
-
-    Note:
-        if obtained using :class:`LearningStatsAggregator` all attributes except those used during
-        the aggregation will be ``None`` and :attr:`evaluation_interval` will be set to ``1``.
     """
 
     def __init__(self, evaluation_interval: int):
@@ -494,6 +490,9 @@ class LearningStats(SavableLoadable):
         self.episode_wall_times = np.array([])
         self.episode_cpu_times = np.array([])
         self.evaluation_interval = evaluation_interval
+
+    def __len__(self) -> int:
+        return len(self.step_counts)
 
     def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
                cpu_time: float, verbose: int = 0) -> None:
@@ -634,7 +633,7 @@ class LearningStatsAggregator:
 
         >>> stats = [task.stats for task in tasks]
         >>> aggregator = LearningStatsAggregator(stats)
-        >>> mean_trajectory = aggregator.get_aggregate(
+        >>> task_aggregation, intervals = aggregator.get_aggregate(
         >>>     time_domain = 'steps',
         >>>     value_domain = 'agent_evaluations',
         >>>     agg_func_name = 'mean',
@@ -647,19 +646,14 @@ class LearningStatsAggregator:
 
         >>> stats = [curriculum.stats for curriculum in curricula]
         >>> aggregator = LearningStatsAggregator(stats)
-        >>> mean_trajectory = aggregator.get_aggregate(
+        >>> curriculum_aggregation = aggregator.get_aggregate(
         >>>     time_domain = 'steps',
         >>>     value_domain = 'agent_evaluations',
         >>>     agg_func_name = 'mean',
         >>> )
-        >>> # `mean_trajectory` is a a dictionary with the same keys as 
+        >>> # `curriculum_aggregation` is a a dictionary with the same keys as 
         >>> # all `curriculum.stats`
-        >>> print(mean_trajectory['task_1']) # assuming `"task_1"` is name of one the tasks
-
-    Note:
-        for :class:`LearningStats` objects obtained using the aggregator all attributes 
-        except those used during the aggregation will be ``None`` 
-        and :attr:`evaluation_interval` will be set to ``1``.
+        >>> print(curriculum_aggregation['task_1']) # assuming `"task_1"` is name of one the tasks
     """
 
     __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
@@ -684,7 +678,7 @@ class LearningStatsAggregator:
                       time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
                       value_domain: Literal["agent_evaluations", "episode_rewards"] = "agent_evaluations",
                       agg_func_name: Literal["mean", "min", "max", "std"] = "mean") \
-            -> Union[LearningStats, Dict[str, LearningStats]]:
+            -> Union[AggregateTuple, Dict[str, AggregateTuple]]:
         """
         Creates an aggregate trajectory from a list of trajectories
 
@@ -694,7 +688,12 @@ class LearningStatsAggregator:
             agg_func_name: Name of the aggregation function used to aggregate the data. Defaults to ``"mean"``.
 
         Returns:
-            A :class:``LearningStats`` object representing the aggregated trajectory.
+            Either a tuple of aggregated values and the time intervals between them
+            or a dictionary with values being aggregate, intervals tuples.
+
+        Raises: 
+            ValueError: If an incorrect ``time_domain``, ``value_domain`` or ``agg_func_name`` is passed.
+            
         """
         # set variables to self so that they don't have to be passed as arguments for each method
         if time_domain not in self.__allowed_time_domains:
@@ -715,7 +714,9 @@ class LearningStatsAggregator:
         
         interpolated_stats, timestamps = self.__interpolate()
         aggregated_stats = self.__aggregated_stats(interpolated_stats)
-        return self.__get_learning_stats_object(aggregated_stats, timestamps)
+        intervals = np.diff(timestamps)
+        intervals = np.insert(intervals, 0, timestamps[0])
+        return aggregated_stats, intervals
         
     def __handle_dict_aggregation(self):
         """
@@ -766,7 +767,7 @@ class LearningStatsAggregator:
         """
         def get_episode_durations():
             if self.__time_domain_full_name == 'episode_counts':
-                return np.ones(shape=task_stats.step_counts.shape)
+                return np.ones(shape=len(task_stats))
             else:
                 return getattr(task_stats, self.__time_domain_full_name)
 
@@ -787,24 +788,4 @@ class LearningStatsAggregator:
             if self.agg_func_name == 'mean': return np.mean
             if self.agg_func_name == 'std': return np.std
         return get_agg_func()(interpolated_stats, axis=0)
-
-    def __get_learning_stats_object(self, 
-                                    aggregated_stats: npt.NDArray[np.float32], 
-                                    timestamps: npt.NDArray[Union[np.int32, np.float32]]) \
-            -> LearningStats:
-        """
-        Returns:
-            A :class:`LearningStats` object which represented an aggregated trajectory
-        
-        Note:
-            All attributes except those corresponding to the selected ``value_domain`` and ``time_domain``
-            will be ``None`` and ``evaluation_interval`` will be set to ``1``.
-        """
-        aggregate = LearningStats(evaluation_interval=1)
-        setattr(aggregate, self.value_domain, aggregated_stats)
-        if self.__time_domain_full_name != 'episode_counts':
-            intervals = np.diff(timestamps)
-            intervals = np.insert(intervals, 0, timestamps[0])
-            setattr(aggregate, self.__time_domain_full_name, intervals)
-        return aggregate
         
