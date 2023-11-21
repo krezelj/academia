@@ -363,7 +363,7 @@ class PPOAgent(Agent):
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
         # to `state`` so that it behaves like a batch with single sample
-        state = torch.unsqueeze(torch.tensor(state), dim=0)
+        state = torch.unsqueeze(torch.tensor(state, dtype=torch.float), dim=0)
         action, action_logit = self.__get_action_with_logits(state, greedy)
 
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
@@ -375,10 +375,10 @@ class PPOAgent(Agent):
         return action
 
     def update(self, 
-               state: Any, 
-               action: Any, 
+               state: npt.NDArray[np.float32],
+               action: int,
                reward: float, 
-               new_state: Any, 
+               new_state: npt.NDArray[np.float32],
                is_terminal: bool) -> None:
         """
         Updates the PPOAgent by saving the provided transition into its buffer.
@@ -393,6 +393,7 @@ class PPOAgent(Agent):
                 Note that PPOAgent does not actually use this value when updating.
             is_terminal: A flag indicating whether the new state is a terminal state.
         """
+        state = torch.tensor(state, dtype=torch.float)
         buffer_full = self.buffer.update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
             self.buffer.calculate_rewards_to_go(self.gamma)

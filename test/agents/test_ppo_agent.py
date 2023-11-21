@@ -62,15 +62,8 @@ class TestPPOAgent(unittest.TestCase):
                     in enumerate(zip(expected_transitions, returned_transitions)):
                 if i >= n_valid_steps:
                     break
-                if type(expected_element) is np.ndarray:
-                    if not np.all(expected_element == returned_element):
-                        return False
-                if type(expected_element) is torch.Tensor:
-                    if not torch.all(expected_element == returned_element):
-                        return False
-                else:
-                    if expected_element != returned_element:
-                        return False
+                if not torch.all(expected_element == returned_element):
+                    return False
         return True
 
     def __assert_agents_equal(self, expected: PPOAgent, returned: PPOAgent):

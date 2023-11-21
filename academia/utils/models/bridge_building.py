@@ -1,6 +1,5 @@
-import numpy as np
-import torch
 import torch.nn as nn
+
 
 class MLPActor(nn.Module):
 
@@ -16,9 +15,6 @@ class MLPActor(nn.Module):
         )
     
     def forward(self, obs):
-        if isinstance(obs, np.ndarray):
-            obs = torch.tensor(obs, dtype=torch.float)
-
         return self.network(obs)
     
 
@@ -35,8 +31,5 @@ class MLPCritic(nn.Module):
         )
     
     def forward(self, obs):
-        if isinstance(obs, np.ndarray):
-            obs = torch.tensor(obs, dtype=torch.float)
-            
         return self.network(obs)
     
