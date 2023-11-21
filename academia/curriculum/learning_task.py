@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Iterable, Literal, Optional, Type, Callable, Any, Union
+from typing import Literal, Optional, Type, Callable, Any, Union
 import os
 import logging
 import json
@@ -621,7 +621,7 @@ class LearningStatsAggregator:
             of the task. Defaults to ``True``.
 
     Attributes:
-        stats (Union[Iterable[LearningStats], Iterable[Dict[str, LearningStats]]]): 
+        stats (Union[list[LearningStats], list[dict[str, LearningStats]]]): 
             Statistics to be aggregated
         includes_init_eval (bool): Whether the statistics include an evaluation at the start
             of the task.
@@ -675,12 +675,12 @@ class LearningStatsAggregator:
         if self.time_domain == 'cpu_time': return 'episode_cpu_times'
 
     def __init__(self, 
-                 stats: Union[Iterable[LearningStats], Iterable[Dict[str, LearningStats]]],
+                 stats: Union[list[LearningStats], list[dict[str, LearningStats]]],
                  includes_init_eval: bool = True) \
                     -> None:
         self.stats = stats
         self.includes_init_eval = includes_init_eval
-        if not isinstance(stats, Iterable):
+        if not isinstance(stats, list):
             raise ValueError("Stats is not list-like")
         if isinstance(stats[0], dict):
             if not isinstance(list(stats[0].values())[0], LearningStats):
@@ -696,7 +696,7 @@ class LearningStatsAggregator:
                       time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
                       value_domain: Literal["agent_evaluations", "episode_rewards"] = "agent_evaluations",
                       agg_func_name: Literal["mean", "min", "max", "std"] = "mean") \
-            -> Union[AggregateTuple, Dict[str, AggregateTuple]]:
+            -> Union[AggregateTuple, dict[str, AggregateTuple]]:
         """
         Creates an aggregate trajectory from a list of trajectories
 
@@ -727,7 +727,7 @@ class LearningStatsAggregator:
         self.time_domain = time_domain
         self.value_domain = value_domain
         self.agg_func_name = agg_func_name
-        if type(self.stats[0]) == dict:
+        if isinstance(self.stats[0], dict):
             return self.__handle_dict_aggregation()
         
         interpolated_stats, timestamps = self.__interpolate()
@@ -741,7 +741,7 @@ class LearningStatsAggregator:
         When a list of dicts (curricula trajectories) is passed create an aggregator for each
         task (assuming common task names) separately.
         """
-        self.stats: Iterable[Dict[str, LearningTask]]
+        self.stats: list[dict[str, LearningTask]]
         keys = self.stats[0].keys()
         aggregate = {}
         for key in keys:
