@@ -285,7 +285,7 @@ class PPOAgent(Agent):
         self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
-            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+            -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """
         Evaluates the provided states and actions to obtain state-values
         and actions logits using the current network parameters.
