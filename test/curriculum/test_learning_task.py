@@ -359,10 +359,10 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
     def test_episodes_time_domain(self):
         # arrange
-        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 200})
         stats_1.step_counts = np.ones(shape=200)
         stats_1.episode_rewards = np.ones(shape=200)
-        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 250})
         stats_2.step_counts = np.ones(shape=250)
         stats_2.episode_rewards = np.ones(shape=250) * 2
         stats = [stats_1, stats_2]
