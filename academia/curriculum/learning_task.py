@@ -739,7 +739,7 @@ class LearningStatsAggregator:
         When a list of dicts (curricula trajectories) is passed create an aggregator for each
         task (assuming common task names) separately.
         """
-        self.stats: list[dict[str, LearningTask]]
+        self.stats: list[dict[str, LearningStats]]
         keys = self.stats[0].keys()
         aggregate = {}
         for key in keys:
