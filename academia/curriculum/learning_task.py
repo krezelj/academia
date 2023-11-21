@@ -1,5 +1,5 @@
 import sys
-from typing import Dict, Literal, Optional, Type, Callable, Any, Union
+from typing import Dict, Iterable, Literal, Optional, Type, Callable, Any, Union
 import os
 import logging
 import json
@@ -621,7 +621,8 @@ class LearningStatsAggregator:
             of the task. Defaults to ``True``.
 
     Attributes:
-        stats (Union[list[LearningStats], list[Dict[str, LearningStats]]]): Statistics to be aggregated
+        stats (Union[Iterable[LearningStats], Iterable[Dict[str, LearningStats]]]): 
+            Statistics to be aggregated
         includes_init_eval (bool): Whether the statistics include an evaluation at the start
             of the task.
 
@@ -654,6 +655,12 @@ class LearningStatsAggregator:
         >>> # `curriculum_aggregation` is a a dictionary with the same keys as 
         >>> # all `curriculum.stats`
         >>> print(curriculum_aggregation['task_1']) # assuming `"task_1"` is name of one the tasks
+
+    Raises:
+        ValueError: If provided ``stats`` is not list-like.
+        ValueError: If provided ``stats`` is a list of dictionaries with mismatching keys.
+        ValueError: If provided ``stats`` is composed of :class:`LearningStats`.
+
     """
 
     __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
@@ -668,11 +675,22 @@ class LearningStatsAggregator:
         if self.time_domain == 'cpu_time': return 'episode_cpu_times'
 
     def __init__(self, 
-                 stats: Union[list[LearningStats], list[Dict[str, LearningStats]]],
+                 stats: Union[Iterable[LearningStats], Iterable[Dict[str, LearningStats]]],
                  includes_init_eval: bool = True) \
                     -> None:
         self.stats = stats
         self.includes_init_eval = includes_init_eval
+        if not isinstance(stats, Iterable):
+            raise ValueError("Stats is not list-like")
+        if isinstance(stats[0], dict):
+            if not isinstance(list(stats[0].values())[0], LearningStats):
+                raise ValueError("Stats is not composed of LearningStats objects")
+            for i in range(len(self.stats) - 1):
+                if self.stats[i].keys() != self.stats[i + 1].keys():
+                    raise ValueError("Task keys do not match across trajectories")
+        else:
+            if not isinstance(stats[0], LearningStats):
+                raise ValueError("Stats is not composed of LearningStats objects")
 
     def get_aggregate(self, 
                       time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
@@ -723,11 +741,7 @@ class LearningStatsAggregator:
         When a list of dicts (curricula trajectories) is passed create an aggregator for each
         task (assuming common task names) separately.
         """
-        self.stats: list[Dict[str, LearningTask]]
-        for i in range(len(self.stats) - 1):
-            if self.stats[i].keys() != self.stats[i + 1].keys():
-                raise ValueError("Task keys do not match across trajectories")
-            
+        self.stats: Iterable[Dict[str, LearningTask]]
         keys = self.stats[0].keys()
         aggregate = {}
         for key in keys:
