@@ -11,7 +11,6 @@ class MLPActor(nn.Module):
             nn.Linear(512, 256),
             nn.ReLU(),
             nn.Linear(256, 9),
-            nn.Softmax(dim=1)
         )
 
     def forward(self, obs):

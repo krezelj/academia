@@ -17,7 +17,7 @@ class MockModel(torch.nn.Module):
         self.network = torch.nn.Sequential(torch.nn.Linear(3, 1))
     
     def forward(self, state):
-        return torch.Tensor([0.3, 0.1, 0.6])
+        return torch.Tensor([[0.3, 0.1, 0.6]])
 
 
 class TestPPOAgent(unittest.TestCase):

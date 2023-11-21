@@ -299,10 +299,10 @@ class PPOAgent(Agent):
         """
         V = self.critic(states).squeeze(dim=1)
         if self.discrete:
-            pi = self.actor(states)
+            pi = torch.softmax(self.actor(states), dim=1)
             distribution = Categorical(pi)
         else:
-            mean = self.actor(states)
+            mean = torch.softmax(self.actor(states), dim=1)
             distribution = MultivariateNormal(mean, self.__covariance_matrix)
 
         actions_logits = distribution.log_prob(actions)
@@ -315,7 +315,7 @@ class PPOAgent(Agent):
         """
         Gets an action and its logit for a given state assuming discrete action space.
         """
-        pi = self.actor(states)
+        pi = torch.softmax(self.actor(states), dim=1)
         distribution = Categorical(pi)
         if greedy:
             action = torch.argmax(pi).detach().numpy().reshape(1,)
@@ -329,7 +329,7 @@ class PPOAgent(Agent):
         """
         Gets an action and its logit for a given state assuming continuous action space.
         """
-        mean = self.actor(states)
+        mean = torch.softmax(self.actor(states), dim=1)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
             return mean.detach().numpy(), distribution.log_prob(mean).detach()
