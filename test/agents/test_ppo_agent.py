@@ -259,7 +259,7 @@ class TestPPOBuffer(unittest.TestCase):
         return_flag = None
         for _ in range(n_samples):
             return_flag = buffer.update(
-                np.random.randint(0, 10, size=128),
+                torch.tensor(np.random.randint(0, 10, size=128), dtype=torch.float),
                 np.random.randint(0, 3),
                 np.random.random(),
                 np.random.random(),

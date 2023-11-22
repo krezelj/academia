@@ -223,7 +223,7 @@ class PPOAgent(Agent):
                 in that order converted to tensors.
             """
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
-            states_t = torch.tensor(np.array(self.states), dtype=torch.float).to(device)
+            states_t = torch.stack(self.states).to(device)
             actions_t = torch.tensor(np.array(self.actions), dtype=torch.float).to(device)
             actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float).to(device)
             rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float).to(device)
@@ -516,7 +516,7 @@ class PPOAgent(Agent):
             agent.__covariance_matrix = covariance_matrix
             agent.__action_logit_cache = action_logit_cache
 
-            agent.buffer.states = [np.array(s) for s in buffer_state['states']]
+            agent.buffer.states = [torch.tensor(s, dtype=torch.float) for s in buffer_state['states']]
             del buffer_state['states']
             for attribute_name, value in buffer_state.items():
                 setattr(agent.buffer, attribute_name, value)
