@@ -554,8 +554,7 @@ class LearningStats(SavableLoadable):
 
         Args:
             path: Path to a stats file. If the specified file does not end with '.json' extension,
-                this extension will be appended to the specified path (for consistency with :func:`save()`
-                method).
+                '.stats.json' will be appended to the specified path.
 
         Returns:
             A :class:`LearningStats` instance with statistics from the specified file.
