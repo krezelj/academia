@@ -15,7 +15,7 @@ class TestBridgeBuildingModels(unittest.TestCase):
         )
         state = env.observe()
         try:
-            out = sut(torch.unsqueeze(torch.tensor(state), dim=0))[0]
+            out = sut(torch.tensor(state, dtype=torch.float))
             self.assertEqual(env.N_ACTIONS, len(out),
                              'Output layer neuron count does not match BridgeBuilding actions count')
         except RuntimeError:
@@ -28,7 +28,7 @@ class TestBridgeBuildingModels(unittest.TestCase):
         )
         state = env.observe()
         try:
-            sut(state)
+            sut(torch.tensor(state, dtype=torch.float))
         except RuntimeError:
             self.fail('Input layer neuron count does not match BridgeBuilding state size')
 

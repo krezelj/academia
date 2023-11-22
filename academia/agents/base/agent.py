@@ -16,32 +16,21 @@ class Agent(SavableLoadable):
 
     Args:
         n_actions: Number of possible actions in the environment.
-        epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
-        epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
-        min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
         gamma: Discount factor. Defaults to 0.99.
         random_state: Seed for the random number generator. Defaults to ``None``.
 
     Attributes:
-        epsilon (float): Exploration-exploitation trade-off parameter.
-        min_epsilon (float): Minimum value for epsilon during exploration.
-        epsilon_decay (float): Decay rate for epsilon.
         n_actions (int): Number of possible actions in the environment.
         gamma (float): Discount factor.
     """
 
-    def __init__(self, n_actions: int, epsilon: float = 1.,
-                 epsilon_decay: float = 0.999, min_epsilon: float = 0.01,
-                 gamma: float = 0.99, random_state: Optional[int] = None):
-        self.epsilon = epsilon
-        self.epsilon_decay = epsilon_decay
-        self.min_epsilon = min_epsilon
+    def __init__(self, n_actions: int, gamma: float = 0.99, random_state: Optional[int] = None):
         self.n_actions = n_actions
         self.gamma = gamma
         self._rng = np.random.default_rng(seed=random_state)
 
     @abstractmethod
-    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[np.int32] = None, greedy: bool = False) -> int:
         """
         Gets an action for the given state.
 
@@ -69,17 +58,19 @@ class Agent(SavableLoadable):
         """
         pass
 
-    def decay_epsilon(self):
+    @abstractmethod
+    def update_exploration(self):
         """
-        Decays the exploration parameter epsilon based on epsilon_decay.
+        Updates an exploration parameter.
         """
-        self.epsilon = float(np.max([self.min_epsilon, self.epsilon * self.epsilon_decay]))
+        pass
 
-    def reset_epsilon(self, epsilon=1):
+    @abstractmethod
+    def reset_exploration(self, value):
         """
-        Resets the exploration parameter epsilon to the specified value.
+        Resets exploration parameter to the specified value.
 
         Args:
-            epsilon: Value to reset epsilon to. Defaults to 1.
+            value: Value to reset the parameter to.
         """
-        self.epsilon = epsilon
+        pass

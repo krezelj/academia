@@ -85,7 +85,7 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
             stacked_state = np.append(stacked_state, self.step_count)
         return stacked_state
 
-    def get_legal_mask(self) -> npt.NDArray[int]:
+    def get_legal_mask(self) -> npt.NDArray[np.int32]:
         """
         Notes:
             For all gymnasium-based environments in this package (and probably most in general) it is hard

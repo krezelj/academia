@@ -17,12 +17,12 @@ class MockModel(torch.nn.Module):
         self.network = torch.nn.Sequential(torch.nn.Linear(3, 1))
     
     def forward(self, state):
-        return torch.Tensor([0.3, 0.1, 0.6])
+        return torch.Tensor([[0.3, 0.1, 0.6]])
 
 
 class TestPPOAgent(unittest.TestCase):
 
-    def __simulate_updates(self, agent: Type[PPOAgent], n_samples: int):
+    def __simulate_updates(self, agent: PPOAgent, n_samples: int):
         # disable training during testing
         with mock.patch.object(PPOAgent.PPOBuffer, '_PPOBuffer__is_full', return_value=False):
             for i in range(n_samples):
@@ -62,15 +62,8 @@ class TestPPOAgent(unittest.TestCase):
                     in enumerate(zip(expected_transitions, returned_transitions)):
                 if i >= n_valid_steps:
                     break
-                if type(expected_element) is np.ndarray:
-                    if not np.all(expected_element == returned_element):
-                        return False
-                if type(expected_element) is torch.Tensor:
-                    if not torch.all(expected_element == returned_element):
-                        return False
-                else:
-                    if expected_element != returned_element:
-                        return False
+                if not torch.all(expected_element == returned_element):
+                    return False
         return True
 
     def __assert_agents_equal(self, expected: PPOAgent, returned: PPOAgent):
@@ -217,9 +210,6 @@ class TestPPOAgent(unittest.TestCase):
             n_steps=10,
             clip=0.1,
             gamma=0.8,
-            epsilon=0.9,
-            epsilon_decay=0.95,
-            min_epsilon=0.03,
             random_state=0,
             device='cpu'
         )
@@ -246,9 +236,6 @@ class TestPPOAgent(unittest.TestCase):
             n_episodes=5,
             clip=0.1,
             gamma=0.8,
-            epsilon=0.9,
-            epsilon_decay=0.95,
-            min_epsilon=0.03,
             random_state=0,
             device='cpu'
         )
@@ -272,7 +259,7 @@ class TestPPOBuffer(unittest.TestCase):
         return_flag = None
         for _ in range(n_samples):
             return_flag = buffer.update(
-                np.random.randint(0, 10, size=128),
+                torch.tensor(np.random.randint(0, 10, size=128), dtype=torch.float),
                 np.random.randint(0, 3),
                 np.random.random(),
                 np.random.random(),
@@ -333,7 +320,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions))
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
 
         self.__fill_buffer(sut, 10)
 
@@ -341,7 +328,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(10, len(sut.actions))
         self.assertEqual(10, len(sut.actions_logits))
         self.assertEqual(10, len(sut.rewards))
-        self.assertEqual(10, sut.steps_counter)
+        self.assertEqual(10, len(sut))
 
     def test_update_return_when_using_n_episodes(self):
         # arrange
@@ -400,7 +387,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
         self.assertEqual(0, len(sut.episode_lengths))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
         self.assertEqual(0, sut.episode_counter)
         self.assertEqual(0, sut.episode_length_counter)
 
@@ -412,7 +399,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
         self.assertEqual(0, len(sut.episode_lengths))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
         self.assertEqual(0, sut.episode_counter)
         self.assertEqual(0, sut.episode_length_counter)
 
