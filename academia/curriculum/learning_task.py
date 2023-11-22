@@ -126,7 +126,7 @@ class LearningTask(SavableLoadable):
         >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
-        >>> task.run(agent, verbose=4, render=True)
+        >>> task.run(agent, verbose=4)
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -207,7 +207,7 @@ class LearningTask(SavableLoadable):
         self.agent_save_path = agent_save_path
         self.stats_save_path = stats_save_path
 
-    def run(self, agent: Agent, verbose=0, render=False) -> None:
+    def run(self, agent: Agent, verbose=0) -> None:
         """
         Runs the training loop for the given agent on an environment specified during this task's
         initialisation. Training statistics will be saved to a JSON file if
@@ -217,14 +217,8 @@ class LearningTask(SavableLoadable):
             agent: An agent to train
             verbose: Verbosity level. These are common for the entire module - for information on
                 different levels see :mod:`academia.curriculum`.
-            render: Whether or not to render the environment
         """
         self.__reset()
-        if render and self.__env_args.get('render_mode') == 'human':
-            self.env.render()
-        elif render and verbose >= 1:
-            _logger.warning("Cannot render environment when render_mode is not 'human'. "
-                            "Consider passing render_mode in env_args in the task configuration")
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:

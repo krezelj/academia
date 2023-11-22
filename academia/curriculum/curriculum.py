@@ -89,14 +89,14 @@ class Curriculum(SavableLoadable):
         >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
-        >>> curriculum.run(agent, verbose=4, render=True)
+        >>> curriculum.run(agent, verbose=4)
     """
 
     def __init__(self, tasks: list[LearningTask], output_dir: Optional[str] = None) -> None:
         self.tasks = tasks
         self.output_dir = output_dir
 
-    def run(self, agent: Agent, verbose=0, render=False):
+    def run(self, agent: Agent, verbose=0):
         """
         Runs all tasks for the given agent. Agent's states and training statistics will be saved upon each
         task's completion or interruption if save paths are specified either for a specific task, or
@@ -106,7 +106,6 @@ class Curriculum(SavableLoadable):
             agent: An agent to train
             verbose: Verbosity level. These are common for the entire module - for information on
                 different levels see :mod:`academia.curriculum`.
-            render: Whether or not to render the environment
         """
         total_episodes = 0
         total_wall_time = 0
@@ -121,7 +120,7 @@ class Curriculum(SavableLoadable):
             if task.stats_save_path is None and self.output_dir is not None:
                 task.stats_save_path = os.path.join(self.output_dir, task_id)
 
-            task.run(agent, verbose=verbose, render=render)
+            task.run(agent, verbose=verbose)
             total_episodes += len(task.stats.episode_rewards)
 
             task_wall_time = np.sum(task.stats.episode_wall_times)
