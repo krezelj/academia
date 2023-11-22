@@ -6,7 +6,7 @@ class MLPActor(nn.Module):
     def __init__(self):
         super(MLPActor, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(10, 64),
+            nn.Linear(8, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
@@ -22,7 +22,7 @@ class MLPCritic(nn.Module):
     def __init__(self):
         super(MLPCritic, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(10, 64),
+            nn.Linear(8, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
