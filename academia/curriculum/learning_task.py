@@ -46,6 +46,10 @@ def _min_evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
     return stats.agent_evaluations[-1].item() >= value
 
 
+def _max_wall_time_predicate(value: float, stats: 'LearningStats') -> bool:
+    return np.sum(stats.episode_wall_times) >= value
+
+
 class LearningTask(SavableLoadable):
     """
     Controls agent's training.
@@ -135,6 +139,7 @@ class LearningTask(SavableLoadable):
         'min_avg_reward': _min_avg_reward_predicate,
         'max_reward_std_dev': _max_reward_std_dev_predicate,
         'min_evaluation_score': _min_evaluation_score_predicate,
+        'max_wall_time': _max_wall_time_predicate,
     }
     """
     A class attribute that stores global (i.e. shared by every
@@ -154,7 +159,8 @@ class LearningTask(SavableLoadable):
     - ``'max_steps'`` - maximum number of total steps,
     - ``'min_avg_reward'`` - miniumum moving average of rewards (after at least five episodes),
     - ``'max_reward_std_dev'`` - maximum standard deviation of the last 10 rewards,
-    - ``'min_evaluation_score'`` - minimum mean evaluation score.
+    - ``'min_evaluation_score'`` - minimum mean evaluation score,
+    - ``'max_wall_time``' - maximum elapsed wall time.
     
     Example:
 

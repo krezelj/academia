@@ -98,6 +98,16 @@ class TestLearningTask(unittest.TestCase):
         self.assertGreaterEqual(np.sum(sut.stats.step_counts), 30, msg='Training should end later')
         self.assertLess(np.sum(sut.stats.step_counts[:-1]), 30, msg='Training should have ended earlier')
 
+    def test_max_wall_time_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        # arrange
+        sut = _get_learning_task(mock_env, stop_conditions={'max_wall_time': 0.05})
+        # # act
+        sut.run(mock_agent)
+        # # assert
+        self.assertGreaterEqual(np.sum(sut.stats.episode_wall_times), 0.05, msg='Training should end later')
+        self.assertLess(np.sum(sut.stats.episode_wall_times[:-1]), 0.05,
+                        msg='Training should have ended earlier')
+
     def test_min_avg_reward_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         sut = _get_learning_task(mock_env, stop_conditions={'min_avg_reward': 1})
         sut.run(mock_agent)
