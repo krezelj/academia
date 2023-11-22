@@ -8,7 +8,7 @@ from academia.environments import BridgeBuilding
 
 class TestBridgeBuilding(unittest.TestCase):
     
-    def __force_state(self, env, state, held_boulder_index=-1):
+    def __force_state(self, env, state, held_boulder_index=-1, river_width=2):
         def direction_from_offset(target):
             if target[1] == 1: return 0
             if target[0] == 1: return 1
@@ -20,7 +20,7 @@ class TestBridgeBuilding(unittest.TestCase):
         player_direction = direction_from_offset(player_target - player_position)
         setattr(env, '_BridgeBuilding__player_position', player_position)
         setattr(env, '_BridgeBuilding__player_direction', player_direction)
-        setattr(env, '_BridgeBuilding__boulder_positions', state[4:].reshape(self.river_width, 2))
+        setattr(env, '_BridgeBuilding__boulder_positions', state[4:].reshape(river_width, 2))
         setattr(env, '_BridgeBuilding__held_boulder_index', held_boulder_index)
 
 
@@ -166,10 +166,95 @@ class TestBridgeBuilding(unittest.TestCase):
         self.assertTrue(done)
 
     def test_bridge_length(self):
-        pass
+        # using examples from bridge length property docs
+        """
+        . # . ~ ~ ~ .
+        # . . ~ ~ ~ .
+        . . # ~ ~ ~ .
+        """
+        sut = BridgeBuilding(0, river_width=3)
+        init_state = np.array([0, 0, 1, 0, 2, 0, 0, 1, 1, 2])
+        self.__force_state(sut, init_state, river_width=3)
+        self.assertEqual(0, getattr(sut, '_BridgeBuilding__bridge_length'))
+        """
+        . # . # ~ ~ .
+        . . . # ~ ~ .
+        . . . ~ ~ ~ .
+        """
+        init_state = np.array([0, 0, 1, 0, 3, 1, 3, 2, 1, 2])
+        self.__force_state(sut, init_state, river_width=3)
+        self.assertEqual(1, getattr(sut, '_BridgeBuilding__bridge_length'))
+        """
+        . . . # ~ ~ .
+        . . . # # ~ .
+        . . . ~ ~ ~ .
+        """
+        init_state = np.array([0, 0, 1, 0, 3, 1, 3, 2, 4, 1])
+        self.__force_state(sut, init_state, river_width=3)
+        self.assertEqual(2, getattr(sut, '_BridgeBuilding__bridge_length'))
+        """
+        . . . # ~ ~ .
+        . . . # . # .
+        . . . ~ ~ ~ .
+        """
+        init_state = np.array([0, 0, 1, 0, 3, 1, 3, 2, 5, 1])
+        self.__force_state(sut, init_state, river_width=3)
+        self.assertEqual(1, getattr(sut, '_BridgeBuilding__bridge_length'))
+        """
+        . . . ~ # ~ .
+        . . . ~ # # .
+        . . . ~ ~ ~ .
+        """
+        init_state = np.array([0, 0, 1, 0, 4, 1, 4, 2, 5, 1])
+        self.__force_state(sut, init_state, river_width=3)
+        self.assertEqual(0, getattr(sut, '_BridgeBuilding__bridge_length'))
 
     def test_dense_rewards(self):
-        pass
+        sut = BridgeBuilding(0, reward_density='dense')
+        init_state = np.array([2, 1, 3, 1, 3, 1, 4, 1])
+        self.__force_state(sut, init_state)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(-1.0, reward)
+
+        init_state = np.array([2, 1, 3, 1, -1, -1, 4, 1])
+        self.__force_state(sut, init_state, held_boulder_index=0)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(1.0, reward)
+
+        init_state = np.array([3, 1, 4, 1, 3, 1, 4, 1])
+        self.__force_state(sut, init_state)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(-0.5, reward)
+
+        init_state = np.array([3, 1, 4, 1, -1, -1, 3, 1])
+        self.__force_state(sut, init_state, held_boulder_index=0)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(0.5, reward)
+
+    def test_sparse_reward(self):
+        # essentially the same as `test_dense_reward` but we are checking
+        # if it *doesn't* give rewards
+        sut = BridgeBuilding(0)
+        init_state = np.array([2, 1, 3, 1, 3, 1, 4, 1])
+        self.__force_state(sut, init_state)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(0.0, reward)
+
+        init_state = np.array([2, 1, 3, 1, -1, -1, 4, 1])
+        self.__force_state(sut, init_state, held_boulder_index=0)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(0.0, reward)
+
+        init_state = np.array([3, 1, 4, 1, 3, 1, 4, 1])
+        self.__force_state(sut, init_state)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(0.0, reward)
+
+        init_state = np.array([3, 1, 4, 1, -1, -1, 3, 1])
+        self.__force_state(sut, init_state, held_boulder_index=0)
+        _, reward, _ = sut.step(3)
+        self.assertEqual(0.0, reward)
+
 
 if __name__ == '__main__':
     unittest.main()
