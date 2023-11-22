@@ -244,6 +244,35 @@ class TestLearningTask(unittest.TestCase):
         # assert
         self.assertEqual(28, eval_counter[0])
 
+    def test_evaluation_interval_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        # arrange
+        sut_init_eval = _get_learning_task(
+            mock_env,
+            stop_conditions={
+                'max_episodes': 22,
+            },
+            other_task_args={
+                'evaluation_interval': 5,
+                'include_init_eval': True,
+            }
+        )
+        sut_no_init_eval = _get_learning_task(
+            mock_env,
+            stop_conditions={
+                'max_episodes': 22,
+            },
+            other_task_args={
+                'evaluation_interval': 5,
+                'include_init_eval': False,
+            }
+        )
+        # act
+        sut_init_eval.run(mock_agent)
+        sut_no_init_eval.run(mock_agent)
+        # assert
+        self.assertEqual(5, len(sut_init_eval.stats.agent_evaluations))
+        self.assertEqual(4, len(sut_no_init_eval.stats.agent_evaluations))
+
     def test_agent_state_saving_normal(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
         Save path should not have 'backup' prepended when saving normally
