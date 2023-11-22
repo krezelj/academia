@@ -627,7 +627,7 @@ class LearningStatsAggregator:
 
         >>> stats = [task.stats for task in tasks]
         >>> aggregator = LearningStatsAggregator(stats)
-        >>> task_aggregate, intervals = aggregator.get_aggregate(
+        >>> task_aggregate, timestamps = aggregator.get_aggregate(
         >>>     time_domain = 'steps',
         >>>     value_domain = 'agent_evaluations',
         >>>     agg_func_name = 'mean',
@@ -692,8 +692,8 @@ class LearningStatsAggregator:
             agg_func_name: Name of the aggregate function used to aggregate the data. Defaults to ``"mean"``.
 
         Returns:
-            Either a tuple of aggregated values and the time intervals between them
-            or a dictionary with values being aggregate, intervals tuples.
+            Either a tuple of aggregated values and their timestamps
+            or a dictionary with values being aggregate, timestamps tuples.
 
         Raises: 
             ValueError: If an incorrect ``time_domain``, ``value_domain`` or ``agg_func_name`` is passed.
@@ -714,9 +714,7 @@ class LearningStatsAggregator:
         
         interpolated_stats, timestamps = self.__interpolate(time_domain, value_domain)
         aggregated_stats = self.__aggregated_stats(interpolated_stats, agg_func_name)
-        intervals = np.diff(timestamps)
-        intervals = np.insert(intervals, 0, timestamps[0])
-        return aggregated_stats, intervals
+        return aggregated_stats, timestamps
     
     def __time_domain_full_name(self, time_domain):
         if time_domain == 'steps': return 'step_counts'

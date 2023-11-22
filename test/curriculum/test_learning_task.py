@@ -463,15 +463,14 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
             # act
             short_name = 'wall_time' if time_domain == 'episode_wall_times' else 'cpu_time'
-            _, intervals = sut.get_aggregate(time_domain=short_name, value_domain='episode_rewards')
+            _, timestamps = sut.get_aggregate(time_domain=short_name, value_domain='episode_rewards')
 
             # assert
-            union = np.union1d(
+            expected_timestamps = np.union1d(
                 np.cumsum(getattr(stats_1, time_domain)), 
                 np.cumsum(getattr(stats_2, time_domain)))
-            expected_timestamps = np.insert(np.diff(union), 0, union[0])
-            self.assertEqual(len(expected_timestamps), len(intervals))
-            self.assertTrue(np.all(expected_timestamps == intervals))
+            self.assertEqual(len(expected_timestamps), len(timestamps))
+            self.assertTrue(np.all(expected_timestamps == timestamps))
 
     def test_single_task_evaluation_with_init_aggregation(self):
         # arrange
@@ -487,14 +486,15 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats, includes_init_eval=True)
 
         # act
-        aggregate, intervals = sut.get_aggregate()
+        aggregate, timestamps = sut.get_aggregate()
 
         # assert
         self.assertIsInstance(aggregate, np.ndarray)
-        self.assertIsInstance(intervals, np.ndarray)
+        self.assertIsInstance(timestamps, np.ndarray)
         self.assertEqual(3, len(aggregate))
         self.assertTrue(np.all(np.array([0.0, 0.75, 1.25]) == aggregate))
-        self.assertEqual(0, intervals[0])
+        self.assertEqual(0, timestamps[0])
+        self.assertEqual(100, timestamps[1])
 
     def test_single_task_evaluation_without_init_aggregation(self):
         # arrange
@@ -510,14 +510,15 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats, includes_init_eval=False)
 
         # act
-        aggregate, intervals = sut.get_aggregate()
+        aggregate, timestamps = sut.get_aggregate()
 
         # assert
         self.assertIsInstance(aggregate, np.ndarray)
-        self.assertIsInstance(intervals, np.ndarray)
+        self.assertIsInstance(timestamps, np.ndarray)
         self.assertEqual(2, len(aggregate))
         self.assertTrue(np.all(np.array([0.75, 1.25]) == aggregate))
-        self.assertEqual(1.0, intervals[0])
+        self.assertEqual(1.0, timestamps[0])
+        self.assertEqual(101.0, timestamps[1])
 
     def test_single_task_reward_aggregation(self):
         # arrange
@@ -531,14 +532,15 @@ class TestLearningStatsAggregator(unittest.TestCase):
         sut = LearningStatsAggregator(stats, includes_init_eval=False)
 
         # act
-        aggregate, intervals = sut.get_aggregate(value_domain='episode_rewards')
+        aggregate, timestamps = sut.get_aggregate(value_domain='episode_rewards')
 
         # assert
         self.assertIsInstance(aggregate, np.ndarray)
-        self.assertIsInstance(intervals, np.ndarray)
+        self.assertIsInstance(timestamps, np.ndarray)
         self.assertEqual(200, len(aggregate))
         self.assertTrue(np.all(1.5 == aggregate))
-        self.assertEqual(1, intervals[0])
+        self.assertEqual(1, timestamps[0])
+        self.assertEqual(2, timestamps[1])
 
     def test_curriculum_aggregation(self):
         # arrange
