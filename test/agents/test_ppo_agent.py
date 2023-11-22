@@ -320,7 +320,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions))
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
 
         self.__fill_buffer(sut, 10)
 
@@ -328,7 +328,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(10, len(sut.actions))
         self.assertEqual(10, len(sut.actions_logits))
         self.assertEqual(10, len(sut.rewards))
-        self.assertEqual(10, sut.steps_counter)
+        self.assertEqual(10, len(sut))
 
     def test_update_return_when_using_n_episodes(self):
         # arrange
@@ -387,7 +387,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
         self.assertEqual(0, len(sut.episode_lengths))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
         self.assertEqual(0, sut.episode_counter)
         self.assertEqual(0, sut.episode_length_counter)
 
@@ -399,7 +399,7 @@ class TestPPOBuffer(unittest.TestCase):
         self.assertEqual(0, len(sut.actions_logits))
         self.assertEqual(0, len(sut.rewards))
         self.assertEqual(0, len(sut.episode_lengths))
-        self.assertEqual(0, sut.steps_counter)
+        self.assertEqual(0, len(sut))
         self.assertEqual(0, sut.episode_counter)
         self.assertEqual(0, sut.episode_length_counter)
 
