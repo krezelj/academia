@@ -17,10 +17,11 @@ class BridgeBuilding(ScalableEnvironment):
 
     The rewards is 0 if the agent runs out of time or drowns in the river.
     Otherwise if the agent reaches the goal (the right bank) it's 
-    ``max(0, 1-step_count/max_steps - 0.2 * is_boulder_left)``.
+    ``1-step_count/max_steps + bridge_length/river_width``.
     This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
-    the agent to fully build the bridge by punishing it if a boulder is left on the left bank
-    of the river after the agent has reached the goal.
+    the agent to fully build the bridge. Additionaly, if :attr:`reward_density` is set to ``True``
+    the agent will obtain rewards and penalties for constructing and deconstructing the bridge
+    respectively.
 
     Possible actions:
 
@@ -55,6 +56,10 @@ class BridgeBuilding(ScalableEnvironment):
         obs_type: How should the state be observed. If ``"string"`` a string representing the state
             will be returned. If ``"array"`` an array representing the state will be returned.
             Defaults to ``"array"``.
+        reward_density: The density of the reward function. Possible values are ``"sparse"`` and ``"dense"``.
+            If ``"sparse"`` is passed the agent will only get the reward at the end of the episode.
+            If ``"dense"`` is passed the agent will additionally obtain rewards (and penalties) for
+            constructing (or deconstructing) parts of the bridge. Defaults to ``"sparse"``.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
@@ -71,10 +76,11 @@ class BridgeBuilding(ScalableEnvironment):
         n_frames_stacked (int): How many most recent states should be stacked together to form a final state
             representation.
         append_step_count (bool): Whether or not append the current step count to each state.
-
         max_steps (int): The maximum number of steps an agent can spend in the environment.
         render_mode Optiona[Literal["human"]]: How the environment should be rendered.
         obs_type Literal["string", "array"]: How should the state be observed.
+        reward_density: The density of the reward function.
+
     """
     
     N_ACTIONS = 4
@@ -93,15 +99,62 @@ class BridgeBuilding(ScalableEnvironment):
         return self.__player_position + offset
 
     @property
-    def __player_holds_boulder(self):
+    def __player_holds_boulder(self) -> bool:
         return self.__held_boulder_index >= 0
+    
+    @property
+    def __bridge_length(self) -> int:
+        """
+        Returns the length of the bridge as the number of horizontal, 
+        consecutive boulders inside the river touching the left bank.
 
+        Examples:
+        . # . ~ ~ ~ .
+        # . . ~ ~ ~ .
+        . . # ~ ~ ~ .
+        bridge length is 0
+
+        . # . # ~ ~ .
+        . . . # ~ ~ .
+        . . . ~ ~ ~ .
+        bridge length is 1
+
+        . . . # ~ ~ .
+        . . . # # ~ .
+        . . . ~ ~ ~ .
+        bridge length is 2
+
+        . . . # ~ ~ .
+        . . . # . # .
+        . . . ~ ~ ~ .
+        bridge length is 1
+
+        . . . ~ # ~ .
+        . . . ~ # # .
+        . . . ~ ~ ~ .
+        bridge length is 0
+
+        """
+        # positions of boulders inside the river touching the left bank
+        bridge_entrances = self.__boulder_positions[
+            np.where(self.__boulder_positions[:,0] == self.__LEFT_BANK_WIDTH)[0],:]
+        max_bridge_length = 0
+        for entrance in bridge_entrances:
+            current_bridge_length = 1
+            right_most_boulder = entrance
+            while self.__is_on_bridge(right_most_boulder + (1, 0)):
+                right_most_boulder = right_most_boulder + (1, 0)
+                current_bridge_length += 1
+            max_bridge_length = max(max_bridge_length, current_bridge_length)
+        return max_bridge_length
+        
     def __init__(self, 
                  difficulty: int,
                  river_width: int = 2,
                  max_steps: int = 100, 
                  render_mode: Optional[Literal["human"]] = None,
                  obs_type: Literal["string", "array"] = "array",
+                 reward_density: Literal["sparse", "dense"] = "sparse",
                  n_frames_stacked: int = 1,
                  append_step_count: bool = False, 
                  random_state: Optional[int] = None) -> None:
@@ -118,7 +171,7 @@ class BridgeBuilding(ScalableEnvironment):
         self.__player_direction = 0
         self.__held_boulder_index = -1
 
-        
+        self.reward_density = reward_density
         self.max_steps = max_steps
         self.render_mode = render_mode
         self.obs_type = obs_type
@@ -145,7 +198,6 @@ class BridgeBuilding(ScalableEnvironment):
             self.STATE_SHAPE = observed_state.shape
 
     def __init_map_constants(self):
-        self.river_width = 3
         self.__N_BOULDERS = self.river_width
         self.__RIVER_HEIGHT = 3
         self.__LEFT_BANK_WIDTH = 3
@@ -195,16 +247,19 @@ class BridgeBuilding(ScalableEnvironment):
         is_terminal = self.step_count >= self.max_steps
         reward = 0.0
 
+        bridge_length_before = self.__bridge_length
         self.__handle_action(action)
         self.__compose_state()
+        bridge_length_after = self.__bridge_length
+        if self.reward_density == "dense":
+            reward += (bridge_length_after - bridge_length_before) / self.river_width
 
         self._past_n_states.append(self._state)
         self._past_n_states.popleft()
 
         if self.__is_on_goal(self.__player_position):
             reward = 1 - self.step_count / self.max_steps
-            if self.__is_boulder_left():
-                reward = np.maximum(0.0, reward - 0.2)
+            reward += self.__bridge_length / self.river_width
             is_terminal = True
         elif self.__is_on_unbridged_river(self.__player_position):
             reward = 0
@@ -422,15 +477,6 @@ class BridgeBuilding(ScalableEnvironment):
             return -1
         return index[0]
     
-    def __is_boulder_left(self):
-        """
-        Returns ``True`` if there is at least one boulder still left on the left bank of the river.
-        """
-        for position in self.__boulder_positions:
-            if position[0] < self.__LEFT_BANK_WIDTH:
-                return True
-        return False
-
     @staticmethod
     def __are_positions_equal(p1, p2):
         """
