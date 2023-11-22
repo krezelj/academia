@@ -19,7 +19,7 @@ class BridgeBuilding(ScalableEnvironment):
     Otherwise if the agent reaches the goal (the right bank) it's 
     ``1-step_count/max_steps + bridge_length/river_width``.
     This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
-    the agent to fully build the bridge. Additionaly, if :attr:`reward_density` is set to ``True``
+    the agent to fully build the bridge. Additionaly, if :attr:`reward_density` is set to ``"dense"``
     the agent will obtain rewards and penalties for constructing and deconstructing the bridge
     respectively.
 
