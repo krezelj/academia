@@ -17,7 +17,7 @@ See Also:
     - :class:`academia.curriculum.Curriculum`
 """
 import os
-from typing import Dict, Literal, List
+from typing import Literal, List, Union
 
 import numpy as np
 import plotly.express as px
@@ -143,7 +143,7 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         return os.path.abspath(save_path)
 
 
-def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
+def plot_rewards_curriculum(curriculum_stats: dict[str, LearningStats], show: bool = False,
                             save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of episode rewards for multiple tasks in the curriculum.
@@ -239,7 +239,7 @@ def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bo
         return os.path.abspath(save_path)
 
 
-def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
+def plot_trajectory_curriculum(curriculum_stats: dict[str, LearningStats], show: bool = False,
                                save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
     """
     Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
@@ -339,7 +339,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
         return os.path.abspath(save_path)
 
 
-def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
+def plot_curriculum_vs_nocurriculum(curriculum_stats: dict[str, LearningStats],
                                     nocurriculum_stats: LearningStats, show: bool = False,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png',
                                     includes_init_eval: bool = True):
