@@ -342,7 +342,7 @@ def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show:
 def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats],
                                     nocurriculum_stats: LearningStats, show: bool = False,
                                     save_path: str = None, save_format: Literal['png', 'html'] = 'png',
-                                    includes_init_eval: bool = False):
+                                    includes_init_eval: bool = True):
     """
     Plots the comparison of curriculum learning with no curriculum learning.
 
