@@ -178,6 +178,8 @@ class LearningTask(SavableLoadable):
                  stats_save_path: Optional[str] = None) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
+        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
+
         self.__stop_conditions = stop_conditions
 
         self.__initialised_stop_predicates = []
@@ -347,13 +349,6 @@ class LearningTask(SavableLoadable):
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
-
-    def __reset(self) -> None:
-        """
-        Resets environment and statistics.
-        """
-        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
-        self.stats = LearningStats(self.__evaluation_interval)
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
