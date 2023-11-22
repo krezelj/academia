@@ -220,7 +220,6 @@ class LearningTask(SavableLoadable):
             verbose: Verbosity level. These are common for the entire module - for information on
                 different levels see :mod:`academia.curriculum`.
         """
-        self.__reset()
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
