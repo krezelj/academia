@@ -83,6 +83,16 @@ class TestBridgeBuilding(unittest.TestCase):
             BridgeBuilding(difficulty=4, river_width=3)
         with self.assertRaises(ValueError):
             BridgeBuilding(difficulty=2, river_width=1)
+
+    def test_difficulty(self):
+        sut = BridgeBuilding(difficulty=0, river_width=3)
+        self.assertEqual(3, getattr(sut, '_BridgeBuilding__bridge_length'))
+
+        sut = BridgeBuilding(difficulty=1, river_width=3)
+        self.assertEqual(2, getattr(sut, '_BridgeBuilding__bridge_length'))
+
+        sut = BridgeBuilding(difficulty=2, river_width=2)
+        self.assertEqual(0, getattr(sut, '_BridgeBuilding__bridge_length'))
         
     def test_invalid_river_width(self):
         with self.assertRaises(ValueError):
