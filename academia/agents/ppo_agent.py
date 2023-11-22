@@ -329,7 +329,7 @@ class PPOAgent(Agent):
         """
         Gets an action and its logit for a given state assuming continuous action space.
         """
-        mean = torch.softmax(self.actor(states), dim=1)
+        mean =self.actor(states)
         distribution = MultivariateNormal(mean, self.__covariance_matrix)
         if greedy:
             return mean.detach().numpy(), distribution.log_prob(mean).detach()
