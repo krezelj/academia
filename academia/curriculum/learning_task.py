@@ -46,6 +46,10 @@ def _min_evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
     return stats.agent_evaluations[-1].item() >= value
 
 
+def _max_wall_time_predicate(value: float, stats: 'LearningStats') -> bool:
+    return np.sum(stats.episode_wall_times) >= value
+
+
 class LearningTask(SavableLoadable):
     """
     Controls agent's training.
@@ -126,7 +130,7 @@ class LearningTask(SavableLoadable):
         >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
-        >>> task.run(agent, verbose=4, render=True)
+        >>> task.run(agent, verbose=4)
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -135,6 +139,7 @@ class LearningTask(SavableLoadable):
         'min_avg_reward': _min_avg_reward_predicate,
         'max_reward_std_dev': _max_reward_std_dev_predicate,
         'min_evaluation_score': _min_evaluation_score_predicate,
+        'max_wall_time': _max_wall_time_predicate,
     }
     """
     A class attribute that stores global (i.e. shared by every
@@ -154,7 +159,8 @@ class LearningTask(SavableLoadable):
     - ``'max_steps'`` - maximum number of total steps,
     - ``'min_avg_reward'`` - miniumum moving average of rewards (after at least five episodes),
     - ``'max_reward_std_dev'`` - maximum standard deviation of the last 10 rewards,
-    - ``'min_evaluation_score'`` - minimum mean evaluation score.
+    - ``'min_evaluation_score'`` - minimum mean evaluation score,
+    - ``'max_wall_time``' - maximum elapsed wall time.
     
     Example:
 
@@ -178,6 +184,8 @@ class LearningTask(SavableLoadable):
                  stats_save_path: Optional[str] = None) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
+        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
+
         self.__stop_conditions = stop_conditions
 
         self.__initialised_stop_predicates = []
@@ -207,7 +215,7 @@ class LearningTask(SavableLoadable):
         self.agent_save_path = agent_save_path
         self.stats_save_path = stats_save_path
 
-    def run(self, agent: Agent, verbose=0, render=False) -> None:
+    def run(self, agent: Agent, verbose=0) -> None:
         """
         Runs the training loop for the given agent on an environment specified during this task's
         initialisation. Training statistics will be saved to a JSON file if
@@ -217,14 +225,7 @@ class LearningTask(SavableLoadable):
             agent: An agent to train
             verbose: Verbosity level. These are common for the entire module - for information on
                 different levels see :mod:`academia.curriculum`.
-            render: Whether or not to render the environment
         """
-        self.__reset()
-        if render and self.__env_args.get('render_mode') == 'human':
-            self.env.render()
-        elif render and verbose >= 1:
-            _logger.warning("Cannot render environment when render_mode is not 'human'. "
-                            "Consider passing render_mode in env_args in the task configuration")
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
@@ -353,13 +354,6 @@ class LearningTask(SavableLoadable):
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
-
-    def __reset(self) -> None:
-        """
-        Resets environment and statistics.
-        """
-        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
-        self.stats = LearningStats(self.__evaluation_interval)
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
@@ -560,8 +554,7 @@ class LearningStats(SavableLoadable):
 
         Args:
             path: Path to a stats file. If the specified file does not end with '.json' extension,
-                this extension will be appended to the specified path (for consistency with :func:`save()`
-                method).
+                '.stats.json' will be appended to the specified path.
 
         Returns:
             A :class:`LearningStats` instance with statistics from the specified file.

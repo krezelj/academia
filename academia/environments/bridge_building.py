@@ -213,6 +213,7 @@ class BridgeBuilding(ScalableEnvironment):
         self.step_count = 0
         self.__generate_initial_state()
         self._past_n_states = deque([self._state for _ in range(self.n_frames_stacked)])
+        self.render()
         return self.observe()
 
     def observe(self) -> Union[str, npt.NDArray[np.float32]]:
@@ -264,7 +265,8 @@ class BridgeBuilding(ScalableEnvironment):
         elif self.__is_on_unbridged_river(self.__player_position):
             reward = 0
             is_terminal = True
-        
+
+        self.render()
         return self.observe(), reward, is_terminal
 
     def render(self) -> None:

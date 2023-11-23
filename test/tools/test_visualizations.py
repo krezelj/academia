@@ -87,11 +87,13 @@ class TestVisualizations(unittest.TestCase):
         nocurriculum_stats = self.dummy_stats_z
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = os.path.join(temp_dir, "test_plot_curriculum_vs_nocurriculum")
-            sut_png = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False,
+            sut_png = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats,
+                                                      includes_init_eval=False, show=False,
                                                       save_path=save_path, save_format="png")
             self.assertTrue(os.path.exists(sut_png + "_curriculum_vs_no_curriculum.png"))
 
-            sut_html = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats, show=False,
+            sut_html = plot_curriculum_vs_nocurriculum(curriculum_stats, nocurriculum_stats,
+                                                       includes_init_eval=False, show=False,
                                                        save_path=save_path, save_format="html")
             self.assertTrue(os.path.exists(sut_html + "_curriculum_vs_no_curriculum.html"))
 
