@@ -1020,6 +1020,7 @@ def plot_compare_trajectories(
         time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time'] = 'steps',
         value_domain: Literal['agent_evaluations', 'episode_rewards'] = 'agent_evaluations',
         includes_init_eval: bool = True,
+        show_std: bool = False,
         show_run_traces: bool = False,
         mean_task_trace_start: bool = True,
         common_run_traces_start: bool = True,
@@ -1042,10 +1043,11 @@ def plot_compare_trajectories(
             raise ValueError(f"Unknown time domain: {time_domain}")
     
     def add_trace_trajectory(fig: 'go.Figure',
-                             timestamps: npt.NDArray[Union[np.float32, np.int32]],
                              values: npt.NDArray[np.float32],
-                             color: str,
+                             timestamps: npt.NDArray[Union[np.float32, np.int32]],
+                             color: Optional[str]=None,
                              alpha: float=1.0,
+                             showlegend: bool=True,
                              name: Optional[str] = None,):
         """
         Add a single trace (single task run trajectory) to the figure
@@ -1054,12 +1056,23 @@ def plot_compare_trajectories(
 
         fig.add_trace(go.Scatter(
             x=timestamps, y=values, mode='lines', name=name,
+            opacity=alpha, showlegend=showlegend,
             line=dict(color=color_rgba)
         ))
 
-    def add_task_trajectory(fig, 
+    def add_std_region(fig: 'go.Figure', values, std, timestamps, color):
+        fig.add_trace(go.Scatter(
+            x=timestamps, y=values+std, mode='lines', showlegend=False,
+            line_color=color
+        ))
+        fig.add_trace(go.Scatter(
+            x=timestamps, y=values-std, mode='lines', showlegend=False,
+            fill='tonexty', line_color=color
+        ))
+
+    def add_task_trajectory(fig: 'go.Figure', 
                             task_runs: list[LearningStats],
-                            color: str,
+                            color: Optional[str] = None,
                             name: Optional[str] = None,
                             time_offsets: Optional[list[Union[float, int]]] = None):
         """
@@ -1073,24 +1086,29 @@ def plot_compare_trajectories(
             task_time_offset = np.max(time_offsets)
 
         agg = LearningStatsAggregator(task_runs, includes_init_eval)
-        values, timestamps = agg.get_aggregate(time_domain=time_domain, value_domain=value_domain)
+        values, timestamps = agg.get_aggregate(time_domain, value_domain)
+        if show_std:
+            std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
         timestamps += task_time_offset
         add_trace_trajectory(fig, values, timestamps, color=color, name=name)
+        if show_std:
+            add_std_region(fig, values, std, timestamps, color='#bbbbbb')
         if not show_run_traces:
             return
         
         for i, run in enumerate(task_runs):
             agg = LearningStatsAggregator([run], includes_init_eval)
-            values, timestamps = agg.get_aggregate(time_domain=time_domain, value_domain=value_domain)
+            values, timestamps = agg.get_aggregate(time_domain, value_domain)
             if common_run_traces_start:
                 timestamps += task_time_offset
             else:
                 timestamps += time_offsets[i]
-            add_trace_trajectory(fig, values, timestamps, color=color, alpha=1/len(task_runs))
+            add_trace_trajectory(
+                fig, values, timestamps, color=color, alpha=1/len(task_runs), showlegend=False)
 
-    def add_curriculum_trajectory(fig, 
+    def add_curriculum_trajectory(fig: 'go.Figure', 
                                   curriculum_runs: list[dict[str, LearningStats]]):
-        time_offsets: np.zeros(shape=len(curriculum_runs))
+        time_offsets = np.zeros(shape=len(curriculum_runs))
         for task_name in curriculum_runs[0].keys():
             task_runs = [run[task_name] for run in curriculum_runs]
 
