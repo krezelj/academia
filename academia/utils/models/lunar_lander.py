@@ -22,8 +22,8 @@ class MLPDQN(nn.Module):
     def __init__(self):
         super(MLPDQN, self).__init__()
         layer_in = 8
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 4
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
@@ -50,8 +50,8 @@ class MLPStepDQN(nn.Module):
     def __init__(self):
         super(MLPStepDQN, self).__init__()
         layer_in = 9
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 4
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
@@ -82,8 +82,8 @@ class MLPActor(nn.Module):
     def __init__(self):
         super(MLPActor, self).__init__()
         layer_in = 8
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 4
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
@@ -110,8 +110,8 @@ class MLPCritic(nn.Module):
     def __init__(self):
         super(MLPCritic, self).__init__()
         layer_in = 8
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 1
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
@@ -138,8 +138,8 @@ class MLPStepActor(nn.Module):
     def __init__(self):
         super(MLPStepActor, self).__init__()
         layer_in = 9
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 4
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
@@ -166,8 +166,8 @@ class MLPStepCritic(nn.Module):
     def __init__(self):
         super(MLPStepCritic, self).__init__()
         layer_in = 9
-        layer_1 = 64
-        layer_2 = 64
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 1
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),

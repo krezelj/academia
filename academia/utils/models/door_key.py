@@ -88,18 +88,15 @@ class MLPActor(nn.Module):
     def __init__(self):
         super(MLPActor, self).__init__()
         layer_in = 51
-        layer_1 = 160
-        layer_2 = 100
-        layer_3 = 60
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 5
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
             nn.ReLU(),
             nn.Linear(layer_1, layer_2),
             nn.ReLU(),
-            nn.Linear(layer_2, layer_3),
-            nn.ReLU(),
-            nn.Linear(layer_3, layer_out),
+            nn.Linear(layer_2, layer_out),
         )
 
     def forward(self, obs) -> torch.Tensor:
@@ -119,18 +116,15 @@ class MLPCritic(nn.Module):
     def __init__(self):
         super(MLPCritic, self).__init__()
         layer_in = 51
-        layer_1 = 160
-        layer_2 = 100
-        layer_3 = 60
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 1
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
             nn.ReLU(),
             nn.Linear(layer_1, layer_2),
             nn.ReLU(),
-            nn.Linear(layer_2, layer_3),
-            nn.ReLU(),
-            nn.Linear(layer_3, layer_out),
+            nn.Linear(layer_2, layer_out),
         )
 
     def forward(self, obs) -> torch.Tensor:
@@ -150,18 +144,15 @@ class MLPStepActor(nn.Module):
     def __init__(self):
         super(MLPStepActor, self).__init__()
         layer_in = 52
-        layer_1 = 160
-        layer_2 = 100
-        layer_3 = 60
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 5
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
             nn.ReLU(),
             nn.Linear(layer_1, layer_2),
             nn.ReLU(),
-            nn.Linear(layer_2, layer_3),
-            nn.ReLU(),
-            nn.Linear(layer_3, layer_out),
+            nn.Linear(layer_2, layer_out),
         )
 
     def forward(self, obs) -> torch.Tensor:
@@ -181,18 +172,15 @@ class MLPStepCritic(nn.Module):
     def __init__(self):
         super(MLPStepCritic, self).__init__()
         layer_in = 52
-        layer_1 = 160
-        layer_2 = 100
-        layer_3 = 60
+        layer_1 = 256
+        layer_2 = 256
         layer_out = 1
         self.network = nn.Sequential(
             nn.Linear(layer_in, layer_1),
             nn.ReLU(),
             nn.Linear(layer_1, layer_2),
             nn.ReLU(),
-            nn.Linear(layer_2, layer_3),
-            nn.ReLU(),
-            nn.Linear(layer_3, layer_out),
+            nn.Linear(layer_2, layer_out),
         )
 
     def forward(self, obs) -> torch.Tensor:
