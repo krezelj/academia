@@ -408,7 +408,7 @@ class BridgeBuilding(ScalableEnvironment):
         self.__player_direction = self.__init_state_rng.integers(0, 3)
 
         for position_idx, boulder_idx in enumerate(range(self.__init_bridge_length, self.__N_BOULDERS)):
-            x, y = np.unravel_index(positions[position_idx], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
+            x, y = np.unravel_index(positions[position_idx + 1], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
             self.__boulder_positions[boulder_idx, :] = x, y
 
         self.__compose_state()
