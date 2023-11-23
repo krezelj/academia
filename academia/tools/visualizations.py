@@ -1022,7 +1022,7 @@ def plot_compare_trajectories(
         includes_init_eval: bool = True,
         show_std: bool = False,
         show_run_traces: bool = False,
-        mean_task_trace_start: bool = True,
+        task_trace_start: Literal['mean', 'q3' 'most', 'outliers', 'max'] = 'most',
         common_run_traces_start: bool = True,
         show: bool = False,
         save_path: Optional[str] = None, 
@@ -1080,10 +1080,19 @@ def plot_compare_trajectories(
         """
         if time_offsets is None:
             time_offsets = np.zeros(len(task_runs))
-        if mean_task_trace_start:
+        if task_trace_start == 'mean':
             task_time_offset = np.mean(time_offsets)
-        else:
+        elif task_trace_start == 'max':
             task_time_offset = np.max(time_offsets)
+        elif task_trace_start == 'q3':
+            task_time_offset = np.quantile(time_offsets, 0.75)
+        elif task_trace_start == 'most':
+            task_time_offset = np.quantile(time_offsets, 0.95)
+        elif task_trace_start == 'outliers':
+            q3 = np.quantile(time_offsets, 0.75)
+            q1 = np.quantile(time_offsets, 0.25)
+            iqr = q3 - q1 
+            task_time_offset = np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
 
         agg = LearningStatsAggregator(task_runs, includes_init_eval)
         values, timestamps = agg.get_aggregate(time_domain, value_domain)
