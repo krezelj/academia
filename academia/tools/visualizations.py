@@ -17,14 +17,15 @@ See Also:
     - :class:`academia.curriculum.Curriculum`
 """
 import os
-from typing import Literal, List, Union
+from typing import Literal, List, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from academia.curriculum import LearningStats
+from academia.curriculum import LearningStats, LearningStatsAggregator
 
 
 def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None,
@@ -1012,3 +1013,71 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         else:
             fig.write_html(f"{save_path}_multiple_evaluation_impact.html")
         return os.path.abspath(save_path)
+
+
+def plot_compare_trajectories(
+        trajectories: list[Union[list[LearningStats], list[dict[str, LearningStats]]]],
+        time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time'] = 'steps',
+        value_domain: Literal['agent_evaluations', 'episode_rewards'] = 'agent_evaluations',
+        includes_init_eval: bool = True,
+        show_run_traces: bool = False,
+        mean_task_trace_start: bool = True,
+        common_run_traces_start: bool = True,
+        show: bool = False,
+        save_path: str = None, 
+        save_format: Literal['png', 'html'] = 'png'):
+    
+    def add_trace_trajectory(fig: 'go.Figure',
+                             timestamps: npt.NDArray[Union[np.float32, np.int32]],
+                             values: npt.NDArray[np.float32],
+                             color: str,
+                             alpha: float=1.0,
+                             name: Optional[str] = None,):
+        """
+        Add a single trace (single task run trajectory) to the figure
+        """
+        color_rgba = color # add alpha
+
+        fig.add_trace(go.Scatter(
+            x=timestamps, y=values, mode='lines', name=name,
+            line=dict(color=color_rgba)
+        ))
+
+    def add_task_trajectory(fig, 
+                            task_runs: list[LearningStats],
+                            color: str,
+                            time_offsets: Optional[list[Union[float, int]]] = None):
+        """
+        Add a single task trajectory to the figure
+        """
+        if time_offsets is None:
+            time_offsets = np.zeros(len(task_runs))
+        if mean_task_trace_start:
+            task_time_offset = np.mean(time_offsets)
+        else:
+            task_time_offset = np.max(time_offsets)
+
+        agg = LearningStatsAggregator(task_runs, includes_init_eval)
+        values, timestamps = agg.get_aggregate(time_domain=time_domain, value_domain=value_domain)
+        timestamps += task_time_offset
+        add_trace_trajectory(fig, values, timestamps, color=color)
+        if not show_run_traces:
+            return
+        
+        for i, run in enumerate(task_runs):
+            agg = LearningStatsAggregator([run], includes_init_eval)
+            values, timestamps = agg.get_aggregate(time_domain=time_domain, value_domain=value_domain)
+            if common_run_traces_start:
+                timestamps += task_time_offset
+            else:
+                timestamps += time_offsets[i]
+            add_trace_trajectory(fig, values, timestamps, color=color, alpha=1/len(task_runs))
+
+    def add_curriculum_trajectory(fig):
+        pass
+
+    fig = go.Figure()
+    for trajectory in trajectories:
+        
+
+        pass
