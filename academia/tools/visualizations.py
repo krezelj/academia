@@ -1016,7 +1016,7 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
 
 
 def plot_compare_trajectories(
-        trajectories: list[Union[list[LearningStats], list[dict[str, LearningStats]]]],
+        runs_list: list[Union[list[LearningStats], list[dict[str, LearningStats]]]],
         time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time'] = 'steps',
         value_domain: Literal['agent_evaluations', 'episode_rewards'] = 'agent_evaluations',
         includes_init_eval: bool = True,
@@ -1024,8 +1024,22 @@ def plot_compare_trajectories(
         mean_task_trace_start: bool = True,
         common_run_traces_start: bool = True,
         show: bool = False,
-        save_path: str = None, 
+        save_path: Optional[str] = None, 
         save_format: Literal['png', 'html'] = 'png'):
+    
+    def get_time_data(
+            task_stats: LearningStats,
+            time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time']):
+        if time_domain == "steps":
+            return np.sum(task_stats.step_counts)
+        elif time_domain == "episodes":
+            return len(task_stats.step_counts)
+        elif time_domain == "cpu_time":
+            return np.sum(task_stats.episode_cpu_times)
+        elif time_domain == "wall_time":
+            return np.sum(task_stats.episode_wall_times)
+        else:
+            raise ValueError(f"Unknown time domain: {time_domain}")
     
     def add_trace_trajectory(fig: 'go.Figure',
                              timestamps: npt.NDArray[Union[np.float32, np.int32]],
@@ -1046,6 +1060,7 @@ def plot_compare_trajectories(
     def add_task_trajectory(fig, 
                             task_runs: list[LearningStats],
                             color: str,
+                            name: Optional[str] = None,
                             time_offsets: Optional[list[Union[float, int]]] = None):
         """
         Add a single task trajectory to the figure
@@ -1060,7 +1075,7 @@ def plot_compare_trajectories(
         agg = LearningStatsAggregator(task_runs, includes_init_eval)
         values, timestamps = agg.get_aggregate(time_domain=time_domain, value_domain=value_domain)
         timestamps += task_time_offset
-        add_trace_trajectory(fig, values, timestamps, color=color)
+        add_trace_trajectory(fig, values, timestamps, color=color, name=name)
         if not show_run_traces:
             return
         
@@ -1073,11 +1088,38 @@ def plot_compare_trajectories(
                 timestamps += time_offsets[i]
             add_trace_trajectory(fig, values, timestamps, color=color, alpha=1/len(task_runs))
 
-    def add_curriculum_trajectory(fig):
-        pass
+    def add_curriculum_trajectory(fig, 
+                                  curriculum_runs: list[dict[str, LearningStats]]):
+        time_offsets: np.zeros(shape=len(curriculum_runs))
+        for task_name in curriculum_runs[0].keys():
+            task_runs = [run[task_name] for run in curriculum_runs]
+
+            # TODO get colour for task
+
+            add_task_trajectory(fig, task_runs, name=task_name, time_offsets=time_offsets)
+
+            for i, run in enumerate(curriculum_runs):
+                time_offsets[i] += get_time_data(run[task_name], time_domain)
 
     fig = go.Figure()
-    for trajectory in trajectories:
-        
+    for runs in runs_list:
+        if isinstance(runs[0], LearningStats):
+            # TODO get colour
+            add_task_trajectory(fig, runs)
+        if isinstance(runs[0], dict):
+            add_curriculum_trajectory(fig, runs)
 
-        pass
+    fig.update_layout(
+        xaxis_title=f"Timestamps ({time_domain})",
+        yaxis_title=f"Values ({value_domain})"
+    )
+    if show:
+        fig.show()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_trajectory_comparison.png")
+        else:
+            fig.write_html(f"{save_path}_trajectory_comparison.html")
+        return os.path.abspath(save_path)
