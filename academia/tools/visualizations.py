@@ -4,16 +4,15 @@ Functions that can visualise statistics gathered from agents training through
 
 Exported functions:
 
-- :func:`plot_task`
-- :func:`plot_rewards_curriculum`
-- :func:`plot_trajectory_curriculum`
-- :func:`plot_curriculum_vs_nocurriculum`
 - :func:`plot_evaluation_impact`
 - :func:`plot_time_impact`
 - :func:`plot_multiple_evaluation_impact`
+- :func:`plot_trajectories`
 
 See Also:
     - :class:`academia.curriculum.LearningTask`
+    - :class:`academia.curriculum.LearningStats`
+    - :class:`academia.curriculum.LearningStatsAggregator`
     - :class:`academia.curriculum.Curriculum`
 """
 import colorsys
@@ -40,6 +39,30 @@ LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
 StartPoint = Literal['zero', 'mean', 'q3' 'most', 'outliers', 'max']
+
+
+def _extract_time_data(
+        stats: list[LearningStats], time_domain: str):
+    """
+    Extracts the data from the learning statistics for the given time domain.
+
+    Args:
+        stats: Learning statistics for tasks in level X.
+        time_domain: Time domain to extract data for.
+
+    Returns:
+        List of data for the given time domain.
+    """
+    if time_domain == "steps":
+        return [np.sum(task.step_counts) for task in stats], "steps"
+    elif time_domain == "episodes":
+        return [len(task.step_counts) for task in stats], "episodes"
+    elif time_domain == "cpu_time":
+        return [np.sum(task.episode_cpu_times) for task in stats], "cpu_time"
+    elif time_domain == "wall_time":
+        return [np.sum(task.episode_wall_times) for task in stats], "wall_time"
+    else:
+        raise ValueError(f"Unknown time domain: {time_domain}")
 
 
 def plot_evaluation_impact(
@@ -351,30 +374,6 @@ def plot_time_impact(
         return os.path.abspath(save_path)
 
 
-def _extract_time_data(
-        stats: list[LearningStats], time_domain: str):
-    """
-    Extracts the data from the learning statistics for the given time domain.
-
-    Args:
-        stats: Learning statistics for tasks in level X.
-        time_domain: Time domain to extract data for.
-
-    Returns:
-        List of data for the given time domain.
-    """
-    if time_domain == "steps":
-        return [np.sum(task.step_counts) for task in stats], "steps"
-    elif time_domain == "episodes":
-        return [len(task.step_counts) for task in stats], "episodes"
-    elif time_domain == "cpu_time":
-        return [np.sum(task.episode_cpu_times) for task in stats], "cpu_time"
-    elif time_domain == "wall_time":
-        return [np.sum(task.episode_wall_times) for task in stats], "wall_time"
-    else:
-        raise ValueError(f"Unknown time domain: {time_domain}")
-
-
 def plot_multiple_evaluation_impact(
         num_of_episodes_lvl_x: list[int], 
         num_of_episodes_lvl_y: list[int],
@@ -668,18 +667,19 @@ def _add_std_region(
     ))
 
 
-def _add_task_trajectory(fig: 'go.Figure', 
-                        task_runs: list[LearningStats],
-                        task_trace_start: StartPoint,
-                        includes_init_eval: bool,
-                        time_domain: TimeDomain,
-                        value_domain: ValueDomain,
-                        show_std: bool,
-                        show_run_traces: bool,
-                        common_run_traces_start: bool,
-                        color: Optional[str] = None,
-                        name: Optional[str] = None,
-                        time_offsets: Optional[list[Union[float, int]]] = None):
+def _add_task_trajectory(
+        fig: 'go.Figure', 
+        task_runs: list[LearningStats],
+        task_trace_start: StartPoint,
+        includes_init_eval: bool,
+        time_domain: TimeDomain,
+        value_domain: ValueDomain,
+        show_std: bool,
+        show_run_traces: bool,
+        common_run_traces_start: bool,
+        color: Optional[str] = None,
+        name: Optional[str] = None,
+        time_offsets: Optional[list[Union[float, int]]] = None):
     """
     Add a single task trajectory to the figure
     """
@@ -709,11 +709,12 @@ def _add_task_trajectory(fig: 'go.Figure',
             fig, values, timestamps, color=color, alpha=1/len(task_runs), showlegend=False)
 
 
-def _add_curriculum_trajectory(fig: 'go.Figure', 
-                              curriculum_runs: list[dict[str, LearningStats]],
-                              time_domain: TimeDomain,
-                              colors: Optional[list[str]] = None,
-                              **kwargs):
+def _add_curriculum_trajectory(
+        fig: 'go.Figure', 
+        curriculum_runs: list[dict[str, LearningStats]],
+        time_domain: TimeDomain,
+        colors: Optional[list[str]] = None,
+        **kwargs):
     time_offsets = np.zeros(shape=len(curriculum_runs))
     for i, task_name in enumerate(curriculum_runs[0].keys()):
         task_runs = [run[task_name] for run in curriculum_runs]
