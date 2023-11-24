@@ -18,7 +18,7 @@ See Also:
 """
 import colorsys
 import os
-from typing import Literal, List, Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -29,12 +29,13 @@ from plotly.subplots import make_subplots
 from academia.curriculum import LearningStats, LearningStatsAggregator
 
 TimeDomain = Literal['steps', 'episodes', 'wall_time', 'cpu_time']
-ValueDomain = Literal['agent_evaluations', 'episode_rewards']
+ValueDomain = Literal['agent_evaluations', 'episode_rewards', 'episode_rewards_moving_avg']
 SaveFormat = Literal['png', 'html']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
-StartPoint = Literal['mean', 'q3' 'most', 'outliers', 'max']
 Runs = Union[LearningTaskRuns, CurriculumRuns]
+StartPoint = Literal['mean', 'q3' 'most', 'outliers', 'max']
+
 
 
 def plot_task(

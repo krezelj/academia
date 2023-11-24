@@ -13,7 +13,7 @@ from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.utils import SavableLoadable, Stopwatch
 
-AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
+
 _logger = logging.getLogger('academia.curriculum')
 
 
@@ -601,6 +601,15 @@ class LearningStats(SavableLoadable):
         return path
 
 
+AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
+TimeDomain = Literal["steps", "episodes", "cpu_time", "wall_time"]
+ValueDomain = Literal["agent_evaluations", "episode_rewards", "episode_rewards_moving_avg"]
+AggFuncName = Literal["mean", "min", "max", "std"]
+LearningTaskRuns = list[LearningStats]
+CurriculumRuns = list[dict[str, LearningStats]]
+Runs = Union[LearningTaskRuns, CurriculumRuns]
+
+
 class LearningStatsAggregator:
     """
     Aggregator of :class:`LearningStats` objects.
@@ -657,13 +666,10 @@ class LearningStatsAggregator:
     """
 
     __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
-    __allowed_value_domains = ["agent_evaluations", "episode_rewards"]
+    __allowed_value_domains = ["agent_evaluations", "episode_rewards", "episode_rewards_moving_avg"]
     __allowed_agg_func_names = ["mean", "min", "max", "std"]
 
-    def __init__(self, 
-                 stats: Union[list[LearningStats], list[dict[str, LearningStats]]],
-                 includes_init_eval: bool = True) \
-                    -> None:
+    def __init__(self, stats: Runs, includes_init_eval: bool = True) -> None:
         self.stats = stats
         self.includes_init_eval = includes_init_eval
         if not isinstance(stats, list):
@@ -679,9 +685,9 @@ class LearningStatsAggregator:
                 raise ValueError("Stats is not composed of LearningStats objects")
 
     def get_aggregate(self, 
-                      time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"] = "steps",
-                      value_domain: Literal["agent_evaluations", "episode_rewards"] = "agent_evaluations",
-                      agg_func_name: Literal["mean", "min", "max", "std"] = "mean") \
+                      time_domain: TimeDomain = "steps",
+                      value_domain: ValueDomain = "agent_evaluations",
+                      agg_func_name: AggFuncName = "mean") \
             -> Union[AggregateTuple, dict[str, AggregateTuple]]:
         """
         Creates an aggregate trajectory from a list of trajectories
@@ -723,14 +729,14 @@ class LearningStatsAggregator:
         if time_domain == 'cpu_time': return 'episode_cpu_times'
         
     def __handle_dict_aggregation(self,
-                                  time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"], 
-                                  value_domain: Literal["agent_evaluations", "episode_rewards"], 
-                                  agg_func_name: Literal["mean", "min", "max", "std"]):
+                                  time_domain: TimeDomain, 
+                                  value_domain: ValueDomain, 
+                                  agg_func_name: AggFuncName):
         """
         When a list of dicts (curricula trajectories) is passed create an aggregator for each
         task (assuming common task names) separately.
         """
-        self.stats: list[dict[str, LearningStats]]
+        self.stats: CurriculumRuns
         keys = self.stats[0].keys()
         aggregate = {}
         for key in keys:
@@ -740,9 +746,7 @@ class LearningStatsAggregator:
                 time_domain, value_domain, agg_func_name)
         return aggregate
 
-    def __interpolate(self,
-                      time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"],
-                      value_domain: Literal["agent_evaluations", "episode_rewards"]) \
+    def __interpolate(self, time_domain: TimeDomain, value_domain: ValueDomain) \
             -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
         """
         Interpolates selected values (evaluations or rewards) 
@@ -768,8 +772,8 @@ class LearningStatsAggregator:
 
     def __get_timestamps(self, 
                          task_stats: LearningStats,
-                         time_domain: Literal["steps", "episodes", "cpu_time", "wall_time"],
-                         value_domain: Literal["agent_evaluations", "episode_rewards"]) \
+                         time_domain: TimeDomain,
+                         value_domain: ValueDomain) \
             -> npt.NDArray[Union[np.int32, np.float32]]:
         """
         Returns:
@@ -783,17 +787,16 @@ class LearningStatsAggregator:
 
         episode_durations = get_episode_durations()
         episode_timestamps = np.cumsum(episode_durations)
-        if value_domain == 'episode_rewards':
-            return episode_timestamps
         if value_domain == 'agent_evaluations':
             if self.includes_init_eval:
                 episode_timestamps = np.insert(episode_timestamps, 0, 0)
             evaluation_timestamps = episode_timestamps[::task_stats.evaluation_interval]
             return evaluation_timestamps
+        return episode_timestamps
 
     def __aggregated_stats(self, 
                            interpolated_stats : npt.NDArray[np.float32], 
-                           agg_func_name: Literal["mean", "min", "max", "std"]) \
+                           agg_func_name: AggFuncName) \
             -> npt.NDArray[np.float32]:
         def get_agg_func():
             if agg_func_name == 'max': return np.max
