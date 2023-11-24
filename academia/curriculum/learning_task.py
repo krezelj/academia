@@ -603,7 +603,12 @@ class LearningStats(SavableLoadable):
 
 AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
 TimeDomain = Literal["steps", "episodes", "cpu_time", "wall_time"]
-ValueDomain = Literal["agent_evaluations", "episode_rewards", "episode_rewards_moving_avg"]
+ValueDomain = Literal[
+    "agent_evaluations", 
+    "episode_rewards", 
+    "episode_rewards_moving_avg",
+    "step_counts",
+    "step_counts_moving_avg"]
 AggFuncName = Literal["mean", "min", "max", "std"]
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
@@ -666,7 +671,12 @@ class LearningStatsAggregator:
     """
 
     __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
-    __allowed_value_domains = ["agent_evaluations", "episode_rewards", "episode_rewards_moving_avg"]
+    __allowed_value_domains = [
+        "agent_evaluations", 
+        "episode_rewards", 
+        "episode_rewards_moving_avg",
+        "step_counts",
+        "step_counts_moving_avg"]
     __allowed_agg_func_names = ["mean", "min", "max", "std"]
 
     def __init__(self, stats: Runs, includes_init_eval: bool = True) -> None:

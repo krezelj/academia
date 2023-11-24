@@ -29,7 +29,12 @@ from plotly.subplots import make_subplots
 from academia.curriculum import LearningStats, LearningStatsAggregator
 
 TimeDomain = Literal['steps', 'episodes', 'wall_time', 'cpu_time']
-ValueDomain = Literal['agent_evaluations', 'episode_rewards', 'episode_rewards_moving_avg']
+ValueDomain = Literal[
+    'agent_evaluations', 
+    'episode_rewards', 
+    'episode_rewards_moving_avg',
+    'step_counts',
+    'step_counts_moving_avg']
 SaveFormat = Literal['png', 'html']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
