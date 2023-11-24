@@ -33,6 +33,7 @@ SaveFormat = Literal['png', 'html']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 StartPoint = Literal['mean', 'q3' 'most', 'outliers', 'max']
+Runs = Union[LearningTaskRuns, CurriculumRuns]
 
 
 def plot_task(
@@ -1046,132 +1047,197 @@ def plot_multiple_evaluation_impact(
         return os.path.abspath(save_path)
 
 
+# ===================================== WORK IN PROGRESS =============================================
+
+
+def _get_task_time_offset(
+        task_trace_start: StartPoint, 
+        time_offsets: list[Union[float, int]]):
+    if task_trace_start == 'mean':
+        task_time_offset = np.mean(time_offsets)
+    elif task_trace_start == 'max':
+        task_time_offset = np.max(time_offsets)
+    elif task_trace_start == 'q3':
+        task_time_offset = np.quantile(time_offsets, 0.75)
+    elif task_trace_start == 'most':
+        task_time_offset = np.quantile(time_offsets, 0.95)
+    elif task_trace_start == 'outliers':
+        q3 = np.quantile(time_offsets, 0.75)
+        q1 = np.quantile(time_offsets, 0.25)
+        iqr = q3 - q1 
+        task_time_offset = np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
+    return task_time_offset
+
+
+def _get_time_data(
+        task_stats: LearningStats,
+        time_domain: TimeDomain):
+    if time_domain == "steps":
+        return np.sum(task_stats.step_counts)
+    elif time_domain == "episodes":
+        return len(task_stats.step_counts)
+    elif time_domain == "cpu_time":
+        return np.sum(task_stats.episode_cpu_times)
+    elif time_domain == "wall_time":
+        return np.sum(task_stats.episode_wall_times)
+    else:
+        raise ValueError(f"Unknown time domain: {time_domain}")
+
+
+def _add_trace_trajectory(
+        fig: 'go.Figure',
+        values: npt.NDArray[np.float32],
+        timestamps: npt.NDArray[Union[np.float32, np.int32]],
+        color: Optional[str]=None,
+        alpha: float=1.0,
+        showlegend: bool=True,
+        name: Optional[str] = None,):
+    """
+    Add a single trace (single task run trajectory) to the figure
+    """
+    color_rgba = color # add alpha
+
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=values, mode='lines', name=name,
+        opacity=alpha, showlegend=showlegend,
+        line=dict(color=color_rgba)
+    ))
+
+
+def _add_std_region(
+        fig: 'go.Figure', 
+        values: npt.NDArray[np.float32],
+        std: npt.NDArray[np.float32], 
+        timestamps: npt.NDArray[Union[np.float32, np.int32]], 
+        color: Optional[str]=None):
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=values+std, mode='lines', showlegend=False,
+        line_color=color
+    ))
+    fig.add_trace(go.Scatter(
+        x=timestamps, y=values-std, mode='lines', showlegend=False,
+        fill='tonexty', line_color=color
+    ))
+
+
+def _add_task_trajectory(fig: 'go.Figure', 
+                        task_runs: list[LearningStats],
+                        task_trace_start: StartPoint,
+                        includes_init_eval: bool,
+                        time_domain: TimeDomain,
+                        value_domain: ValueDomain,
+                        show_std: bool,
+                        show_run_traces: bool,
+                        common_run_traces_start: bool,
+                        color: Optional[str] = None,
+                        name: Optional[str] = None,
+                        time_offsets: Optional[list[Union[float, int]]] = None):
+    """
+    Add a single task trajectory to the figure
+    """
+    if time_offsets is None:
+        time_offsets = np.zeros(len(task_runs))
+    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets)
+
+    agg = LearningStatsAggregator(task_runs, includes_init_eval)
+    values, timestamps = agg.get_aggregate(time_domain, value_domain)
+    timestamps += task_time_offset
+    _add_trace_trajectory(fig, values, timestamps, color=color, name=name)
+    
+    if show_std:
+        std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
+        _add_std_region(fig, values, std, timestamps, color='#bbbbbb')
+    if not show_run_traces:
+        return
+    
+    for i, run in enumerate(task_runs):
+        agg = LearningStatsAggregator([run], includes_init_eval)
+        values, timestamps = agg.get_aggregate(time_domain, value_domain)
+        if common_run_traces_start:
+            timestamps += task_time_offset
+        else:
+            timestamps += time_offsets[i]
+        _add_trace_trajectory(
+            fig, values, timestamps, color=color, alpha=1/len(task_runs), showlegend=False)
+
+
+def _add_curriculum_trajectory(fig: 'go.Figure', 
+                              curriculum_runs: list[dict[str, LearningStats]],
+                              time_domain: TimeDomain,
+                              **kwargs):
+    time_offsets = np.zeros(shape=len(curriculum_runs))
+    for task_name in curriculum_runs[0].keys():
+        task_runs = [run[task_name] for run in curriculum_runs]
+        _add_task_trajectory(
+            fig, task_runs, name=task_name, time_offsets=time_offsets, time_domain=time_domain, **kwargs)
+
+        for i, run in enumerate(curriculum_runs):
+            time_offsets[i] += _get_time_data(run[task_name], time_domain)
+
+
 def plot_trajectories(
-        runs_list: list[Union[LearningTaskRuns, CurriculumRuns]],
-        time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
-        value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
-        includes_init_eval: Union[bool, list[bool]] = True,
-        show_std: Union[bool, list[bool]] = False,
-        show_run_traces: Union[bool, list[bool]] = False,
-        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
-        common_run_traces_start: Union[bool, list[bool]] = True,
+        trajectories: Union[Runs, list[Runs]],
+        # time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
+        # value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
+        # includes_init_eval: Union[bool, list[bool]] = True,
+        # show_std: Union[bool, list[bool]] = False,
+        # show_run_traces: Union[bool, list[bool]] = False,
+        # task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        # common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
-        as_subplots: bool = False,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png',
+        **kwargs):
     
-    def get_time_data(
-            task_stats: LearningStats,
-            time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time']):
-        if time_domain == "steps":
-            return np.sum(task_stats.step_counts)
-        elif time_domain == "episodes":
-            return len(task_stats.step_counts)
-        elif time_domain == "cpu_time":
-            return np.sum(task_stats.episode_cpu_times)
-        elif time_domain == "wall_time":
-            return np.sum(task_stats.episode_wall_times)
-        else:
-            raise ValueError(f"Unknown time domain: {time_domain}")
+    if not isinstance(trajectories):
+        trajectories = [trajectories]
+
+    def iterate_kwargs():
+        for i in range(len(trajectories)):
+            trajectory_kwargs = {kwarg_name: kwargs[kwarg_name][i] for kwarg_name in kwargs}
+            yield trajectory_kwargs
     
-    def add_trace_trajectory(fig: 'go.Figure',
-                             values: npt.NDArray[np.float32],
-                             timestamps: npt.NDArray[Union[np.float32, np.int32]],
-                             color: Optional[str]=None,
-                             alpha: float=1.0,
-                             showlegend: bool=True,
-                             name: Optional[str] = None,):
-        """
-        Add a single trace (single task run trajectory) to the figure
-        """
-        color_rgba = color # add alpha
+    # parse kwargs so that all are a list of values
+    kwargs_kvp = {
+        'time_domain': 'steps',
+        'value_domain': 'agent_evaluations',
+        'includes_init_eval': True,
+        'show_std': False,
+        'show_run_traces': False,
+        'task_trace_start': 'most',
+        'common_run_traces_start': True
+    }
+    for kwarg_name, value in kwargs_kvp.items():
+        if kwarg_name not in kwargs:
+            kwargs[kwarg_name] = value
+        if not isinstance(kwargs[kwarg_name], list):
+            kwargs[kwarg_name] = [kwargs[kwarg_name] for _ in range(len(trajectories))]
 
-        fig.add_trace(go.Scatter(
-            x=timestamps, y=values, mode='lines', name=name,
-            opacity=alpha, showlegend=showlegend,
-            line=dict(color=color_rgba)
-        ))
-
-    def add_std_region(fig: 'go.Figure', values, std, timestamps, color):
-        fig.add_trace(go.Scatter(
-            x=timestamps, y=values+std, mode='lines', showlegend=False,
-            line_color=color
-        ))
-        fig.add_trace(go.Scatter(
-            x=timestamps, y=values-std, mode='lines', showlegend=False,
-            fill='tonexty', line_color=color
-        ))
-
-    def add_task_trajectory(fig: 'go.Figure', 
-                            task_runs: list[LearningStats],
-                            color: Optional[str] = None,
-                            name: Optional[str] = None,
-                            time_offsets: Optional[list[Union[float, int]]] = None):
-        """
-        Add a single task trajectory to the figure
-        """
-        if time_offsets is None:
-            time_offsets = np.zeros(len(task_runs))
-        if task_trace_start == 'mean':
-            task_time_offset = np.mean(time_offsets)
-        elif task_trace_start == 'max':
-            task_time_offset = np.max(time_offsets)
-        elif task_trace_start == 'q3':
-            task_time_offset = np.quantile(time_offsets, 0.75)
-        elif task_trace_start == 'most':
-            task_time_offset = np.quantile(time_offsets, 0.95)
-        elif task_trace_start == 'outliers':
-            q3 = np.quantile(time_offsets, 0.75)
-            q1 = np.quantile(time_offsets, 0.25)
-            iqr = q3 - q1 
-            task_time_offset = np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
-
-        agg = LearningStatsAggregator(task_runs, includes_init_eval)
-        values, timestamps = agg.get_aggregate(time_domain, value_domain)
-        if show_std:
-            std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
-        timestamps += task_time_offset
-        add_trace_trajectory(fig, values, timestamps, color=color, name=name)
-        if show_std:
-            add_std_region(fig, values, std, timestamps, color='#bbbbbb')
-        if not show_run_traces:
-            return
-        
-        for i, run in enumerate(task_runs):
-            agg = LearningStatsAggregator([run], includes_init_eval)
-            values, timestamps = agg.get_aggregate(time_domain, value_domain)
-            if common_run_traces_start:
-                timestamps += task_time_offset
-            else:
-                timestamps += time_offsets[i]
-            add_trace_trajectory(
-                fig, values, timestamps, color=color, alpha=1/len(task_runs), showlegend=False)
-
-    def add_curriculum_trajectory(fig: 'go.Figure', 
-                                  curriculum_runs: list[dict[str, LearningStats]]):
-        time_offsets = np.zeros(shape=len(curriculum_runs))
-        for task_name in curriculum_runs[0].keys():
-            task_runs = [run[task_name] for run in curriculum_runs]
-
-            # TODO get colour for task
-
-            add_task_trajectory(fig, task_runs, name=task_name, time_offsets=time_offsets)
-
-            for i, run in enumerate(curriculum_runs):
-                time_offsets[i] += get_time_data(run[task_name], time_domain)
+    if as_separate_figs:
+        # recursively call plot_trajectories for each trajectory
+        for i, trajectory_kwargs in enumerate(iterate_kwargs()):
+            trajectory = trajectories[i]
+            new_save_path = None if save_path is None else save_path + f'_{i}'
+            plot_trajectories(
+                [trajectory], 
+                as_separate_figs=False, 
+                show=show, 
+                save_path=new_save_path, 
+                save_format=save_format, 
+                **trajectory_kwargs)
 
     fig = go.Figure()
-    for runs in runs_list:
-        if isinstance(runs[0], LearningStats):
-            # TODO get colour
-            add_task_trajectory(fig, runs)
-        if isinstance(runs[0], dict):
-            add_curriculum_trajectory(fig, runs)
+    for i, trajectory_kwargs in enumerate(iterate_kwargs()):
+        trajectory = trajectories[i]
+        if isinstance(trajectory[0], LearningStats):
+            _add_task_trajectory(fig, trajectory, **trajectory_kwargs)
+        if isinstance(trajectory[0], dict):
+            _add_curriculum_trajectory(fig, trajectory, **trajectory_kwargs)
 
     fig.update_layout(
-        xaxis_title=f"Timestamps ({time_domain})",
-        yaxis_title=f"Values ({value_domain})"
+        xaxis_title=f"Timestamps ({kwargs['time_domain']})",
+        yaxis_title=f"Values ({kwargs['value_domain']})"
     )
     if show:
         fig.show()
@@ -1179,7 +1245,7 @@ def plot_trajectories(
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(f"{save_path}_trajectory_comparison.png")
+            fig.write_image(f"{save_path}.png")
         else:
-            fig.write_html(f"{save_path}_trajectory_comparison.html")
+            fig.write_html(f"{save_path}.html")
         return os.path.abspath(save_path)
