@@ -27,9 +27,19 @@ from plotly.subplots import make_subplots
 
 from academia.curriculum import LearningStats, LearningStatsAggregator
 
+TimeDomain = Literal['steps', 'episodes', 'wall_time', 'cpu_time']
+ValueDomain = Literal['agent_evaluations', 'episode_rewards']
+SaveFormat = Literal['png', 'html']
+LearningTaskRuns = list[LearningStats]
+CurriculumRuns = list[dict[str, LearningStats]]
+StartPoint = Literal['mean', 'q3' 'most', 'outliers', 'max']
 
-def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None,
-              save_format: Literal['png', 'html'] = 'png'):
+
+def plot_task(
+        task_stats: LearningStats, 
+        show: bool = False, 
+        save_path: str = None,
+        save_format: SaveFormat = 'png'):
     """
     Plots the learning statistics for a single task.
 
@@ -144,8 +154,11 @@ def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = No
         return os.path.abspath(save_path)
 
 
-def plot_rewards_curriculum(curriculum_stats: dict[str, LearningStats], show: bool = False,
-                            save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_rewards_curriculum(
+        curriculum_stats: dict[str, LearningStats], 
+        show: bool = False,
+        save_path: str = None, 
+        save_format: SaveFormat = 'png'):
     """
     Plots the trajectories of episode rewards for multiple tasks in the curriculum.
 
@@ -240,8 +253,11 @@ def plot_rewards_curriculum(curriculum_stats: dict[str, LearningStats], show: bo
         return os.path.abspath(save_path)
 
 
-def plot_trajectory_curriculum(curriculum_stats: dict[str, LearningStats], show: bool = False,
-                               save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_trajectory_curriculum(
+        curriculum_stats: dict[str, LearningStats], 
+        show: bool = False,
+        save_path: str = None, 
+        save_format: SaveFormat = 'png'):
     """
     Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
 
@@ -340,10 +356,13 @@ def plot_trajectory_curriculum(curriculum_stats: dict[str, LearningStats], show:
         return os.path.abspath(save_path)
 
 
-def plot_curriculum_vs_nocurriculum(curriculum_stats: dict[str, LearningStats],
-                                    nocurriculum_stats: LearningStats, show: bool = False,
-                                    save_path: str = None, save_format: Literal['png', 'html'] = 'png',
-                                    includes_init_eval: bool = True):
+def plot_curriculum_vs_nocurriculum(
+        curriculum_stats: dict[str, LearningStats],
+        nocurriculum_stats: LearningStats, show: bool = False,
+        includes_init_eval: bool = True,
+        save_path: str = None, 
+        save_format: SaveFormat = 'png',
+        ):
     """
     Plots the comparison of curriculum learning with no curriculum learning.
 
@@ -505,9 +524,12 @@ def plot_curriculum_vs_nocurriculum(curriculum_stats: dict[str, LearningStats],
         return os.path.abspath(save_path)
 
 
-def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
-                           show: bool = False, save_path: str = None,
-                           save_format: Literal['png', 'html'] = 'png'):
+def plot_evaluation_impact(
+        num_of_episodes_lvl_x: list[int], 
+        stats_lvl_y: list[LearningStats],
+        show: bool = False, 
+        save_path: str = None,
+        save_format: SaveFormat = 'png'):
     """
     Plots the impact of learning duration in task with difficulty level = x to evaluation 
     of task with difficulty level = y.
@@ -668,10 +690,14 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
         return os.path.abspath(save_path)
 
 
-def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats],
-                     time_domain_x: Literal["steps", "episodes", "cpu_time", "wall_time"] = "episodes",
-                     time_domain_y: Literal["steps", "episodes", "cpu_time", "wall_time", "as_x"] = "as_x",
-                     show: bool = False, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_time_impact(
+        stats_lvl_x: list[LearningStats], 
+        stats_lvl_y: list[LearningStats],
+        time_domain_x: Literal["steps", "episodes", "cpu_time", "wall_time"] = "episodes",
+        time_domain_y: Literal["steps", "episodes", "cpu_time", "wall_time", "as_x"] = "as_x",
+        show: bool = False, 
+        save_path: str = None, 
+        save_format: SaveFormat = 'png'):
     """
     Plots the impact of the number of episodes in task x on the total time spent in both tasks.
 
@@ -807,7 +833,8 @@ def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[Learnin
         return os.path.abspath(save_path)
 
 
-def _extract_time_data(stats: List[LearningStats], time_domain: str):
+def _extract_time_data(
+        stats: list[LearningStats], time_domain: str):
     """
     Extracts the data from the learning statistics for the given time domain.
 
@@ -830,9 +857,13 @@ def _extract_time_data(stats: List[LearningStats], time_domain: str):
         raise ValueError(f"Unknown time domain: {time_domain}")
 
 
-def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int],
-                                    stats_lvl_z: List[LearningStats], show: bool = False, save_path: str = None,
-                                    save_format: Literal['png', 'html'] = 'png'):
+def plot_multiple_evaluation_impact(
+        num_of_episodes_lvl_x: list[int], 
+        num_of_episodes_lvl_y: list[int],
+        stats_lvl_z: list[LearningStats], 
+        show: bool = False, 
+        save_path: str = None,
+        save_format: SaveFormat = 'png'):
     """
     Plots the impact of learning duration in task x and task y to evaluation of task z. The purpose of this plot is 
     to show how the learning duration in task x and task y affects the evaluation of task z. It is done by testing 
@@ -1015,18 +1046,20 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
         return os.path.abspath(save_path)
 
 
-def plot_compare_trajectories(
-        runs_list: list[Union[list[LearningStats], list[dict[str, LearningStats]]]],
-        time_domain: Literal['steps', 'episodes', 'wall_time', 'cpu_time'] = 'steps',
-        value_domain: Literal['agent_evaluations', 'episode_rewards'] = 'agent_evaluations',
-        includes_init_eval: bool = True,
-        show_std: bool = False,
-        show_run_traces: bool = False,
-        task_trace_start: Literal['mean', 'q3' 'most', 'outliers', 'max'] = 'most',
-        common_run_traces_start: bool = True,
+def plot_trajectories(
+        runs_list: list[Union[LearningTaskRuns, CurriculumRuns]],
+        time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
+        value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
+        includes_init_eval: Union[bool, list[bool]] = True,
+        show_std: Union[bool, list[bool]] = False,
+        show_run_traces: Union[bool, list[bool]] = False,
+        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        common_run_traces_start: Union[bool, list[bool]] = True,
+        as_separate_figs: bool = False,
+        as_subplots: bool = False,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: Literal['png', 'html'] = 'png'):
+        save_format: SaveFormat = 'png'):
     
     def get_time_data(
             task_stats: LearningStats,
