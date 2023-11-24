@@ -16,6 +16,7 @@ See Also:
     - :class:`academia.curriculum.LearningTask`
     - :class:`academia.curriculum.Curriculum`
 """
+import colorsys
 import os
 from typing import Literal, List, Optional, Union
 
@@ -1049,6 +1050,37 @@ def plot_multiple_evaluation_impact(
 
 # ===================================== WORK IN PROGRESS =============================================
 
+def _get_color(
+        n_shades: int = 1, 
+        seed: Optional[int] = None,
+        iter: Optional[int] = None,
+        max_iters: Optional[int] = None):
+    def hsv_to_hex(h, s, v):
+        rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+        hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+        return hex_color
+
+    _rng = np.random.default_rng(seed)
+    if iter is None or max_iters == 1:
+        base_hue = _rng.random()
+    else:
+        base_hue = 1/max_iters * (iter % max_iters)
+    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.6, 0.8))
+    shades: list = [base_color]
+
+    for i in range(1, n_shades):
+        h = np.clip(base_color[0] + _rng.uniform(-0.15, 0.15), 0, 1)
+        s = np.clip(base_color[1] - 0.1 * i, 0.4, 1.0)
+        b = np.clip(base_color[2] - 0.1 * i, 0.4, 1.0)
+        shades.append((h, s, b))
+
+    hex_colors = []
+    for shade in shades:
+        h, s, b = shade
+        hex_colors.append(hsv_to_hex(h, s, b))
+    
+    return hex_colors
+
 
 def _get_task_time_offset(
         task_trace_start: StartPoint, 
@@ -1095,12 +1127,10 @@ def _add_trace_trajectory(
     """
     Add a single trace (single task run trajectory) to the figure
     """
-    color_rgba = color # add alpha
-
     fig.add_trace(go.Scatter(
         x=timestamps, y=values, mode='lines', name=name,
         opacity=alpha, showlegend=showlegend,
-        line=dict(color=color_rgba)
+        line=dict(color=color)
     ))
 
 
@@ -1164,12 +1194,18 @@ def _add_task_trajectory(fig: 'go.Figure',
 def _add_curriculum_trajectory(fig: 'go.Figure', 
                               curriculum_runs: list[dict[str, LearningStats]],
                               time_domain: TimeDomain,
+                              colors: Optional[list[str]] = None,
                               **kwargs):
     time_offsets = np.zeros(shape=len(curriculum_runs))
-    for task_name in curriculum_runs[0].keys():
+    for i, task_name in enumerate(curriculum_runs[0].keys()):
         task_runs = [run[task_name] for run in curriculum_runs]
-        _add_task_trajectory(
-            fig, task_runs, name=task_name, time_offsets=time_offsets, time_domain=time_domain, **kwargs)
+        _add_task_trajectory(fig, 
+                             task_runs, 
+                             name=task_name, 
+                             time_offsets=time_offsets, 
+                             time_domain=time_domain, 
+                             color=colors[i], 
+                             **kwargs)
 
         for i, run in enumerate(curriculum_runs):
             time_offsets[i] += _get_time_data(run[task_name], time_domain)
@@ -1190,7 +1226,7 @@ def plot_trajectories(
         save_format: SaveFormat = 'png',
         **kwargs):
     
-    if not isinstance(trajectories):
+    if not isinstance(trajectories, list):
         trajectories = [trajectories]
 
     def iterate_kwargs():
@@ -1231,9 +1267,11 @@ def plot_trajectories(
     for i, trajectory_kwargs in enumerate(iterate_kwargs()):
         trajectory = trajectories[i]
         if isinstance(trajectory[0], LearningStats):
-            _add_task_trajectory(fig, trajectory, **trajectory_kwargs)
+            color = _get_color(1, i, i, len(trajectories))[0]
+            _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
         if isinstance(trajectory[0], dict):
-            _add_curriculum_trajectory(fig, trajectory, **trajectory_kwargs)
+            colors = _get_color(len(trajectory[0]), i, i, len(trajectories))
+            _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
 
     fig.update_layout(
         xaxis_title=f"Timestamps ({kwargs['time_domain']})",
