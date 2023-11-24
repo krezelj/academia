@@ -39,7 +39,7 @@ SaveFormat = Literal['png', 'html']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['mean', 'q3' 'most', 'outliers', 'max']
+StartPoint = Literal['zero', 'mean', 'q3' 'most', 'outliers', 'max']
 
 
 
@@ -820,14 +820,16 @@ def _get_color(
 def _get_task_time_offset(
         task_trace_start: StartPoint, 
         time_offsets: list[Union[float, int]]):
-    if task_trace_start == 'mean':
+    if task_trace_start == 'zero':
+        task_time_offset = 0
+    elif task_trace_start == 'mean':
         task_time_offset = np.mean(time_offsets)
     elif task_trace_start == 'max':
         task_time_offset = np.max(time_offsets)
     elif task_trace_start == 'q3':
         task_time_offset = np.quantile(time_offsets, 0.75)
     elif task_trace_start == 'most':
-        task_time_offset = np.quantile(time_offsets, 0.95)
+        task_time_offset = np.quantile(time_offsets, 0.90)
     elif task_trace_start == 'outliers':
         q3 = np.quantile(time_offsets, 0.75)
         q1 = np.quantile(time_offsets, 0.25)
