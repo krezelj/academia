@@ -559,6 +559,17 @@ def create_figure(show: bool = False,
                   save_path: Optional[str] = None, 
                   suffix: Optional[str] = None,
                   save_format: SaveFormat = 'png'):
+    """
+    Context manager that simplifies boilerplate code needed in all ``plot`` functions
+
+    Example:
+
+    >>> with create_figure(False, './test', 'curr_comparison', 'png') as fig:
+    >>>     fig.add_trace(...)
+
+    This snippet will create a fig, add a trace to it and then optionally show it and save it to
+    a specified file with a specified suffix.
+    """
     fig = go.Figure()
     yield fig
     
@@ -573,21 +584,35 @@ def create_figure(show: bool = False,
         return os.path.abspath(save_path)
 
 
-def _get_color(
+def _get_colors(
         n_shades: int = 1, 
         seed: Optional[int] = None,
-        iter: Optional[int] = None,
-        max_iters: Optional[int] = None):
+        query: Optional[int] = None,
+        n_queries: Optional[int] = None):
+    """
+    Returns a list of ``n_shades`` colours that are similar to each other.
+
+    If you know how many sets of shades you will query (i.e. how many times you will call this function
+    for a single figure) you can specify it with ``n_queries`` and tell the function which ``query``
+    it is in each call. Example
+
+    >>> n_queries: int = 5
+    >>> for i in range(n_queries):
+    >>>     colors = _get_colors(2, None, i, n_queries)
+
+    This way you ensure that all generated sets of shades are uniformly distributed on the Hue axis
+    in the HSV colour encoding.
+    """
     def hsv_to_hex(h, s, v):
         rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
         hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
         return hex_color
 
     _rng = np.random.default_rng(seed)
-    if iter is None or max_iters == 1:
+    if query is None or n_queries == 1:
         base_hue = _rng.random()
     else:
-        base_hue = 1/max_iters * (iter % max_iters)
+        base_hue = 1/n_queries * (query % n_queries)
     base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.6, 0.8))
     shades: list = [base_color]
 
@@ -608,6 +633,10 @@ def _get_color(
 def _get_task_time_offset(
         task_trace_start: StartPoint, 
         time_offsets: list[Union[float, int]]):
+    """
+    Returns the offset of the task trace starting point on the X axis
+    based on the chosen ``task_trace_start``.
+    """
     if task_trace_start == 'zero':
         task_time_offset = 0
     elif task_trace_start == 'mean':
@@ -626,9 +655,12 @@ def _get_task_time_offset(
     return task_time_offset
 
 
-def _get_time_data(
+def _get_total_time(
         task_stats: LearningStats,
         time_domain: TimeDomain):
+    """
+    Returns the total time in a given time domain for a specified :class:`LearningStats` object.
+    """
     if time_domain == "steps":
         return np.sum(task_stats.step_counts)
     elif time_domain == "episodes":
@@ -646,17 +678,13 @@ def _add_trace(
         x: npt.NDArray[Union[np.float32, np.int32]],
         y: npt.NDArray[Union[np.float32, np.int32]],
         color: Optional[str]=None,
-        alpha: float=1.0,
-        showlegend: bool=True,
-        name: Optional[str] = None,
         **kwargs):
     """
-    Add a single trace (single task run trajectory) to the figure
+    Adds a single trace to the figure. 
+    This is a wrapper to simplify code since it's used a lot of times
     """
     fig.add_trace(go.Scatter(
-        x=x, y=y, mode='lines', name=name,
-        opacity=alpha, showlegend=showlegend,
-        line=dict(color=color), **kwargs
+        x=x, y=y, mode='lines',line=dict(color=color), **kwargs
     ))
 
 
@@ -666,16 +694,11 @@ def _add_std_region(
         values: npt.NDArray[np.float32],
         std: npt.NDArray[np.float32], 
         color: Optional[str]=None):
+    """
+    Adds ``std`` values plot to the figure
+    """
     _add_trace(fig, timestamps, values+std, showlegend=False, color=color)
     _add_trace(fig, timestamps, values-std, showlegend=False, color=color, fill='tonexty')
-    # fig.add_trace(go.Scatter(
-    #     x=timestamps, y=values+std, mode='lines', showlegend=False,
-    #     line_color=color
-    # ))
-    # fig.add_trace(go.Scatter(
-    #     x=timestamps, y=values-std, mode='lines', showlegend=False,
-    #     fill='tonexty', line_color=color
-    # ))
 
 
 def _add_task_trajectory(
@@ -692,7 +715,7 @@ def _add_task_trajectory(
         name: Optional[str] = None,
         time_offsets: Optional[list[Union[float, int]]] = None):
     """
-    Add a single task trajectory to the figure
+    Adds a single task trajectory to the figure
     """
     if time_offsets is None:
         time_offsets = np.zeros(len(task_runs))
@@ -717,7 +740,7 @@ def _add_task_trajectory(
         else:
             timestamps += time_offsets[i]
         _add_trace(
-            fig, timestamps, values, color=color, alpha=1/len(task_runs), showlegend=False)
+            fig, timestamps, values, color=color, opacity=1/len(task_runs), showlegend=False)
 
 
 def _add_curriculum_trajectory(
@@ -726,6 +749,9 @@ def _add_curriculum_trajectory(
         time_domain: TimeDomain,
         colors: Optional[list[str]] = None,
         **kwargs):
+    """
+    Adds a curriculum trajectory to the figure
+    """
     time_offsets = np.zeros(shape=len(curriculum_runs))
     for i, task_name in enumerate(curriculum_runs[0].keys()):
         task_runs = [run[task_name] for run in curriculum_runs]
@@ -738,7 +764,7 @@ def _add_curriculum_trajectory(
                              **kwargs)
 
         for i, run in enumerate(curriculum_runs):
-            time_offsets[i] += _get_time_data(run[task_name], time_domain)
+            time_offsets[i] += _get_total_time(run[task_name], time_domain)
 
 
 def plot_trajectories(
@@ -797,10 +823,10 @@ def plot_trajectories(
         for i, trajectory_kwargs in enumerate(iterate_kwargs()):
             trajectory = trajectories[i]
             if isinstance(trajectory[0], LearningStats):
-                color = _get_color(1, i, i, len(trajectories))[0]
+                color = _get_colors(1, i, i, len(trajectories))[0]
                 _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
             if isinstance(trajectory[0], dict):
-                colors = _get_color(len(trajectory[0]), i, i, len(trajectories))
+                colors = _get_colors(len(trajectory[0]), i, i, len(trajectories))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
             xaxis_title=f"Timestamps ({kwargs['time_domain']})",
@@ -880,11 +906,11 @@ def plot_time_impact(
 
     x_times = []
     for task_runs in task_runs_x:
-        x_times.append(np.mean([_get_time_data(task_stats, time_domain_x) for task_stats in task_runs]))
+        x_times.append(np.mean([_get_total_time(task_stats, time_domain_x) for task_stats in task_runs]))
     xy_times = []
     for task_runs in zip(task_runs_x, task_runs_y):
-        x_time = np.mean([_get_time_data(task_stats, time_domain_xy) for task_stats in task_runs[0]])
-        y_time = np.mean([_get_time_data(task_stats, time_domain_xy) for task_stats in task_runs[1]])
+        x_time = np.mean([_get_total_time(task_stats, time_domain_xy) for task_stats in task_runs[0]])
+        y_time = np.mean([_get_total_time(task_stats, time_domain_xy) for task_stats in task_runs[1]])
         xy_times.append(x_time + y_time)
 
     with create_figure(show, save_path, save_format=save_format) as fig:
