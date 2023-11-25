@@ -255,46 +255,51 @@ def _add_curriculum_trajectory(
 
 def plot_trajectories(
         trajectories: Union[Runs, list[Runs]],
-        # time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
-        # value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
-        # includes_init_eval: Union[bool, list[bool]] = True,
-        # show_std: Union[bool, list[bool]] = False,
-        # show_run_traces: Union[bool, list[bool]] = False,
-        # task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
-        # common_run_traces_start: Union[bool, list[bool]] = True,
+        time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
+        value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
+        includes_init_eval: Union[bool, list[bool]] = True,
+        show_std: Union[bool, list[bool]] = False,
+        show_run_traces: Union[bool, list[bool]] = False,
+        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: SaveFormat = 'png',
-        **kwargs):
+        save_format: SaveFormat = 'png'):
     
-    if not isinstance(trajectories, list):
+    def _iterate_trajectories_kwargs():
+        for i in range(len(trajectories)):
+            trajectory_kwargs = {
+                kwarg_name: trajectories_kwargs[kwarg_name][i] for kwarg_name in trajectories_kwargs}
+            yield trajectory_kwargs
+
+    if not isinstance(trajectories[0], list):
         trajectories = [trajectories]
 
-    def iterate_kwargs():
-        for i in range(len(trajectories)):
-            trajectory_kwargs = {kwarg_name: kwargs[kwarg_name][i] for kwarg_name in kwargs}
-            yield trajectory_kwargs
-    
-    # parse kwargs so that all are a list of values
-    kwargs_kvp = {
-        'time_domain': 'steps',
-        'value_domain': 'agent_evaluations',
-        'includes_init_eval': True,
-        'show_std': False,
-        'show_run_traces': False,
-        'task_trace_start': 'most',
-        'common_run_traces_start': True
+    # compile arguments of similar nature into a single dictionary
+    # to be passed as kwargs later on
+    trajectories_kwargs = {
+        'time_domain': time_domain,
+        'value_domain': value_domain,
+        'includes_init_eval': includes_init_eval,
+        'show_std': show_std,
+        'show_run_traces': show_run_traces,
+        'task_trace_start': task_trace_start,
+        'common_run_traces_start': common_run_traces_start
     }
-    for kwarg_name, value in kwargs_kvp.items():
-        if kwarg_name not in kwargs:
-            kwargs[kwarg_name] = value
-        if not isinstance(kwargs[kwarg_name], list):
-            kwargs[kwarg_name] = [kwargs[kwarg_name] for _ in range(len(trajectories))]
 
+    # since we allow the user to either pass single values of a list of values (one for each
+    # trajectory) we have to convert all non-list values to lists so that it's compatible
+    # with the rest of the code
+    for kwarg_name, value in trajectories_kwargs.items():
+        if not isinstance(value, list):
+            trajectories_kwargs[kwarg_name] = [value] * len(trajectories)
+
+    
+    
     if as_separate_figs:
         # recursively call plot_trajectories for each trajectory
-        for i, trajectory_kwargs in enumerate(iterate_kwargs()):
+        for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = trajectories[i]
             new_save_path = None if save_path is None else save_path + f'_{i}'
             plot_trajectories(
@@ -306,7 +311,7 @@ def plot_trajectories(
                 **trajectory_kwargs)
 
     with _create_figure(show, save_path, save_format=save_format) as fig:
-        for i, trajectory_kwargs in enumerate(iterate_kwargs()):
+        for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = trajectories[i]
             if isinstance(trajectory[0], LearningStats):
                 color = _get_colors(1, i, i, len(trajectories))[0]
@@ -315,8 +320,8 @@ def plot_trajectories(
                 colors = _get_colors(len(trajectory[0]), i, i, len(trajectories))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
-            xaxis_title=f"Timestamps ({kwargs['time_domain']})",
-            yaxis_title=f"Values ({kwargs['value_domain']})"
+            xaxis_title=f"Timestamps ({trajectories_kwargs['time_domain']})",
+            yaxis_title=f"Values ({trajectories_kwargs['value_domain']})"
         )
     
 
