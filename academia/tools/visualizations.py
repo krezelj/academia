@@ -22,7 +22,6 @@ from typing import Literal, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-import plotly.express as px
 import plotly.graph_objects as go
 
 from academia.curriculum import LearningStats, LearningStatsAggregator
