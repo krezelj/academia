@@ -16,6 +16,7 @@ See Also:
     - :class:`academia.curriculum.Curriculum`
 """
 import colorsys
+from contextlib import contextmanager
 import os
 from typing import Literal, Optional, Union
 
@@ -66,8 +67,8 @@ def _extract_time_data(
 
 
 def plot_evaluation_impact(
-        num_of_episodes_lvl_x: list[int], 
-        stats_lvl_y: list[LearningStats],
+        n_episodes_list: list[int], 
+        task_runs_list: list[LearningTaskRuns],
         show: bool = False, 
         save_path: str = None,
         save_format: SaveFormat = 'png'):
@@ -94,23 +95,12 @@ def plot_evaluation_impact(
             the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
             environment.
 
-        ValueError: If the number of evaluation scores is not equal to the number of tasks at level x.
-            This means that the evaluation was not performed only at the end of the task, which is necessary to
-            correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
-            this task.
-
     Returns:
         Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
         the name of the saved plot, the _evaluation_impact is added to the end of the ``save_path``
-
-    Warning:
-        It is important that evaluations in task with difficulty level = y
-        are only performed at the end of the task and that the number of episodes in this task should be fixed
-        to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
-        this task.     
     
     Examples:
         Initialisation of a diffrent pairs we want to analyze:
@@ -195,33 +185,32 @@ def plot_evaluation_impact(
         >>>                         save_format='png')
     """
 
-    agent_evals_lvl_y = [value for task in stats_lvl_y for value in task.agent_evaluations.tolist()]
+    agent_evaluations = []
+    for task_runs in task_runs_list:
+        mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
+        agent_evaluations.append(mean_eval)
 
-    if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
+    if len(n_episodes_list) != len(task_runs_list):
         raise ValueError("The number of tasks at level x and level y should be equal.")
 
-    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
-        raise ValueError(
-            f"Agent evaluations should only be performed at the end of tasks with a level "
-            f"of difficulty y."
-        )
-
-    fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
-                  title='Impact of learning duration in task x to evaluation of task y')
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=n_episodes_list,
+        y=agent_evaluations,
+    ))
     fig.update_layout(
-        xaxis_title="Number of episodes in task X",
-        yaxis_title="Evaluation score in task Y"
+        title="Impact of learning duration in task x to evaluation of task y",
+        xaxis_title="Number of episodes in task x",
+        yaxis_title="Evaluation score in task y"
     )
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Number of episodes in task X: %{x}",
-            "Evaluation score in task Y: %{y}"
-        ])
-    )
-
+    # fig.update_traces(
+    #     hovertemplate="<br>".join([
+    #         "Number of episodes in task X: %{x}",
+    #         "Evaluation score in task Y: %{y}"
+    #     ])
+    # )
     if show:
         fig.show()
-
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
@@ -374,7 +363,7 @@ def plot_time_impact(
         return os.path.abspath(save_path)
 
 
-def plot_multiple_evaluation_impact(
+def plot_evaluation_impact_2d(
         num_of_episodes_lvl_x: list[int], 
         num_of_episodes_lvl_y: list[int],
         stats_lvl_z: list[LearningStats], 
@@ -565,6 +554,25 @@ def plot_multiple_evaluation_impact(
 
 # ===================================== WORK IN PROGRESS =============================================
 
+@contextmanager
+def create_figure(show: bool = False, 
+                  save_path: Optional[str] = None, 
+                  suffix: Optional[str] = None,
+                  save_format: SaveFormat = 'png'):
+    fig = go.Figure()
+    yield fig
+    
+    if show:
+        fig.show()
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if save_format == 'png':
+            fig.write_image(f"{save_path}_{suffix}.png")
+        else:
+            fig.write_html(f"{save_path}_{suffix}.html")
+        return os.path.abspath(save_path)
+
+
 def _get_color(
         n_shades: int = 1, 
         seed: Optional[int] = None,
@@ -633,38 +641,41 @@ def _get_time_data(
         raise ValueError(f"Unknown time domain: {time_domain}")
 
 
-def _add_trace_trajectory(
+def _add_trace(
         fig: 'go.Figure',
-        values: npt.NDArray[np.float32],
-        timestamps: npt.NDArray[Union[np.float32, np.int32]],
+        x: npt.NDArray[Union[np.float32, np.int32]],
+        y: npt.NDArray[Union[np.float32, np.int32]],
         color: Optional[str]=None,
         alpha: float=1.0,
         showlegend: bool=True,
-        name: Optional[str] = None,):
+        name: Optional[str] = None,
+        **kwargs):
     """
     Add a single trace (single task run trajectory) to the figure
     """
     fig.add_trace(go.Scatter(
-        x=timestamps, y=values, mode='lines', name=name,
+        x=x, y=y, mode='lines', name=name,
         opacity=alpha, showlegend=showlegend,
-        line=dict(color=color)
+        line=dict(color=color), **kwargs
     ))
 
 
 def _add_std_region(
         fig: 'go.Figure', 
+        timestamps: npt.NDArray[Union[np.float32, np.int32]], 
         values: npt.NDArray[np.float32],
         std: npt.NDArray[np.float32], 
-        timestamps: npt.NDArray[Union[np.float32, np.int32]], 
         color: Optional[str]=None):
-    fig.add_trace(go.Scatter(
-        x=timestamps, y=values+std, mode='lines', showlegend=False,
-        line_color=color
-    ))
-    fig.add_trace(go.Scatter(
-        x=timestamps, y=values-std, mode='lines', showlegend=False,
-        fill='tonexty', line_color=color
-    ))
+    _add_trace(fig, timestamps, values+std, showlegend=False, color=color)
+    _add_trace(fig, timestamps, values-std, showlegend=False, color=color, fill='tonexty')
+    # fig.add_trace(go.Scatter(
+    #     x=timestamps, y=values+std, mode='lines', showlegend=False,
+    #     line_color=color
+    # ))
+    # fig.add_trace(go.Scatter(
+    #     x=timestamps, y=values-std, mode='lines', showlegend=False,
+    #     fill='tonexty', line_color=color
+    # ))
 
 
 def _add_task_trajectory(
@@ -690,11 +701,11 @@ def _add_task_trajectory(
     agg = LearningStatsAggregator(task_runs, includes_init_eval)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
     timestamps += task_time_offset
-    _add_trace_trajectory(fig, values, timestamps, color=color, name=name)
+    _add_trace(fig, timestamps, values, color=color, name=name)
     
     if show_std:
         std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
-        _add_std_region(fig, values, std, timestamps, color='#bbbbbb')
+        _add_std_region(fig, timestamps, values, std, color='#bbbbbb')
     if not show_run_traces:
         return
     
@@ -705,8 +716,8 @@ def _add_task_trajectory(
             timestamps += task_time_offset
         else:
             timestamps += time_offsets[i]
-        _add_trace_trajectory(
-            fig, values, timestamps, color=color, alpha=1/len(task_runs), showlegend=False)
+        _add_trace(
+            fig, timestamps, values, color=color, alpha=1/len(task_runs), showlegend=False)
 
 
 def _add_curriculum_trajectory(
@@ -782,27 +793,104 @@ def plot_trajectories(
                 save_format=save_format, 
                 **trajectory_kwargs)
 
-    fig = go.Figure()
-    for i, trajectory_kwargs in enumerate(iterate_kwargs()):
-        trajectory = trajectories[i]
-        if isinstance(trajectory[0], LearningStats):
-            color = _get_color(1, i, i, len(trajectories))[0]
-            _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
-        if isinstance(trajectory[0], dict):
-            colors = _get_color(len(trajectory[0]), i, i, len(trajectories))
-            _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
+    with create_figure(show, save_path, save_format=save_format) as fig:
+        for i, trajectory_kwargs in enumerate(iterate_kwargs()):
+            trajectory = trajectories[i]
+            if isinstance(trajectory[0], LearningStats):
+                color = _get_color(1, i, i, len(trajectories))[0]
+                _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
+            if isinstance(trajectory[0], dict):
+                colors = _get_color(len(trajectory[0]), i, i, len(trajectories))
+                _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
+        fig.update_layout(
+            xaxis_title=f"Timestamps ({kwargs['time_domain']})",
+            yaxis_title=f"Values ({kwargs['value_domain']})"
+        )
+    
 
-    fig.update_layout(
-        xaxis_title=f"Timestamps ({kwargs['time_domain']})",
-        yaxis_title=f"Values ({kwargs['value_domain']})"
-    )
-    if show:
-        fig.show()
+def plot_evaluation_impact(
+        n_episodes_x: list[int], 
+        task_runs_y: list[LearningTaskRuns],
+        show: bool = False,
+        save_path: Optional[str] = None, 
+        save_format: SaveFormat = 'png',
+        ):
+    
+    if len(n_episodes_x) != len(task_runs_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
 
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}.png")
-        else:
-            fig.write_html(f"{save_path}.html")
-        return os.path.abspath(save_path)
+    agent_evaluations = []
+    for task_runs in task_runs_y:
+        mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
+        agent_evaluations.append(mean_eval)
+
+    with create_figure(show, save_path, save_format=save_format) as fig:
+        _add_trace(fig, n_episodes_x, agent_evaluations)
+        fig.update_layout(
+            title="Impact of learning duration in task x on evaluation of task y",
+            xaxis_title="Number of episodes in task x",
+            yaxis_title="Evaluation score in task y"
+        )
+
+
+def plot_evaluation_impact_2d(
+        n_episodes_x: list[int], 
+        n_episodes_y: list[int],
+        task_runs_z: list[LearningTaskRuns], 
+        show: bool = False, 
+        save_path: str = None,
+        save_format: SaveFormat = 'png'):
+    
+    if len(n_episodes_x) != len(n_episodes_y) or len(n_episodes_x) != len(task_runs_z):
+        raise ValueError("The number of tasks at level x, level y and level z should be equal.")
+    
+    agent_evaluations = []
+    for task_runs in task_runs_z:
+        mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
+        agent_evaluations.append(mean_eval)
+
+    with create_figure(show, save_path, save_format=save_format) as fig:
+        fig.add_trace(go.Scatter(
+            x=n_episodes_x,
+            y=n_episodes_y,
+            color=agent_evaluations,
+            color_continuous_scale='Greens',
+            labels={'color': 'Evaluation score in task z'},
+        ))
+        fig.update_layout(
+            title="Impact of learning duration in task x and task y on evaluation of task z",
+            xaxis_title="Number of episodes in task x",
+            yaxis_title="Number of episodes in task x"
+        )
+
+
+def plot_time_impact(
+        task_runs_x: list[LearningTaskRuns], 
+        task_runs_y: list[LearningTaskRuns],
+        time_domain_x: TimeDomain = "episodes",
+        time_domain_xy: Union[TimeDomain, Literal["as_x"]] = "as_x",
+        show: bool = False, 
+        save_path: str = None, 
+        save_format: SaveFormat = 'png'):
+    
+    if len(task_runs_x) != len(task_runs_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
+    if time_domain_xy == "as_x":
+        time_domain_xy = time_domain_x
+
+    x_times = []
+    for task_runs in task_runs_x:
+        x_times.append(np.mean([_get_time_data(task_stats, time_domain_x) for task_stats in task_runs]))
+    xy_times = []
+    for task_runs in zip(task_runs_x, task_runs_y):
+        x_time = np.mean([_get_time_data(task_stats, time_domain_xy) for task_stats in task_runs[0]])
+        y_time = np.mean([_get_time_data(task_stats, time_domain_xy) for task_stats in task_runs[1]])
+        xy_times.append(x_time + y_time)
+
+    with create_figure(show, save_path, save_format=save_format) as fig:
+        _add_trace(fig, x_times, xy_times)
+        fig.update_layout(
+            xaxis_title=f"Learning duration in task X ({time_domain_x})",
+            yaxis_title=f"Total time spent in both tasks ({time_domain_xy})",
+            title="Impact of learning duration in task x on total time spent in both tasks"
+        )
