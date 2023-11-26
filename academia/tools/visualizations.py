@@ -66,11 +66,15 @@ def _create_figure(show: bool = False,
     if show:
         fig.show()
     if save_path:
+        if not save_path.endswith(save_format):
+            save_path += f'{suffix}.{save_format}'
+        else:
+            save_path = f"{'.'.join(save_path.split('.')[:-1])}{suffix}.{save_format}"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(f"{save_path}{suffix}.png")
+            fig.write_image(save_path)
         else:
-            fig.write_html(f"{save_path}{suffix}.html")
+            fig.write_html(save_path)
 
 
 def _get_colors(
@@ -530,7 +534,7 @@ def plot_evaluation_impact(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, save_format=save_format) as fig:
+    with _create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
             title="Impact of learning duration in task x on evaluation of task y",
@@ -573,8 +577,8 @@ def plot_evaluation_impact_2d(
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
-        >>> n_episodes_x = [100, 500, 1000]
-        >>> n_episodes_y = [200, 400, 600]
+        >>> n_episodes_x = [100, 500]
+        >>> n_episodes_y = [200, 400]
         >>> task_runs_z: list[list[LearningStats]] = []
         >>> n_runs = 5
         >>> for nex in n_episodes_x:
@@ -592,6 +596,9 @@ def plot_evaluation_impact_2d(
         >>>         task_runs_z.append(final_task_runs)
         >>>
         >>> import academia.tools.visualizations as vis
+        >>> # the provided lists should over all tested combinations
+        >>> n_episodes_x = [100, 100, 500, 500]
+        >>> n_episodes_y = [200, 400, 200, 400]
         >>> vis.plot_evaluation_impact_2d(n_episodes_x, n_episodes_y, task_runs_z)
     """
 
@@ -603,13 +610,17 @@ def plot_evaluation_impact_2d(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, '_eval_impact_2d', save_format) as fig:
+    with _create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
         fig.add_trace(go.Scatter(
             x=n_episodes_x,
             y=n_episodes_y,
-            color=agent_evaluations,
-            color_continuous_scale='Greens',
-            labels={'color': 'Evaluation score in task z'},
+            mode='markers',
+            marker=dict(
+                size=16,
+                color=agent_evaluations,
+                colorscale='Viridis',
+                showscale=True
+            )
         ))
         fig.update_layout(
             title="Impact of learning duration in task x and task y on evaluation of task z",
@@ -690,7 +701,7 @@ def plot_time_impact(
         y_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[1]])
         xy_times.append(x_time + y_time)
 
-    with _create_figure(show, save_path, save_format=save_format) as fig:
+    with _create_figure(show, save_path, 'time_impact', save_format) as fig:
         _add_trace(fig, x_times, xy_times)
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({time_domain_x})",
