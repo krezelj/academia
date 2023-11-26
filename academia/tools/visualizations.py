@@ -57,6 +57,10 @@ def _create_figure(show: bool = False,
     a specified file with a specified suffix.
     """
     fig = go.Figure()
+    if suffix is None:
+        suffix = ""
+    else:
+        suffix = f"_{suffix}"
     yield fig
     
     if show:
@@ -64,9 +68,9 @@ def _create_figure(show: bool = False,
     if save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(f"{save_path}_{suffix}.png")
+            fig.write_image(f"{save_path}{suffix}.png")
         else:
-            fig.write_html(f"{save_path}_{suffix}.html")
+            fig.write_html(f"{save_path}{suffix}.html")
 
 
 def _get_colors(
@@ -450,6 +454,7 @@ def plot_trajectories(
                 save_path=new_save_path, 
                 save_format=save_format, 
                 **trajectory_kwargs)
+        return
 
     with _create_figure(show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
