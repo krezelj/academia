@@ -679,9 +679,8 @@ class LearningStatsAggregator:
         "step_counts_moving_avg"]
     __allowed_agg_func_names = ["mean", "min", "max", "std"]
 
-    def __init__(self, stats: Runs, includes_init_eval: bool = True) -> None:
+    def __init__(self, stats: Runs) -> None:
         self.stats = stats
-        self.includes_init_eval = includes_init_eval
         if not isinstance(stats, list):
             raise ValueError("Stats is not list-like")
         if isinstance(stats[0], dict):
@@ -751,7 +750,7 @@ class LearningStatsAggregator:
         aggregate = {}
         for key in keys:
             tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
-            tmp_aggregator = LearningStatsAggregator(tasks_stats, self.includes_init_eval)
+            tmp_aggregator = LearningStatsAggregator(tasks_stats)
             aggregate[key] = tmp_aggregator.get_aggregate(
                 time_domain, value_domain, agg_func_name)
         return aggregate
@@ -798,7 +797,7 @@ class LearningStatsAggregator:
         episode_durations = get_episode_durations()
         episode_timestamps = np.cumsum(episode_durations)
         if value_domain == 'agent_evaluations':
-            if self.includes_init_eval:
+            if self.__includes_init_eval(task_stats):
                 episode_timestamps = np.insert(episode_timestamps, 0, 0)
             evaluation_timestamps = episode_timestamps[::task_stats.evaluation_interval]
             return evaluation_timestamps
@@ -814,4 +813,8 @@ class LearningStatsAggregator:
             if agg_func_name == 'mean': return np.mean
             if agg_func_name == 'std': return np.std
         return get_agg_func()(interpolated_stats, axis=0)
-        
+
+    @staticmethod
+    def __includes_init_eval(task_stats: LearningStats):
+        n_evals_without_init = len(task_stats) // task_stats.evaluation_interval
+        return len(task_stats.agent_evaluations) == (n_evals_without_init + 1)

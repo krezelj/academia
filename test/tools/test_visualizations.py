@@ -55,7 +55,6 @@ class TestVisualizations(unittest.TestCase):
             plot_trajectories([self.dummy_curriculum_runs, self.dummy_task_runs],
                               time_domain=['steps', 'episodes'],
                               value_domain=['agent_evaluations', 'episode_rewards_moving_avg'],
-                              includes_init_eval=[True, True],
                               show_std=[False, True],
                               task_trace_start=['max', 'most'],
                               show_run_traces=[False, True],

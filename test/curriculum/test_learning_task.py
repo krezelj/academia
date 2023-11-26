@@ -474,16 +474,16 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
     def test_single_task_evaluation_with_init_aggregation(self):
         # arrange
-        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 100})
         stats_1.step_counts = np.ones(100)
         stats_1.agent_evaluations = np.array([0.0, 0.5])
         stats_1.evaluation_interval = 100
-        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 200})
         stats_2.step_counts = np.ones(200)
         stats_2.agent_evaluations = np.array([0.0, 1.0, 2.0])
         stats_2.evaluation_interval = 100
         stats = [stats_1, stats_2]
-        sut = LearningStatsAggregator(stats, includes_init_eval=True)
+        sut = LearningStatsAggregator(stats)
 
         # act
         aggregate, timestamps = sut.get_aggregate()
@@ -498,16 +498,17 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
     def test_single_task_evaluation_without_init_aggregation(self):
         # arrange
-        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 100})
         stats_1.step_counts = np.ones(100)
         stats_1.agent_evaluations = np.array([0.5])
         stats_1.evaluation_interval = 100
-        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 200})
         stats_2.step_counts = np.ones(200)
         stats_2.agent_evaluations = np.array([1.0, 2.0])
         stats_2.evaluation_interval = 100
+
         stats = [stats_1, stats_2]
-        sut = LearningStatsAggregator(stats, includes_init_eval=False)
+        sut = LearningStatsAggregator(stats)
 
         # act
         aggregate, timestamps = sut.get_aggregate()
@@ -529,7 +530,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats_2.step_counts = np.ones(200)
         stats_2.episode_rewards = np.ones(200) * 2
         stats = [stats_1, stats_2]
-        sut = LearningStatsAggregator(stats, includes_init_eval=False)
+        sut = LearningStatsAggregator(stats)
 
         # act
         aggregate, timestamps = sut.get_aggregate(value_domain='episode_rewards')

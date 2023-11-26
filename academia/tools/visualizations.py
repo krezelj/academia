@@ -198,7 +198,6 @@ def _add_task_trajectory(
         fig: 'go.Figure', 
         task_runs: list[LearningStats],
         task_trace_start: StartPoint,
-        includes_init_eval: bool,
         time_domain: TimeDomain,
         value_domain: ValueDomain,
         show_std: bool,
@@ -214,7 +213,7 @@ def _add_task_trajectory(
         time_offsets = np.zeros(len(task_runs))
     task_time_offset = _get_task_time_offset(task_trace_start, time_offsets)
 
-    agg = LearningStatsAggregator(task_runs, includes_init_eval)
+    agg = LearningStatsAggregator(task_runs)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
     timestamps += task_time_offset
     _add_trace(fig, timestamps, values, color=color, name=name)
@@ -226,7 +225,7 @@ def _add_task_trajectory(
         return
     
     for i, run in enumerate(task_runs):
-        agg = LearningStatsAggregator([run], includes_init_eval)
+        agg = LearningStatsAggregator([run])
         values, timestamps = agg.get_aggregate(time_domain, value_domain)
         if common_run_traces_start:
             timestamps += task_time_offset
@@ -264,7 +263,6 @@ def plot_trajectories(
         runs: Union[Runs, list[Runs]],
         time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
-        includes_init_eval: Union[bool, list[bool]] = True,
         show_std: Union[bool, list[bool]] = False,
         task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
         show_run_traces: Union[bool, list[bool]] = False,
@@ -285,8 +283,6 @@ def plot_trajectories(
             Can be either one of ``'agent_evaluations'``, ``'episode_rewards'``, 
             ``'episode_rewards_moving_avg'``, ``'step_counts'``, ``'step_counts_moving_avg'``
             or a list of these values, one for each plotted trajectory. Defaults to ``'agent_evaluations'``.
-        includes_init_eval: Whether provided stats include an initial evaluation.
-            Used when ``value_domain`` is set to ``'agent_evaluations``. Defaults to ``True``.
         show_std: Whether to show standard deviation region around given trajectory.
             Can be either a single bool or a list of bools, one for each plotted trajectory.
             Defaults to ``False``.
@@ -432,7 +428,6 @@ def plot_trajectories(
     trajectories_kwargs = {
         'time_domain': time_domain,
         'value_domain': value_domain,
-        'includes_init_eval': includes_init_eval,
         'show_std': show_std,
         'show_run_traces': show_run_traces,
         'task_trace_start': task_trace_start,
