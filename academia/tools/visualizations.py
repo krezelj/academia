@@ -67,7 +67,6 @@ def _create_figure(show: bool = False,
             fig.write_image(f"{save_path}_{suffix}.png")
         else:
             fig.write_html(f"{save_path}_{suffix}.html")
-        return os.path.abspath(save_path)
 
 
 def _get_colors(
@@ -254,27 +253,171 @@ def _add_curriculum_trajectory(
 
 
 def plot_trajectories(
-        trajectories: Union[Runs, list[Runs]],
+        runs: Union[Runs, list[Runs]],
         time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
         includes_init_eval: Union[bool, list[bool]] = True,
         show_std: Union[bool, list[bool]] = False,
-        show_run_traces: Union[bool, list[bool]] = False,
         task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
         show: bool = False,
         save_path: Optional[str] = None, 
         save_format: SaveFormat = 'png'):
+    """
+    Plots trajectories of specified task/curriculum runs.
+
+    Args:
+        runs: A list of task/curriculum stats or a list which elements are lists of task/curriculum stats
+        time_domain: Time domain which will be used on the X-axis.
+            Can be either one of ``'steps'``, ``'episodes'``, ``'wall_time'``, ``'cpu_time'``
+            or a list of these values, one for each plotted trajectory. Defaults to ``'steps'``.
+        value_domain: Value domain which will be used on the Y-axis.
+            Can be either one of ``'agent_evaluations'``, ``'episode_rewards'``, 
+            ``'episode_rewards_moving_avg'``, ``'step_counts'``, ``'step_counts_moving_avg'``
+            or a list of these values, one for each plotted trajectory. Defaults to ``'agent_evaluations'``.
+        includes_init_eval: Whether provided stats include an initial evaluation.
+            Used when ``value_domain`` is set to ``'agent_evaluations``. Defaults to ``True``.
+        show_std: Whether to show standard deviation region around given trajectory.
+            Can be either a single bool or a list of bools, one for each plotted trajectory.
+            Defaults to ``False``.
+        task_trace_start: Point at which the next task in curriculum should start.
+            Only used with curriculum trajectories. Possible values are:
+
+            - ``'zero'`` - Each task trajectory will start at x=0,
+            - ``'mean'`` - Each task trajectory will start at the mean termination point of
+              previous trajectories,
+            - ``'q3'`` - Each task trajectory will start at the third quantile of previous
+              trajectories' termination points,
+            - ``'most'`` - Each task trajectory will start at 0.9 quantile of previous
+              trajectories' termiantion points,
+            - ``'outliers'`` - Each trajectory task will start at the outlier boundry of previous
+              trajectories' termination points (Q3 + 1.5IQR),
+            - ``'max'`` - Each task trajectory will start at the max termination point of
+              previous trajectories.
+
+            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
+            Defaults to ``'most'``.
+        show_run_traces: Whether to show individual run traces (with lower opacity)
+            Can either be a single value or a list of values, one for each plotted trajectory.
+            Defaults to ``False``.
+        common_run_traces_start: Whether individual run traces should start at the same point (the same
+            as their parent trajectory) or as continuations of their predecessors (when plotting
+            curriculum trajectory). Can either be a single value or a list of values, 
+            one for each plotted curriculum trajectory. Defaults to ``False``.
+        as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
+            and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
+            corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+    
+    Examples:
+
+        The following imports are needed for the following examples
+
+        >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
+        >>> import academia.visualisations as vis
+
+        For details on how to configure agents see :mod:`academia.agents`
+
+        Plotting evaluations from a single task run
+
+        >>> task: LearningTask = ...
+        >>> agent = ...
+        >>> task.run(agent)
+        >>> stats: LearningStats = task.stats
+        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+
+        Plotting evaluations from a single curriculum run. See :mod:`academia.curriculum`
+        for more details on how to configure and run a curriculum.
+
+        >>> curriculum: Currriculum = ...
+        >>> agent = ...
+        >>> curriculum.run(agent)
+        >>> stats: dict[str, LearningStats] = curriculum.stats
+        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+
+        Plotting several runs of a single task with some additonal visuals
+
+        >>> task: LearningTask = ...
+        >>> n_runs =  5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     task.run(agent)
+        >>>     task_runs_stats.append(task.stats)
+        >>> vis.plot_trajectories(
+        >>>     task_runs_stats, 
+        >>>     show_run_traces=True,
+        >>>     show_std=True,
+        >>> )
+
+        Plotting curriculum vs task comparison
+
+        >>> task: LearningTask = ...
+        >>> curriculum: Curriculum = ...
+        >>> n_runs = 5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> curriculum_runs_stats: list[dict[str, LearningStats]] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ....
+        >>>     task.run(agent)
+        >>>     taks_runs_stats.append(task.stats)
+        >>>     agent = ...
+        >>>     curriculum.run(agent)
+        >>>     curriculum_runs_stats.append(curriculum.stats)
+        >>> vis.plot_trajectories(
+        >>>     [task_runs_stats, curriculum_runs_stats],
+        >>>     show_std=True,
+        >>>     show_run_traces=[True, False] # show individual traces only for the task
+        >>> )
+
+        Plotting curriculum vs curriculum as separate figures with different time domains
+
+        >>> curriculum_1: Curriculum = ...
+        >>> curriculum_2: Curriculum = ...
+        >>> n_runs = 5
+        >>> curriculum_1_runs_stats: list[dict[str, LearningStats]] = []
+        >>> curriculum_2_runs_stats: list[dict[str, LearningStats]] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ....
+        >>>     curriculum_1.run(agent)
+        >>>     curriculum_1_runs_stats.append(curriculum_1.stats)
+        >>>     agent = ...
+        >>>     curriculum_2.run(agent)
+        >>>     curriculum_2_runs_stats.append(curriculum_2.stats)
+        >>> vis.plot_trajectories(
+        >>>     [curriculum_1_runs_stats, curriculum_2_runs_stats],
+        >>>     as_separate_fig: True
+        >>>     time_domain=["steps", "episodes"]
+        >>> )
+
+        Plotting a running average of steps in episodes in several runs of a single task
+
+        >>> task: LearningTask = ...
+        >>> n_runs =  5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     task.run(agent)
+        >>>     task_runs_stats.append(task.stats)
+        >>> vis.plot_trajectories(
+        >>>     task_runs_stats,
+        >>>     value_domain='step_counts_moving_avg'
+        >>>     show_run_traces=True,
+        >>> )
+    """
     
     def _iterate_trajectories_kwargs():
-        for i in range(len(trajectories)):
+        for i in range(len(runs)):
             trajectory_kwargs = {
                 kwarg_name: trajectories_kwargs[kwarg_name][i] for kwarg_name in trajectories_kwargs}
             yield trajectory_kwargs
 
-    if not isinstance(trajectories[0], list):
-        trajectories = [trajectories]
+    if not isinstance(runs[0], list):
+        runs = [runs]
 
     # compile arguments of similar nature into a single dictionary
     # to be passed as kwargs later on
@@ -293,14 +436,12 @@ def plot_trajectories(
     # with the rest of the code
     for kwarg_name, value in trajectories_kwargs.items():
         if not isinstance(value, list):
-            trajectories_kwargs[kwarg_name] = [value] * len(trajectories)
+            trajectories_kwargs[kwarg_name] = [value] * len(runs)
 
-    
-    
     if as_separate_figs:
         # recursively call plot_trajectories for each trajectory
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
-            trajectory = trajectories[i]
+            trajectory = runs[i]
             new_save_path = None if save_path is None else save_path + f'_{i}'
             plot_trajectories(
                 [trajectory], 
@@ -312,12 +453,12 @@ def plot_trajectories(
 
     with _create_figure(show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
-            trajectory = trajectories[i]
+            trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
-                color = _get_colors(1, i, i, len(trajectories))[0]
+                color = _get_colors(1, i, i, len(runs))[0]
                 _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
             if isinstance(trajectory[0], dict):
-                colors = _get_colors(len(trajectory[0]), i, i, len(trajectories))
+                colors = _get_colors(len(trajectory[0]), i, i, len(runs))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
             xaxis_title=f"Timestamps ({trajectories_kwargs['time_domain']})",
@@ -348,9 +489,6 @@ def plot_evaluation_impact(
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
             environment.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
@@ -421,9 +559,6 @@ def plot_evaluation_impact_2d(
             because the experiment involves testing the curriculum on group of three tasks with 
             three specific levels of difficulty in order to examine how the number of episodes spent 
             in the easier ones affects the evaluation of the agent in the more difficult environment.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of
@@ -493,8 +628,8 @@ def plot_time_impact(
     Args:
         task_runs_x: Learning statistics for tasks in level X.
         task_runs_y: Learning statistics for tasks in level Y.
-        time_domain_x: Time domain over which time will be displayed on the X-axis.
-        time_domain_y: Time domain over which time will be displayed on the Y-axis.
+        time_domain_x: Time domain which will be used on the X-axis.
+        time_domain_y: Time domain which will be used on the Y-axis.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -504,9 +639,6 @@ def plot_time_impact(
             the number of tasks at level x and level y is equal because the experiment involves testing 
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the total time spent in both tasks.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
 
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of
