@@ -57,6 +57,24 @@ def _create_figure(show: bool = False,
     a specified file with a specified suffix.
     """
     fig = go.Figure()
+    fig.update_layout(
+        plot_bgcolor='white'
+    )
+    fig.update_xaxes(
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey'
+    )
+    fig.update_yaxes(
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey'
+    )
+
     if suffix is None:
         suffix = ""
     else:
@@ -75,6 +93,27 @@ def _create_figure(show: bool = False,
             fig.write_image(save_path)
         else:
             fig.write_html(save_path)
+
+
+def _get_domain_display_name(domain: Union[TimeDomain, ValueDomain]):
+    if domain == 'agent_evaluations':
+        return "Evaluation Score"
+    if domain == 'episode_rewards':
+        return "Episode Reward"
+    if domain == 'episode_rewards_moving_avg':
+        return "Episode Reward"
+    if domain == 'step_counts':
+        return "Step Count"
+    if domain == 'step_counts_moving_avg':
+        return "Step Count"
+    if domain == 'steps':
+        return "Step Count"
+    if domain == 'episodes':
+        return "Episodes"
+    if domain == 'wall_time':
+        return "Wall Time (seconds)"
+    if domain == 'cpu_time':
+        return "CPU Time"
 
 
 def _get_colors(
@@ -104,13 +143,18 @@ def _get_colors(
     _rng = np.random.default_rng(seed)
     if query is None or n_queries == 1:
         base_hue = _rng.random()
+        hue_range = 0.2
     else:
         base_hue = 1/n_queries * (query % n_queries)
-    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.6, 0.8))
+        hue_range = 1/(5*n_queries)
+    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.7, 0.9))
     shades: list = [base_color]
 
     for i in range(1, n_shades):
-        h = np.clip(base_color[0] + _rng.uniform(-0.15, 0.15), 0, 1)
+        h = base_color[0] + _rng.normal(0, hue_range)
+        if h < 0: h = h + 1
+        if h > 1: h = h - 1
+
         s = np.clip(base_color[1] - 0.1 * i, 0.4, 1.0)
         b = np.clip(base_color[2] - 0.1 * i, 0.4, 1.0)
         shades.append((h, s, b))
@@ -232,7 +276,7 @@ def _add_task_trajectory(
         else:
             timestamps += time_offsets[i]
         _add_trace(
-            fig, timestamps, values, color=color, opacity=1/len(task_runs), showlegend=False)
+            fig, timestamps, values, color=color, opacity=np.sqrt(1/(2*len(task_runs))), showlegend=False)
 
 
 def _add_curriculum_trajectory(
@@ -465,8 +509,8 @@ def plot_trajectories(
                 colors = _get_colors(len(trajectory[0]), i, i, len(runs))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
-            xaxis_title=f"Timestamps ({trajectories_kwargs['time_domain']})",
-            yaxis_title=f"Values ({trajectories_kwargs['value_domain']})"
+            xaxis_title=f"{_get_domain_display_name(time_domain)}",
+            yaxis_title=f"{_get_domain_display_name(value_domain)}"
         )
     
 
@@ -532,7 +576,7 @@ def plot_evaluation_impact(
     with _create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
-            title="Impact of learning duration in task x on evaluation of task y",
+            title="Impact of learning duration in task x on the evaluation of task y",
             xaxis_title="Number of episodes in task x",
             yaxis_title="Evaluation score in task y"
         )
@@ -618,9 +662,9 @@ def plot_evaluation_impact_2d(
             )
         ))
         fig.update_layout(
-            title="Impact of learning duration in task x and task y on evaluation of task z",
+            title="Impact of learning duration in task x and task y on the evaluation of task z",
             xaxis_title="Number of episodes in task x",
-            yaxis_title="Number of episodes in task x"
+            yaxis_title="Number of episodes in task y"
         )
 
 
@@ -699,7 +743,7 @@ def plot_time_impact(
     with _create_figure(show, save_path, 'time_impact', save_format) as fig:
         _add_trace(fig, x_times, xy_times)
         fig.update_layout(
-            xaxis_title=f"Learning duration in task X ({time_domain_x})",
-            yaxis_title=f"Total time spent in both tasks ({time_domain_y})",
-            title="Impact of learning duration in task x on total time spent in both tasks"
+            xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
+            yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
+            title="Impact of learning duration in task x on the total time spent in both tasks"
         )
