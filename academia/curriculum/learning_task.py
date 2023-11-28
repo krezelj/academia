@@ -624,14 +624,10 @@ class LearningStatsAggregator:
     Args:
         stats: Statistics to be aggregated. These statistics can either come from 
             different runs of a single task or different runs of a single curriculum.
-        includes_init_eval: Whether the statistics include an evaluation at the start
-            of the task. Defaults to ``True``.
 
     Attributes:
         stats (Union[list[LearningStats], list[dict[str, LearningStats]]]): 
             Statistics to be aggregated
-        includes_init_eval (bool): Whether the statistics include an evaluation at the start
-            of the task.
 
     Examples:
         Aggregating multiple single task trajectories.
@@ -731,7 +727,8 @@ class LearningStatsAggregator:
         aggregated_stats = self.__aggregated_stats(interpolated_stats, agg_func_name)
         return aggregated_stats, timestamps
     
-    def __time_domain_full_name(self, time_domain):
+    @staticmethod
+    def __time_domain_full_name(time_domain):
         if time_domain == 'steps': return 'step_counts'
         if time_domain == 'episodes': return 'episode_counts'
         if time_domain == 'wall_time': return 'episode_wall_times'
@@ -803,9 +800,8 @@ class LearningStatsAggregator:
             return evaluation_timestamps
         return episode_timestamps
 
-    def __aggregated_stats(self, 
-                           interpolated_stats : npt.NDArray[np.float32], 
-                           agg_func_name: AggFuncName) \
+    @staticmethod
+    def __aggregated_stats(interpolated_stats : npt.NDArray[np.float32], agg_func_name: AggFuncName) \
             -> npt.NDArray[np.float32]:
         def get_agg_func():
             if agg_func_name == 'max': return np.max

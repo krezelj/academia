@@ -63,6 +63,13 @@ class TestVisualizations(unittest.TestCase):
         except Exception as e:
             self.fail(f"plot_trajectories raised an error when it shouldn't: {e}")
 
+        with self.assertRaises(ValueError):
+            plot_trajectories(self.dummy_task_runs, time_domain="")
+        with self.assertRaises(ValueError):
+            plot_trajectories(self.dummy_task_runs, value_domain="")
+        with self.assertRaises(ValueError):
+            plot_trajectories(self.dummy_task_runs, task_trace_start="")
+
     def test_plot_trajectories_saving(self):
         try:
             tmpf = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
@@ -175,6 +182,11 @@ class TestVisualizations(unittest.TestCase):
             plot_time_impact(task_runs_x, task_runs_y)
         except Exception as e:
             self.fail(f"plot_time_impact raised an error when it shouldn't: {e}")
+
+        with self.assertRaises(ValueError):
+            plot_time_impact(task_runs_x, task_runs_y, time_domain_x="")
+        with self.assertRaises(ValueError):
+            plot_time_impact(task_runs_x, task_runs_y, time_domain_y="")
 
     def test_plot_time_impact_saving(self):
         task_runs_x = [self.dummy_task_runs] * 5

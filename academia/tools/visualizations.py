@@ -37,7 +37,7 @@ SaveFormat = Literal['png', 'html']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['zero', 'mean', 'q3' 'most', 'outliers', 'max']
+StartPoint = Literal['zero', 'mean', 'q3', 'most', 'outliers', 'max']
 
 
 @contextmanager
@@ -114,6 +114,7 @@ def _get_domain_display_name(domain: Union[TimeDomain, ValueDomain]):
         return "Wall Time (seconds)"
     if domain == 'cpu_time':
         return "CPU Time"
+    raise ValueError(f"Invalid domain: {domain}")
 
 
 def _get_colors(
@@ -175,21 +176,21 @@ def _get_task_time_offset(
     based on the chosen ``task_trace_start``.
     """
     if task_trace_start == 'zero':
-        task_time_offset = 0
-    elif task_trace_start == 'mean':
-        task_time_offset = np.mean(time_offsets)
-    elif task_trace_start == 'max':
-        task_time_offset = np.max(time_offsets)
-    elif task_trace_start == 'q3':
-        task_time_offset = np.quantile(time_offsets, 0.75)
-    elif task_trace_start == 'most':
-        task_time_offset = np.quantile(time_offsets, 0.90)
-    elif task_trace_start == 'outliers':
+        return 0
+    if task_trace_start == 'mean':
+        return np.mean(time_offsets)
+    if task_trace_start == 'max':
+        return np.max(time_offsets)
+    if task_trace_start == 'q3':
+        return np.quantile(time_offsets, 0.75)
+    if task_trace_start == 'most':
+        return np.quantile(time_offsets, 0.90)
+    if task_trace_start == 'outliers':
         q3 = np.quantile(time_offsets, 0.75)
         q1 = np.quantile(time_offsets, 0.25)
         iqr = q3 - q1 
-        task_time_offset = np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
-    return task_time_offset
+        return np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
+    raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
 def _get_total_time(
@@ -360,13 +361,18 @@ def plot_trajectories(
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+
+    Raises:
+        ValueError: If ``time_domain`` is invalid
+        ValueError: If ``value_domain`` is invalid
+        ValueError: If ``task_trace_start`` is invalid
     
     Examples:
 
         The following imports are needed for the following examples
 
         >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
-        >>> import academia.visualisations as vis
+        >>> import academia.visualizations as vis
 
         For details on how to configure agents see :mod:`academia.agents`
 
@@ -410,9 +416,9 @@ def plot_trajectories(
         >>> task_runs_stats: list[LearningStats] = []
         >>> curriculum_runs_stats: list[dict[str, LearningStats]] = []
         >>> for _ in range(n_runs):
-        >>>     agent = ....
+        >>>     agent = ...
         >>>     task.run(agent)
-        >>>     taks_runs_stats.append(task.stats)
+        >>>     task_runs_stats.append(task.stats)
         >>>     agent = ...
         >>>     curriculum.run(agent)
         >>>     curriculum_runs_stats.append(curriculum.stats)
@@ -430,7 +436,7 @@ def plot_trajectories(
         >>> curriculum_1_runs_stats: list[dict[str, LearningStats]] = []
         >>> curriculum_2_runs_stats: list[dict[str, LearningStats]] = []
         >>> for _ in range(n_runs):
-        >>>     agent = ....
+        >>>     agent = ...
         >>>     curriculum_1.run(agent)
         >>>     curriculum_1_runs_stats.append(curriculum_1.stats)
         >>>     agent = ...
@@ -438,7 +444,7 @@ def plot_trajectories(
         >>>     curriculum_2_runs_stats.append(curriculum_2.stats)
         >>> vis.plot_trajectories(
         >>>     [curriculum_1_runs_stats, curriculum_2_runs_stats],
-        >>>     as_separate_fig: True
+        >>>     as_separate_fig = True
         >>>     time_domain=["steps", "episodes"]
         >>> )
 
@@ -694,6 +700,7 @@ def plot_time_impact(
             the number of tasks at level x and level y is equal because the experiment involves testing 
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the total time spent in both tasks.
+        ValueError: If ``time_domain`` is invalid
 
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of
@@ -701,6 +708,9 @@ def plot_time_impact(
 
     Examples:
         
+        >>> from academia.environments import LavaCrossing
+        >>> from academia.curriculum import LearningTask, LearningStats, Curriculum
+        >>>
         >>> wall_time_stops = [600, 900, 1200] # 10, 15 and 20 minutes
         >>> # the exact time at which the task stops might slightly differ
         >>> # from the set stop condition as it is only checked at the end of each episode
