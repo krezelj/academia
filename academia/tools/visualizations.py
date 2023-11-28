@@ -147,7 +147,7 @@ def _get_colors(
         hue_range = 0.2
     else:
         base_hue = 1/n_queries * (query % n_queries)
-        hue_range = 1/(5*n_queries)
+        hue_range = 1/(3*n_queries)
     base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.7, 0.9))
     shades: list = [base_color]
 
