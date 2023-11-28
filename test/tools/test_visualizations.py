@@ -60,6 +60,14 @@ class TestVisualizations(unittest.TestCase):
                               show_run_traces=[False, True],
                               common_run_traces_start=[True, False],
                               as_separate_figs=True)
+            plot_trajectories([self.dummy_curriculum_runs, self.dummy_task_runs],
+                              time_domain=['steps', 'episodes'],
+                              value_domain=['agent_evaluations', 'episode_rewards_moving_avg'],
+                              show_std=[False, True],
+                              task_trace_start=['max', 'most'],
+                              show_run_traces=[False, True],
+                              common_run_traces_start=[True, False],
+                              as_separate_figs=False) # differs from the previous test here
         except Exception as e:
             self.fail(f"plot_trajectories raised an error when it shouldn't: {e}")
 

@@ -95,7 +95,10 @@ def _create_figure(show: bool = False,
             fig.write_html(save_path)
 
 
-def _get_domain_display_name(domain: Union[TimeDomain, ValueDomain]):
+def _get_domain_display_name(
+        domain: Union[TimeDomain, ValueDomain, list[TimeDomain], list[ValueDomain]]):
+    if isinstance(domain, list):
+        return "/".join([_get_domain_display_name(domain[i]) for i in range(len(domain))])
     if domain == 'agent_evaluations':
         return "Evaluation Score"
     if domain == 'episode_rewards':
