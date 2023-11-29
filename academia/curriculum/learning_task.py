@@ -460,6 +460,7 @@ class LearningTask(SavableLoadable):
             'stop_conditions': self.__stop_conditions,
             'evaluation_interval': self.__evaluation_interval,
             'evaluation_count': self.__evaluation_count,
+            'include_init_eval': self.__include_init_eval,
             'greedy_evaluation': self.__greedy_evaluation,
             'exploration_reset_value': self.__exploration_reset_value,
         }
