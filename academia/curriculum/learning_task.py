@@ -66,6 +66,8 @@ class LearningTask(SavableLoadable):
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
         include_init_eval: Whether or not to evaluate an agent before the training starts (i.e. right at the
             start of the :func:`run` method). Defaults to ``True``.
+        exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
+            after the task is finished. Unspecified by default.
         name: Name of the task. This is unused when running a single task on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
             task is run through the :class:`Curriculum` object.
@@ -178,10 +180,17 @@ class LearningTask(SavableLoadable):
             my_stop_predicate(500, self.stats)
     """
 
-    def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, evaluation_count: int = 5, include_init_eval: bool = True,
-                 name: Optional[str] = None, agent_save_path: Optional[str] = None,
-                 stats_save_path: Optional[str] = None) -> None:
+    def __init__(self,
+                 env_type: Type[ScalableEnvironment],
+                 env_args: dict, stop_conditions: dict,
+                 evaluation_interval: int = 100,
+                 evaluation_count: int = 5,
+                 include_init_eval: bool = True,
+                 exploration_reset_value: Optional[int] = None,
+                 name: Optional[str] = None,
+                 agent_save_path: Optional[str] = None,
+                 stats_save_path: Optional[str] = None,
+                 ) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
         self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
@@ -208,6 +217,7 @@ class LearningTask(SavableLoadable):
         self.__evaluation_interval = evaluation_interval
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
+        self.__exploration_reset_value = exploration_reset_value
 
         self.stats = LearningStats(self.__evaluation_interval)
 
@@ -261,6 +271,8 @@ class LearningTask(SavableLoadable):
 
             if episode % self.__evaluation_interval == 0:
                 self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
+        if self.__exploration_reset_value is not None:
+            agent.reset_exploration(self.__exploration_reset_value)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -441,6 +453,7 @@ class LearningTask(SavableLoadable):
             'stop_conditions': self.__stop_conditions,
             'evaluation_interval': self.__evaluation_interval,
             'evaluation_count': self.__evaluation_count,
+            'exploration_reset_value': self.__exploration_reset_value,
         }
         if self.name is not None:
             task_data['name'] = self.name
