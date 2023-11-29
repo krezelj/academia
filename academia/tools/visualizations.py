@@ -50,7 +50,7 @@ def _create_figure(show: bool = False,
 
     Example:
 
-    >>> with create_figure(False, './test', 'curr_comparison', 'png') as fig:
+    >>> with _create_figure(False, './test', 'curr_comparison', 'png') as fig:
     >>>     fig.add_trace(...)
 
     This snippet will create a fig, add a trace to it and then optionally show it and save it to
@@ -192,7 +192,7 @@ def _get_task_time_offset(
         q3 = np.quantile(time_offsets, 0.75)
         q1 = np.quantile(time_offsets, 0.25)
         iqr = q3 - q1 
-        return np.minimum(q3 + 1.5 * iqr, np.max(time_offsets))
+        return np.min(q3 + 1.5 * iqr, np.max(time_offsets))
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -375,7 +375,7 @@ def plot_trajectories(
         The following imports are needed for the following examples
 
         >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
-        >>> import academia.visualizations as vis
+        >>> import academia.tools.visualizations as vis
 
         For details on how to configure agents see :mod:`academia.agents`
 
@@ -390,7 +390,7 @@ def plot_trajectories(
         Plotting evaluations from a single curriculum run. See :mod:`academia.curriculum`
         for more details on how to configure and run a curriculum.
 
-        >>> curriculum: Currriculum = ...
+        >>> curriculum: Curriculum = ...
         >>> agent = ...
         >>> curriculum.run(agent)
         >>> stats: dict[str, LearningStats] = curriculum.stats
@@ -447,7 +447,7 @@ def plot_trajectories(
         >>>     curriculum_2_runs_stats.append(curriculum_2.stats)
         >>> vis.plot_trajectories(
         >>>     [curriculum_1_runs_stats, curriculum_2_runs_stats],
-        >>>     as_separate_fig = True
+        >>>     as_separate_fig=True,
         >>>     time_domain=["steps", "episodes"]
         >>> )
 
@@ -467,12 +467,6 @@ def plot_trajectories(
         >>> )
     """
     
-    def _iterate_trajectories_kwargs():
-        for i in range(len(runs)):
-            trajectory_kwargs = {
-                kwarg_name: trajectories_kwargs[kwarg_name][i] for kwarg_name in trajectories_kwargs}
-            yield trajectory_kwargs
-
     if not isinstance(runs[0], list):
         runs = [runs]
 
@@ -486,6 +480,11 @@ def plot_trajectories(
         'task_trace_start': task_trace_start,
         'common_run_traces_start': common_run_traces_start
     }
+    def _iterate_trajectories_kwargs():
+        for i in range(len(runs)):
+            trajectory_kwargs = {
+                kwarg_name: trajectories_kwargs[kwarg_name][i] for kwarg_name in trajectories_kwargs}
+            yield trajectory_kwargs
 
     # since we allow the user to either pass single values of a list of values (one for each
     # trajectory) we have to convert all non-list values to lists so that it's compatible
@@ -718,8 +717,8 @@ def plot_time_impact(
         >>> # the exact time at which the task stops might slightly differ
         >>> # from the set stop condition as it is only checked at the end of each episode
         >>> n_runs = 5
-        >>> task_runs_x: list[list[LearningStats]] = 0
-        >>> task_runs_y: list[list[LearningStats]] = 0
+        >>> task_runs_x: list[list[LearningStats]] = []
+        >>> task_runs_y: list[list[LearningStats]] = []
         >>> for wts in wall_time_stops:
         >>>     curriculum = Curriculum([
         >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_wall_time': wts})

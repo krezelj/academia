@@ -662,7 +662,7 @@ class LearningStatsAggregator:
     Raises:
         ValueError: If provided ``stats`` is not list-like.
         ValueError: If provided ``stats`` is a list of dictionaries with mismatching keys.
-        ValueError: If provided ``stats`` is composed of :class:`LearningStats`.
+        ValueError: If provided ``stats`` is not composed of :class:`LearningStats`.
 
     """
 
