@@ -1,11 +1,12 @@
 import sys
-from typing import Optional, Type, Callable, Any
+from typing import Literal, Optional, Type, Callable, Any, Union
 import os
 import logging
 import json
 from functools import partial
 
 import numpy as np
+import numpy.typing as npt
 import yaml
 
 from academia.environments.base import ScalableEnvironment
@@ -45,6 +46,10 @@ def _min_evaluation_score_predicate(value: int, stats: 'LearningStats') -> bool:
     return stats.agent_evaluations[-1].item() >= value
 
 
+def _max_wall_time_predicate(value: float, stats: 'LearningStats') -> bool:
+    return np.sum(stats.episode_wall_times) >= value
+
+
 class LearningTask(SavableLoadable):
     """
     Controls agent's training.
@@ -61,6 +66,10 @@ class LearningTask(SavableLoadable):
             Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
         include_init_eval: Whether or not to evaluate an agent before the training starts (i.e. right at the
             start of the :func:`run` method). Defaults to ``True``.
+        greedy_evaluation: Whether or not the evaluation should be performed in greedy mode.
+            Defaults to ``True``.
+        exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
+            after the task is finished. Unspecified by default.
         name: Name of the task. This is unused when running a single task on its own.
             Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
             task is run through the :class:`Curriculum` object.
@@ -95,7 +104,7 @@ class LearningTask(SavableLoadable):
         >>> from academia.environments import LavaCrossing
         >>> task = LearningTask(
         >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2, 'render_mode': 'human'},
+        >>>     env_args={'difficulty': 2, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 1000},
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
@@ -111,6 +120,7 @@ class LearningTask(SavableLoadable):
             env_args:
                 difficulty: 2
                 render_mode: human
+                append_step_count: True
             stop_conditions:
                 max_episodes: 1000
             stats_save_path: ./my_task_stats.json
@@ -118,13 +128,13 @@ class LearningTask(SavableLoadable):
         Running a task:
 
         >>> from academia.agents import DQNAgent
-        >>> from academia.models import LavaCrossingMLP
+        >>> from academia.utils.models import lava_crossing
         >>> agent = DQNAgent(
         >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=LavaCrossingMLP,
+        >>>     nn_architecture=lava_crossing.MLPStepDQN,
         >>>     random_state=123,
         >>> )
-        >>> task.run(agent, verbose=4, render=True)
+        >>> task.run(agent, verbose=4)
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -133,6 +143,7 @@ class LearningTask(SavableLoadable):
         'min_avg_reward': _min_avg_reward_predicate,
         'max_reward_std_dev': _max_reward_std_dev_predicate,
         'min_evaluation_score': _min_evaluation_score_predicate,
+        'max_wall_time': _max_wall_time_predicate,
     }
     """
     A class attribute that stores global (i.e. shared by every
@@ -152,7 +163,8 @@ class LearningTask(SavableLoadable):
     - ``'max_steps'`` - maximum number of total steps,
     - ``'min_avg_reward'`` - miniumum moving average of rewards (after at least five episodes),
     - ``'max_reward_std_dev'`` - maximum standard deviation of the last 10 rewards,
-    - ``'min_evaluation_score'`` - minimum mean evaluation score.
+    - ``'min_evaluation_score'`` - minimum mean evaluation score,
+    - ``'max_wall_time``' - maximum elapsed wall time.
     
     Example:
 
@@ -170,12 +182,22 @@ class LearningTask(SavableLoadable):
             my_stop_predicate(500, self.stats)
     """
 
-    def __init__(self, env_type: Type[ScalableEnvironment], env_args: dict, stop_conditions: dict,
-                 evaluation_interval: int = 100, evaluation_count: int = 5, include_init_eval: bool = True,
-                 name: Optional[str] = None, agent_save_path: Optional[str] = None,
-                 stats_save_path: Optional[str] = None) -> None:
+    def __init__(self,
+                 env_type: Type[ScalableEnvironment],
+                 env_args: dict, stop_conditions: dict,
+                 evaluation_interval: int = 100,
+                 evaluation_count: int = 5,
+                 include_init_eval: bool = True,
+                 greedy_evaluation: bool = True,
+                 exploration_reset_value: Optional[float] = None,
+                 name: Optional[str] = None,
+                 agent_save_path: Optional[str] = None,
+                 stats_save_path: Optional[str] = None,
+                 ) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
+        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
+
         self.__stop_conditions = stop_conditions
 
         self.__initialised_stop_predicates = []
@@ -198,6 +220,8 @@ class LearningTask(SavableLoadable):
         self.__evaluation_interval = evaluation_interval
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
+        self.__greedy_evaluation = greedy_evaluation
+        self.__exploration_reset_value = exploration_reset_value
 
         self.stats = LearningStats(self.__evaluation_interval)
 
@@ -205,7 +229,7 @@ class LearningTask(SavableLoadable):
         self.agent_save_path = agent_save_path
         self.stats_save_path = stats_save_path
 
-    def run(self, agent: Agent, verbose=0, render=False) -> None:
+    def run(self, agent: Agent, verbose=0) -> None:
         """
         Runs the training loop for the given agent on an environment specified during this task's
         initialisation. Training statistics will be saved to a JSON file if
@@ -215,14 +239,7 @@ class LearningTask(SavableLoadable):
             agent: An agent to train
             verbose: Verbosity level. These are common for the entire module - for information on
                 different levels see :mod:`academia.curriculum`.
-            render: Whether or not to render the environment
         """
-        self.__reset()
-        if render and self.__env_args.get('render_mode') == 'human':
-            self.env.render()
-        elif render and verbose >= 1:
-            _logger.warning("Cannot render environment when render_mode is not 'human'. "
-                            "Consider passing render_mode in env_args in the task configuration")
         try:
             self.__train_agent(agent, verbose)
         except KeyboardInterrupt:
@@ -258,6 +275,8 @@ class LearningTask(SavableLoadable):
 
             if episode % self.__evaluation_interval == 0:
                 self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
+        if self.__exploration_reset_value is not None:
+            agent.reset_exploration(self.__exploration_reset_value)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -275,13 +294,16 @@ class LearningTask(SavableLoadable):
         state = self.env.reset()
         done = False
         while not done:
-            action = agent.get_action(state, legal_mask=self.env.get_legal_mask(),
-                                      greedy=evaluation_mode)
+            action = agent.get_action(
+                state,
+                legal_mask=self.env.get_legal_mask(),
+                greedy=(evaluation_mode and self.__greedy_evaluation),
+            )
             new_state, reward, done = self.env.step(action)
 
             if not evaluation_mode:
                 agent.update(state, action, reward, new_state, done)
-                agent.decay_epsilon()
+                agent.update_exploration()
 
             state = new_state
             episode_reward += reward
@@ -351,13 +373,6 @@ class LearningTask(SavableLoadable):
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
-
-    def __reset(self) -> None:
-        """
-        Resets environment and statistics.
-        """
-        self.env: ScalableEnvironment = self.__env_type(**self.__env_args)
-        self.stats = LearningStats(self.__evaluation_interval)
 
     @classmethod
     def load(cls, path: str) -> 'LearningTask':
@@ -445,7 +460,11 @@ class LearningTask(SavableLoadable):
             'stop_conditions': self.__stop_conditions,
             'evaluation_interval': self.__evaluation_interval,
             'evaluation_count': self.__evaluation_count,
+            'include_init_eval': self.__include_init_eval,
+            'greedy_evaluation': self.__greedy_evaluation,
         }
+        if self.__exploration_reset_value is not None:
+            task_data['exploration_reset_value'] = self.__exploration_reset_value
         if self.name is not None:
             task_data['name'] = self.name
         if self.agent_save_path is not None:
@@ -489,13 +508,16 @@ class LearningStats(SavableLoadable):
         self.episode_cpu_times = np.array([])
         self.evaluation_interval = evaluation_interval
 
+    def __len__(self) -> int:
+        return len(self.step_counts)
+
     def update(self, episode_no: int, episode_reward: float, steps_count: int, wall_time: float,
                cpu_time: float, verbose: int = 0) -> None:
         """
         Updates and logs training statistics for a given episode
 
         Args:
-            episode_no: Episode number
+            episode_no: Episode number (only for logging)
             episode_reward: Total reward after the episode
             steps_count: Steps count of the episode
             wall_time: Actual time it took for the episode to finish
@@ -554,14 +576,13 @@ class LearningStats(SavableLoadable):
             }
 
         Args:
-            path: Path to a stats file. If the specified file does not end with '.stats.json' extension,
-                this extension will be appended to the specified path (for consistency with :func:`save()`
-                method).
+            path: Path to a stats file. If the specified file does not end with '.json' extension,
+                '.stats.json' will be appended to the specified path.
 
         Returns:
             A :class:`LearningStats` instance with statistics from the specified file.
         """
-        if not path.endswith('.stats.json'):
+        if not path.endswith('.json'):
             path += '.stats.json'
         with open(path, 'r') as file:
             stats_dict = json.load(file)
@@ -586,7 +607,7 @@ class LearningStats(SavableLoadable):
         Returns:
             A final (i.e. with an extension), absolute path where the configuration was saved.
         """
-        if not path.endswith('.stats.json'):
+        if not path.endswith('.json'):
             path += '.stats.json'
         with open(path, 'w') as file:
             data = {
@@ -601,3 +622,218 @@ class LearningStats(SavableLoadable):
             }
             json.dump(data, file, indent=4)
         return path
+
+
+AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
+TimeDomain = Literal["steps", "episodes", "cpu_time", "wall_time"]
+ValueDomain = Literal[
+    "agent_evaluations", 
+    "episode_rewards", 
+    "episode_rewards_moving_avg",
+    "step_counts",
+    "step_counts_moving_avg"]
+AggFuncName = Literal["mean", "min", "max", "std"]
+LearningTaskRuns = list[LearningStats]
+CurriculumRuns = list[dict[str, LearningStats]]
+Runs = Union[LearningTaskRuns, CurriculumRuns]
+
+
+class LearningStatsAggregator:
+    """
+    Aggregator of :class:`LearningStats` objects.
+    Accepts both a list of task stats and a list of curriculum stats stored
+    as dictionaries (task-stats mapping).
+
+    Args:
+        stats: Statistics to be aggregated. These statistics can either come from 
+            different runs of a single task or different runs of a single curriculum.
+
+    Attributes:
+        stats (Union[list[LearningStats], list[dict[str, LearningStats]]]): 
+            Statistics to be aggregated
+
+    Examples:
+        Aggregating multiple single task trajectories.
+        
+        We are assuming that ``agent`` is defined by the user (see :mod:`academia.agents` for examples),
+        and that a list of ``tasks`` with the same configuration is defined and run using the agent
+
+        >>> stats = [task.stats for task in tasks]
+        >>> aggregator = LearningStatsAggregator(stats)
+        >>> task_aggregate, timestamps = aggregator.get_aggregate(
+        >>>     time_domain = 'steps',
+        >>>     value_domain = 'agent_evaluations',
+        >>>     agg_func_name = 'mean',
+        >>> )
+
+        Aggregating multiple curricula trajectories.
+
+        We are assuming that ``agent`` is defined by the user (see :mod:`academia.agents` for examples),
+        and that a list of ``curricula`` with the same configuration is defined and run using the agent
+
+        >>> stats = [curriculum.stats for curriculum in curricula]
+        >>> aggregator = LearningStatsAggregator(stats)
+        >>> curriculum_aggregate = aggregator.get_aggregate(
+        >>>     time_domain = 'steps',
+        >>>     value_domain = 'agent_evaluations',
+        >>>     agg_func_name = 'mean',
+        >>> )
+        >>> # `curriculum_aggregate` is a a dictionary with the same keys as 
+        >>> # all `curriculum.stats`
+        >>> print(curriculum_aggregate['task_1']) # assuming `"task_1"` is name of one the tasks
+
+    Raises:
+        ValueError: If provided ``stats`` is not list-like.
+        ValueError: If provided ``stats`` is a list of dictionaries with mismatching keys.
+        ValueError: If provided ``stats`` is not composed of :class:`LearningStats`.
+
+    """
+
+    __allowed_time_domains = ["steps", "episodes", "cpu_time", "wall_time"]
+    __allowed_value_domains = [
+        "agent_evaluations", 
+        "episode_rewards", 
+        "episode_rewards_moving_avg",
+        "step_counts",
+        "step_counts_moving_avg"]
+    __allowed_agg_func_names = ["mean", "min", "max", "std"]
+
+    def __init__(self, stats: Runs) -> None:
+        self.stats = stats
+        if not isinstance(stats, list):
+            raise ValueError("Stats is not list-like")
+        if isinstance(stats[0], dict):
+            if not isinstance(list(stats[0].values())[0], LearningStats):
+                raise ValueError("Stats is not composed of LearningStats objects")
+            for i in range(len(self.stats) - 1):
+                if self.stats[i].keys() != self.stats[i + 1].keys():
+                    raise ValueError("Task keys do not match across trajectories")
+        else:
+            if not isinstance(stats[0], LearningStats):
+                raise ValueError("Stats is not composed of LearningStats objects")
+
+    def get_aggregate(self, 
+                      time_domain: TimeDomain = "steps",
+                      value_domain: ValueDomain = "agent_evaluations",
+                      agg_func_name: AggFuncName = "mean") \
+            -> Union[AggregateTuple, dict[str, AggregateTuple]]:
+        """
+        Creates an aggregate trajectory from a list of trajectories
+
+        Args:
+            time_domain: The time domain along which to aggregate the data. Defaults to ``"steps"```.
+            value_domain: The value domain across which to aggregate the data. Defaults to ``agent_evaluations``.
+            agg_func_name: Name of the aggregate function used to aggregate the data. Defaults to ``"mean"``.
+
+        Returns:
+            Either a tuple of aggregated values and their timestamps
+            or a dictionary with values being aggregate, timestamps tuples.
+
+        Raises: 
+            ValueError: If an incorrect ``time_domain``, ``value_domain`` or ``agg_func_name`` is passed.
+            
+        """
+        if time_domain not in self.__allowed_time_domains:
+            raise ValueError(f"Provided time domain is not allowed. "
+                       + f"Allowed values are: {self.__allowed_time_domains}")
+        if value_domain not in self.__allowed_value_domains:
+            raise ValueError(f"Provided value domain is not allowed. "
+                       + f"Allowed values are: {self.__allowed_value_domains}")
+        if agg_func_name not in self.__allowed_agg_func_names:
+            raise ValueError(f"Provided aggregate function name is not allowed. "
+                       + f"Allowed values are: {self.__allowed_agg_func_names}")
+
+        if isinstance(self.stats[0], dict):
+            return self.__handle_dict_aggregation(time_domain, value_domain, agg_func_name)
+        
+        interpolated_stats, timestamps = self.__interpolate(time_domain, value_domain)
+        aggregated_stats = self.__aggregated_stats(interpolated_stats, agg_func_name)
+        return aggregated_stats, timestamps
+    
+    @staticmethod
+    def __time_domain_full_name(time_domain):
+        if time_domain == 'steps': return 'step_counts'
+        if time_domain == 'episodes': return 'episode_counts'
+        if time_domain == 'wall_time': return 'episode_wall_times'
+        if time_domain == 'cpu_time': return 'episode_cpu_times'
+        
+    def __handle_dict_aggregation(self,
+                                  time_domain: TimeDomain, 
+                                  value_domain: ValueDomain, 
+                                  agg_func_name: AggFuncName):
+        """
+        When a list of dicts (curricula trajectories) is passed create an aggregator for each
+        task (assuming common task names) separately.
+        """
+        self.stats: CurriculumRuns
+        keys = self.stats[0].keys()
+        aggregate = {}
+        for key in keys:
+            tasks_stats = [curriculum_stats[key] for curriculum_stats in self.stats]
+            tmp_aggregator = LearningStatsAggregator(tasks_stats)
+            aggregate[key] = tmp_aggregator.get_aggregate(
+                time_domain, value_domain, agg_func_name)
+        return aggregate
+
+    def __interpolate(self, time_domain: TimeDomain, value_domain: ValueDomain) \
+            -> tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]:
+        """
+        Interpolates selected values (evaluations or rewards) 
+        for all tasks over a union of all timestamps
+
+        Returns:
+             A tuple of an array of shape ``(N_TASK, N_TIMESTAMPS)`` filled with interpolated values
+             and an array of size ``N_TIMESTAMPS`` that is a union of all timestamps.
+        """
+        all_timestamps = np.empty(0)
+        tasks_timestamps = []
+        for task_stats in self.stats:
+            task_timestamps = self.__get_timestamps(task_stats, time_domain, value_domain)
+            tasks_timestamps.append(task_timestamps)
+            all_timestamps = np.append(all_timestamps, task_timestamps)
+        timestamps_union = np.unique(all_timestamps)
+
+        interpolated_stats = np.zeros(shape=(len(self.stats), len(timestamps_union)))
+        for i, task_stats in enumerate(self.stats):
+            interpolated_stats[i,:] = np.interp(
+                timestamps_union, tasks_timestamps[i], getattr(task_stats, value_domain))
+        return interpolated_stats, timestamps_union
+
+    def __get_timestamps(self, 
+                         task_stats: LearningStats,
+                         time_domain: TimeDomain,
+                         value_domain: ValueDomain) \
+            -> npt.NDArray[Union[np.int32, np.float32]]:
+        """
+        Returns:
+            Timestamps at which evaluation or reward was obtained as a cumulative sum of episode durations
+        """
+        def get_episode_durations():
+            if self.__time_domain_full_name(time_domain) == 'episode_counts':
+                return np.ones(shape=len(task_stats))
+            else:
+                return getattr(task_stats, self.__time_domain_full_name(time_domain))
+
+        episode_durations = get_episode_durations()
+        episode_timestamps = np.cumsum(episode_durations)
+        if value_domain == 'agent_evaluations':
+            if self.__includes_init_eval(task_stats):
+                episode_timestamps = np.insert(episode_timestamps, 0, 0)
+            evaluation_timestamps = episode_timestamps[::task_stats.evaluation_interval]
+            return evaluation_timestamps
+        return episode_timestamps
+
+    @staticmethod
+    def __aggregated_stats(interpolated_stats : npt.NDArray[np.float32], agg_func_name: AggFuncName) \
+            -> npt.NDArray[np.float32]:
+        def get_agg_func():
+            if agg_func_name == 'max': return np.max
+            if agg_func_name == 'min': return np.min
+            if agg_func_name == 'mean': return np.mean
+            if agg_func_name == 'std': return np.std
+        return get_agg_func()(interpolated_stats, axis=0)
+
+    @staticmethod
+    def __includes_init_eval(task_stats: LearningStats):
+        n_evals_without_init = len(task_stats) // task_stats.evaluation_interval
+        return len(task_stats.agent_evaluations) == (n_evals_without_init + 1)

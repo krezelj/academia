@@ -13,13 +13,13 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from academia.agents.base import Agent
+from .base import EpsilonGreedyAgent
 
 
 _logger = logging.getLogger('academia.agents')
 
 
-class DQNAgent(Agent):
+class DQNAgent(EpsilonGreedyAgent):
     """
     Class representing a Deep Q-Network (DQN) agent for reinforcement learning tasks.
 
@@ -52,28 +52,33 @@ class DQNAgent(Agent):
         target_network (nn.Module): Target network used to stabilize training.
         optimizer (optim.Optimizer): Optimizer used for training.
         experience (namedtuple): Named tuple representing an experience tuple which stores state, action, 
-            reward, next_state, and done.
+            reward, new_state, and done.
         train_step (int): Counter for the number of training steps performed.
         device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
-        >>> from academia.models import CartPoleMLP  # Import custom neural network architecture
-        
+        >>> from academia.agents import DQNAgent
+        >>> from academia.environments import DoorKey
+        >>> from academia.utils.models import door_key  # Import custom neural network architecture
+        >>>
+        >>> # Create an environment:
+        >>> env = DoorKey(difficulty=0, append_step_count=True)
         >>> # Create an instance of the DQNAgent class with custom neural network architecture
-        >>> dqn_agent = DQNAgent(nn_architecture=CartPoleMLP, n_actions=2, gamma=0.99, epsilon=1.0,
-        >>>                     epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
-        >>> # Training loop: Update the agent using experiences (state, action, reward, next_state, done)
+        >>> dqn_agent = DQNAgent(nn_architecture=door_key.MLPStepDQN, n_actions=DoorKey.N_ACTIONS, gamma=0.99,
+        >>>                      epsilon=1.0, epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
+        >>> # Training loop: Update the agent using experiences (state, action, reward, new_state, done)
+        >>> num_episodes = 100
         >>> for episode in range(num_episodes):
         >>>    state = env.reset()
         >>>    done = False
         >>>    while not done:
         >>>        action = dqn_agent.get_action(state)
-        >>>        next_state, reward, terminated, truncated, info = env.step(action)
-        >>>        if terminated or truncated:
+        >>>        new_state, reward, terminated = env.step(action)
+        >>>        if terminated:
         >>>            done = True 
-        >>>        dqn_agent.update(state, action, reward, next_state, done)
-        >>>        state = next_state
-
+        >>>        dqn_agent.update(state, action, reward, new_state, done)
+        >>>        state = new_state
+        >>>
         >>> # Save the agent's state dictionary to a file
         >>> dqn_agent.save('dqn_agent')
 
@@ -117,7 +122,7 @@ class DQNAgent(Agent):
         self.batch_size = batch_size
         self.nn_architecture = nn_architecture
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
-                                                                "next_state", "done"])
+                                                                "new_state", "done"])
         self.train_step = 0
 
         if device == 'cuda' and not torch.cuda.is_available():
@@ -155,7 +160,7 @@ class DQNAgent(Agent):
 
         self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
 
-    def __remember(self, state: Any, action: int, reward: float, next_state: Any, done: bool):
+    def __remember(self, state: Any, action: int, reward: float, new_state: Any, done: bool):
         """
         Stores an experience tuple in the replay memory.
 
@@ -163,13 +168,13 @@ class DQNAgent(Agent):
             state: Current state of the agent in the environment.
             action: Action taken by the agent in the current state.
             reward: Reward received by the agent after taking the action.
-            next_state: Next state of the agent after taking the action.
+            new_state: Next state of the agent after taking the action.
             done: A boolean flag indicating if the episode has terminated or truncated after the action.
         """
-        e = self.experience(state, action, reward, next_state, done)
+        e = self.experience(state, action, reward, new_state, done)
         self.memory.append(e)
 
-    def get_action(self, state: Any, legal_mask: npt.NDArray[int] = None, greedy: bool = False) -> int:
+    def get_action(self, state: Any, legal_mask: npt.NDArray[np.int32] = None, greedy: bool = False) -> int:
         """
         Selects an action based on the current state using the epsilon-greedy strategy.
 
@@ -229,13 +234,13 @@ class DQNAgent(Agent):
             new_state: Next state of the environment after taking the action.
             is_terminal: A flag indicating whether the new state is a terminal state.
         """
-        self.__remember(state=state, action=action, reward=reward, next_state=new_state,
+        self.__remember(state=state, action=action, reward=reward, new_state=new_state,
                       done=is_terminal)
         self.train_step = (self.train_step + 1) % self.UPDATE_EVERY
         if self.train_step == 0:
             if len(self.memory) >= self.batch_size:
-                states, actions, rewards, next_states, dones = self.__replay()
-                q_targets_next = self.target_network(next_states).detach().max(1)[0].unsqueeze(1)
+                states, actions, rewards, new_states, dones = self.__replay()
+                q_targets_next = self.target_network(new_states).detach().max(1)[0].unsqueeze(1)
                 # bellman equation
                 q_targets = rewards + self.gamma * q_targets_next * (1 - dones)
                 q_expected = self.network(states).gather(1, actions)
@@ -247,21 +252,21 @@ class DQNAgent(Agent):
 
     def __replay(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Samples a mini-batch from the replay memory and prepares states, actions, rewards, next_states
+        Samples a mini-batch from the replay memory and prepares states, actions, rewards, new_states
         casting them to tensors with appropriate type values and adding to device.
 
         Returns:
-            Tuple containing tensors of states, actions, rewards, next_states, and dones.
+            Tuple containing tensors of states, actions, rewards, new_states, and dones.
         """
         batch_indices = self._rng.choice(len(self.memory), size=self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch_indices]
         states = torch.from_numpy(np.vstack([e.state for e in batch if e is not None])).float().to(self.device)
         actions = torch.from_numpy(np.vstack([e.action for e in batch if e is not None])).long().to(self.device)
         rewards = torch.from_numpy(np.vstack([e.reward for e in batch if e is not None])).float().to(self.device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in batch if e is not None]))\
+        new_states = torch.from_numpy(np.vstack([e.new_state for e in batch if e is not None]))\
             .float().to(self.device)
         dones = torch.from_numpy(np.vstack([e.done for e in batch if e is not None])).float().to(self.device)
-        return (states, actions, rewards, next_states, dones)
+        return (states, actions, rewards, new_states, dones)
 
     def save(self, path: str) -> str:
         """
@@ -288,7 +293,7 @@ class DQNAgent(Agent):
             agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
 
             memory_save_format = [{"state": exp.state.tolist(), "action": int(exp.action), "reward": float(exp.reward),
-                    "next_state": exp.next_state.tolist(), "done": bool(exp.done)} for exp in self.memory]
+                    "new_state": exp.new_state.tolist(), "done": bool(exp.done)} for exp in self.memory]
             
             learner_state_dict = {
                 'n_actions': self.n_actions,
@@ -300,7 +305,8 @@ class DQNAgent(Agent):
                 'nn_architecture': self.get_type_name_full(self.nn_architecture),
                 'random_state': self._rng.bit_generator.state,
                 'memory': memory_save_format,
-                'device': str(self.device)
+                'device': str(self.device),
+                'train_step': self.train_step,
             }
             json.dump(dict(learner_state_dict), agent_temp, indent=4)
             agent_temp.flush()
@@ -340,8 +346,9 @@ class DQNAgent(Agent):
         del params['nn_architecture']
         rng_state = params.pop('random_state')
         memory = params.pop('memory')
+        train_step = params.pop('train_step')
         experience = namedtuple("Experience", field_names=["state", "action", "reward",
-                                                                "next_state", "done"])
+                                                                "new_state", "done"])
         restored_memory = deque(maxlen=cls.REPLAY_MEMORY_SIZE)
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
@@ -349,10 +356,11 @@ class DQNAgent(Agent):
             state = np.array(exp_dict["state"], dtype=np.float32) 
             action = int(exp_dict["action"])
             reward = float(exp_dict["reward"])
-            next_state = np.array(exp_dict["next_state"], dtype=np.float32)
+            new_state = np.array(exp_dict["new_state"], dtype=np.float32)
             done = bool(exp_dict["done"])
-            restored_memory.append(experience(state, action, reward, next_state, done))
+            restored_memory.append(experience(state, action, reward, new_state, done))
         agent.memory = restored_memory
         agent.network.load_state_dict(network_params)
         agent.target_network.load_state_dict(target_network_params)
+        agent.train_step = train_step
         return agent

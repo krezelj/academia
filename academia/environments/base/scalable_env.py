@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
+import numpy as np
 import numpy.typing as npt
 
 
@@ -69,7 +70,7 @@ class ScalableEnvironment(ABC):
         pass
 
     @abstractmethod
-    def get_legal_mask(self) -> npt.NDArray[int]:
+    def get_legal_mask(self) -> npt.NDArray[np.int32]:
         """
         Returns:
             A binary mask with 0s in place for illegal actions (actions that

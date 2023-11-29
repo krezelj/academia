@@ -44,13 +44,7 @@ class PPOAgent(Agent):
             continuous actions when :attr:`discrete` is ``False``. Defaults to 0.5.
         entropy_coefficient: Coefficient used to control the impact of entropy on the loss function.
             Defaults to 0.01.
-        gamma: Discount factor for future rewards. Defaults to 0.99. 
-        epsilon: Initial exploration-exploitation trade-off parameter.
-            Note that this parameter is not used in PPO. Defaults to 1.0.
-        epsilon_decay: Decay factor for epsilon over time. 
-            Note that this parameter is not used in PPO. Defaults to 0.995.
-        min_epsilon: Minimum epsilon value to ensure exploration. 
-            Note that this parameter is not used in PPO. Defaults to 0.01.
+        gamma: Discount factor for future rewards. Defaults to 0.99.
         random_state: Seed for random number generation. Defaults to ``None``.
         device: Device used for computation. Possible values are ``'cuda'`` and ``'cpu'``. Defaults to ``'cpu'``.
         
@@ -58,9 +52,6 @@ class PPOAgent(Agent):
     Attributes:
         n_actions (int): Number of possible actions in the environment.
         gamma (float): Discount factor for future rewards.
-        epsilon (float): Initial exploration-exploitation trade-off parameter.
-        epsilon_decay (float): Decay factor for epsilon over time.
-        min_epsilon (float): Minimum epsilon value to ensure exploration.
         discrete (bool): Whether the agent's action space is discrete.
         clip (float): Clip rate hyperparameter from the PPO algorithm.
         lr (float): Learning rate used by (Adam) optimisers.
@@ -163,7 +154,7 @@ class PPOAgent(Agent):
             Args:
                 state: Observed state of the environment.
                 action: Action taken by the agent.
-                action_logits: Logit of the action taken by the agent.
+                action_logit: Logit of the action taken by the agent.
                 reward: Reward obtained by the agent.
                 is_terminal: Whether the resulting new state is terminal.
 
@@ -232,11 +223,18 @@ class PPOAgent(Agent):
                 in that order converted to tensors.
             """
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
-            states_t = torch.tensor(np.array(self.states), dtype=torch.float).to(device)
+            states_t = torch.stack(self.states).to(device)
             actions_t = torch.tensor(np.array(self.actions), dtype=torch.float).to(device)
             actions_logits_t = torch.tensor(np.array(self.actions_logits), dtype=torch.float).to(device)
             rewards_to_go_t = torch.tensor(np.array(self.rewards_to_go), dtype=torch.float).to(device)
             return states_t, actions_t, actions_logits_t, rewards_to_go_t
+
+        def __len__(self) -> int:
+            """
+            Returns:
+                Buffer size
+            """
+            return self.steps_counter
 
     def __init__(self, 
                  actor_architecture: Type[nn.Module],
@@ -251,14 +249,14 @@ class PPOAgent(Agent):
                  lr: float = 3e-4,
                  covariance_fill: float = 0.5,
                  entropy_coefficient: float = 0.01,
-                 gamma: float = 0.99, 
-                 epsilon: float = 1.,
-                 epsilon_decay: float = 0.99,
-                 min_epsilon: float = 0.01,
+                 gamma: float = 0.99,
                  random_state: Optional[int] = None,
                  device: Literal['cpu', 'cuda'] = 'cpu'
                  ) -> None:
-        super(PPOAgent, self).__init__(n_actions, epsilon, min_epsilon, epsilon_decay, gamma, random_state)
+        super(PPOAgent, self).__init__(
+            n_actions=n_actions,
+            gamma=gamma, 
+            random_state=random_state)
         self.discrete = discrete
         self.clip = clip
         self.batch_size = batch_size
@@ -294,14 +292,14 @@ class PPOAgent(Agent):
         self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
-            -> Tuple[torch.FloatTensor, torch.FloatTensor]:
+            -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
         """
         Evaluates the provided states and actions to obtain state-values
         and actions logits using the current network parameters.
         """
         V = self.critic(states).squeeze(dim=1)
         if self.discrete:
-            pi = self.actor(states)
+            pi = torch.softmax(self.actor(states), dim=1)
             distribution = Categorical(pi)
         else:
             mean = self.actor(states)
@@ -312,13 +310,12 @@ class PPOAgent(Agent):
 
     def __get_discrete_action_with_logits(self, 
                                           states: torch.FloatTensor, 
-                                          legal_mask: npt.NDArray[int], 
                                           greedy: bool) \
             -> Tuple[npt.NDArray, torch.FloatTensor]:
         """
         Gets an action and its logit for a given state assuming discrete action space.
         """
-        pi = self.actor(states)
+        pi = torch.softmax(self.actor(states), dim=1)
         distribution = Categorical(pi)
         if greedy:
             action = torch.argmax(pi).detach().numpy().reshape(1,)
@@ -341,21 +338,20 @@ class PPOAgent(Agent):
 
     def __get_action_with_logits(self, 
                                  states: torch.FloatTensor, 
-                                 legal_mask: npt.NDArray[int]=None, 
-                                 greedy: bool=False):
+                                 greedy: bool = False):
         """
         Gets an action and its logit for a given state.
         """
         with torch.no_grad():
             if self.discrete:
-                return self.__get_discrete_action_with_logits(states, legal_mask, greedy)
+                return self.__get_discrete_action_with_logits(states, greedy)
             else:
                 return self.__get_continuous_action_with_logits(states, greedy)
 
     def get_action(self, 
-                   state: npt.NDArray[np.float32], 
-                   legal_mask: npt.NDArray[int]=None, 
-                   greedy: bool=False) \
+                   state: Any,
+                   legal_mask: npt.NDArray[np.int32] = None,
+                   greedy: bool = False) \
             -> Union[float, int]:
         """
         Selects an action based on the current state.
@@ -374,8 +370,8 @@ class PPOAgent(Agent):
         # in `get_action` we will always receive a single state
         # but we prefer to operate on batches of states so we add one dimension
         # to `state`` so that it behaves like a batch with single sample
-        state = torch.unsqueeze(torch.tensor(state), dim=0)
-        action, action_logit = self.__get_action_with_logits(state, legal_mask, greedy)
+        state = torch.unsqueeze(torch.tensor(state, dtype=torch.float), dim=0)
+        action, action_logit = self.__get_action_with_logits(state, greedy)
 
         # however converting the state to a batch means we have to 'unbatch' action (and logits). 
         # Otherwise gym environments return new states as batches which we try to unsqueeze again
@@ -386,10 +382,10 @@ class PPOAgent(Agent):
         return action
 
     def update(self, 
-               state: Any, 
-               action: Any, 
+               state: Any,
+               action: int,
                reward: float, 
-               new_state: Any, 
+               new_state: Any,
                is_terminal: bool) -> None:
         """
         Updates the PPOAgent by saving the provided transition into its buffer.
@@ -404,6 +400,7 @@ class PPOAgent(Agent):
                 Note that PPOAgent does not actually use this value when updating.
             is_terminal: A flag indicating whether the new state is a terminal state.
         """
+        state = torch.tensor(state, dtype=torch.float)
         buffer_full = self.buffer.update(state, action, self.__action_logit_cache, reward, is_terminal)
         if buffer_full:
             self.buffer.calculate_rewards_to_go(self.gamma)
@@ -423,9 +420,9 @@ class PPOAgent(Agent):
         A = (A - A.mean()) / (A.std() + 1e-10)
 
         for _ in range(self.n_epochs):
-            idx_permutation = np.arange(self.buffer.steps_counter)
+            idx_permutation = np.arange(len(self.buffer))
             self._rng.shuffle(idx_permutation)
-            n_batches = np.ceil(self.buffer.steps_counter / self.batch_size).astype(np.int32)
+            n_batches = np.ceil(len(self.buffer) / self.batch_size).astype(np.int32)
             for batch_idx in range(n_batches):
                 idx_in_batch = idx_permutation[batch_idx*self.batch_size:(batch_idx+1)*self.batch_size]
                 batch_states = states[idx_in_batch]
@@ -463,6 +460,12 @@ class PPOAgent(Agent):
         
         self.actor.to('cpu')
         self.critic.to('cpu')
+
+    def update_exploration(self):
+        pass
+
+    def reset_exploration(self, value):
+        pass
 
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
@@ -513,7 +516,7 @@ class PPOAgent(Agent):
             agent.__covariance_matrix = covariance_matrix
             agent.__action_logit_cache = action_logit_cache
 
-            agent.buffer.states = [np.array(s) for s in buffer_state['states']]
+            agent.buffer.states = [torch.tensor(s, dtype=torch.float) for s in buffer_state['states']]
             del buffer_state['states']
             for attribute_name, value in buffer_state.items():
                 setattr(agent.buffer, attribute_name, value)
@@ -543,9 +546,6 @@ class PPOAgent(Agent):
             agent_state = {
                 'n_actions': self.n_actions,
                 'gamma': self.gamma,
-                'epsilon': self.epsilon,
-                'epsilon_decay': self.epsilon_decay,
-                'min_epsilon': self.min_epsilon,
                 'discrete': self.discrete,
                 'clip': self.clip,
                 'lr': self.lr,

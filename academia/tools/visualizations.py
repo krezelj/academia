@@ -4,515 +4,537 @@ Functions that can visualise statistics gathered from agents training through
 
 Exported functions:
 
-- :func:`plot_task`
-- :func:`plot_rewards_curriculum`
-- :func:`plot_trajectory_curriculum`
-- :func:`plot_curriculum_vs_nocurriculum`
+- :func:`plot_trajectories`
 - :func:`plot_evaluation_impact`
+- :func:`plot_evaluation_impact_2d`
 - :func:`plot_time_impact`
-- :func:`plot_multiple_evaluation_impact`
 
 See Also:
     - :class:`academia.curriculum.LearningTask`
+    - :class:`academia.curriculum.LearningStats`
+    - :class:`academia.curriculum.LearningStatsAggregator`
     - :class:`academia.curriculum.Curriculum`
 """
+import colorsys
+from contextlib import contextmanager
 import os
-from typing import Dict, Literal, List
+from typing import Literal, Optional, Union
 
 import numpy as np
-import plotly.express as px
+import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-from academia.curriculum import LearningStats
+from academia.curriculum import LearningStats, LearningStatsAggregator
+
+TimeDomain = Literal['steps', 'episodes', 'wall_time', 'cpu_time']
+ValueDomain = Literal[
+    'agent_evaluations', 
+    'episode_rewards', 
+    'episode_rewards_moving_avg',
+    'step_counts',
+    'step_counts_moving_avg']
+SaveFormat = Literal['png', 'html']
+LearningTaskRuns = list[LearningStats]
+CurriculumRuns = list[dict[str, LearningStats]]
+Runs = Union[LearningTaskRuns, CurriculumRuns]
+StartPoint = Literal['zero', 'mean', 'q3', 'most', 'outliers', 'max']
 
 
-def plot_task(task_stats: LearningStats, show: bool = False, save_path: str = None, 
-              save_format: Literal['png', 'html'] = 'png'):
+@contextmanager
+def _create_figure(show: bool = False, 
+                  save_path: Optional[str] = None, 
+                  suffix: Optional[str] = None,
+                  save_format: SaveFormat = 'png'):
     """
-    Plots the learning statistics for a single task.
+    Context manager that simplifies boilerplate code needed in all ``plot`` functions
 
-    The returned plots include:
+    Example:
 
-    - A plot showing rewards and their moving average over episodes.
-    - A plot displaying the steps taken by the agent in each episode against the episode numbers.
-    - A plot indicating the agent's learning progress, represented by its evaluation score, in 
-      relation to the number of steps taken up to the current evaluation.
+    >>> with _create_figure(False, './test', 'curr_comparison', 'png') as fig:
+    >>>     fig.add_trace(...)
 
-    Note:
-        If save path is provided, the all three plots will be saved to the specified path. To diferentiate between the plots,
-        the file names will be appended with ``_rewards``, ``_steps`` and ``_evaluations`` respectively.
-
-        if show is set to ``True``, the plots will be displayed in the browser window.   
-
-    Args:
-        task_stats: Learning statistics for the task.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
-        save_format: File format for saving the plot. Defaults to 'png'.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
-
-    Examples:
-        Initialisation of a task we want to plot:
-
-        >>> from academia.curriculum import LearningTask
-        >>> from academia.environments import LunarLander 
-        >>> from academia.tools.visualizations import plot_task
-        >>> test_task = LearningTask(
-        >>>     env_type= LunarLander,
-        >>>     env_args={'difficulty': 2},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>>     evalutaion_interval=100,
-        >>>     stats_save_path='./my_task_stats.json',
-        >>> )
-
-        Running a task:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lunar_lander
-        >>> agent = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lunar_lander.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> test_task.run(agent, verbose=4)
-
-        Plotting the task:
-
-        >>> plot_task(test_task.stats, save_path='./test_task', save_format='png')
-    """
-    fig_rewards = px.line(x=np.arange(len(task_stats.episode_rewards)), 
-                          y=[task_stats.episode_rewards, task_stats.episode_rewards_moving_avg],
-                          title='Episode Rewards and Moving Average')
-    
-    fig_rewards.update_layout(
-        xaxis_title="Episode",
-        yaxis_title="Score"
-    )
-    fig_rewards.data[0].name = 'Episode Rewards'
-    fig_rewards.data[1].name = 'Moving Average'        
-    fig_rewards.update_traces(
-        hovertemplate="<br>".join([
-            "Episode: %{x}",
-            "Reward: %{y}"
-        ])
-    )
-    fig_steps = px.line(x=np.arange(len(task_stats.step_counts)), 
-                        y=task_stats.step_counts,
-                        title='Steps per episode')
-    fig_steps.update_layout(
-        xaxis_title="Episode",
-        yaxis_title="Steps"
-    )
-
-    evalutaion_interval = task_stats.evalutaion_interval
-    steps_count = task_stats.step_counts
-    steps_cum = np.cumsum(steps_count)
-    indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
-    steps_to_eval = steps_cum[indices]
-    #  Add 0 to the beginning of the array if the first evaluation is at the beginning of the task
-    if len(steps_to_eval) < len(task_stats.agent_evaluations):
-        steps_to_eval = np.concatenate([[0], steps_to_eval])
-
-    fig_evaluations = px.line(x=steps_to_eval, 
-                              y=task_stats.agent_evaluations,
-                              title='Agent evaluations')
-    fig_evaluations.update_layout(
-        xaxis_title="Total number of steps to evaluation",
-        yaxis_title="Evaluation score"
-    )
-    fig_evaluations.update_traces(mode="markers+lines")
-
-
-    if show:
-        fig_rewards.show()
-        fig_steps.show()
-        fig_evaluations.show()
-
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig_rewards.write_image(f"{save_path}_rewards.png")
-            fig_steps.write_image(f"{save_path}_steps.png")
-            fig_evaluations.write_image(f"{save_path}_evaluations.png")
-        else:
-            fig_rewards.write_html(f"{save_path}_rewards.html")
-            fig_steps.write_html(f"{save_path}_steps.html")
-            fig_evaluations.write_html(f"{save_path}_evaluations.html")
-        return os.path.abspath(save_path)
-    
-    
-def plot_rewards_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
-                               save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
-    """
-    Plots the trajectories of episode rewards for multiple tasks in the curriculum.
-
-    Args:
-        curriculum_stats: Learning statistics for multiple tasks in the curriculum.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
-        save_format: File format for saving the plot. Defaults to 'png'.
-
-    Returns:
-        Absolute path to the saved plot file if the ``save_path`` was provided.
-    
-    Note:
-        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
-        the name of the saved plot, the _rewards_curriculum is added to the end of the ``save_path`` 
-    
-    Examples:
-        Initialisation of a curriculum we want to plot:
-
-        >>> from academia.curriculum import LearningTask, Curriculum
-        >>> from academia.environments import LavaCrossing
-        >>> task1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> curriculum = Curriculum(
-        >>>     tasks=[task1, task2],
-        >>>     output_dir='./my_curriculum/',
-        >>> )
-
-        Running a curriculum:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> curriculum.run(agent, verbose=4)
-
-        Plotting the curriculum:
-
-        >>> from academia.tools.visualizations import plot_rewards_curriculum
-        >>> plot_rewards_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
-    """
-    num_tasks = len(curriculum_stats)
-    num_cols = 2
-    num_rows = (num_tasks + 1) // num_cols
-
-    fig = make_subplots(rows=num_rows, 
-                        cols=num_cols, 
-                        subplot_titles=[f'Episode rewards for task {task_id}' 
-                                        for task_id in curriculum_stats.keys()])
-
-    row = 1
-    col = 1
-    for task_id, task_stats in curriculum_stats.items():
-        rewards = task_stats.episode_rewards
-        fig.add_trace(go.Scatter(y=rewards, mode='lines', name=f'Task {task_id}'), row=row, col=col)
-        fig.update_xaxes(title_text='Step', row=row, col=col)
-        fig.update_yaxes(title_text='Episode', row=row, col=1)  # Only the first column has y-axis labels because they are shared across rows
-        col += 1
-        if col > num_cols:
-            col = 1
-            row += 1
-
-    fig.update_layout(height=400 * num_rows, title_text='Trajectories of task rewards')
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Episode: %{x}",
-            "Reward: %{y}"
-        ])
-    )
-    if show:
-        fig.show()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}_rewards_curriculum.png")
-        else:
-            fig.write_html(f"{save_path}_rewards_curriculum.html")
-        return os.path.abspath(save_path)
-
-
-def plot_trajectory_curriculum(curriculum_stats: Dict[str, LearningStats], show: bool = False,
-                                 save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
-    """
-    Plots the trajectories of agent evaluations for multiple tasks in the curriculum.
-
-    On the X-axis we have the total number of steps to a given agent's evaluation, while on the Y-axis we have the 
-    evaluation score obtained by the agent. The colors of the charts correspond to the appropriate tasks performed
-    as part of the curriculum, which is described in the legend.
-
-    Args:
-        curriculum_stats: Learning statistics for multiple tasks in the curriculum.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
-        save_format: File format for saving the plot. Defaults to 'png'.
-
-    Returns:
-        Absolute path to the saved plot file if the ``save_path`` was provided.
-    
-    Note:
-        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
-        the name of the saved plot, the _curriculum_eval_trajectory is added to the end of the ``save_path`` 
-    
-    Examples:
-        Initialisation of a curriculum we want to plot:
-
-        >>> from academia.curriculum import LearningTask, Curriculum
-        >>> from academia.environments import LavaCrossing
-        >>> task1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> curriculum = Curriculum(
-        >>>     tasks=[task1, task2],
-        >>>     output_dir='./my_curriculum/',
-        >>> )
-
-        Running a curriculum:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> curriculum.run(agent, verbose=4)
-
-        Plotting the curriculum:
-        
-        >>> from academia.tools.visualizations import plot_trajectory_curriculum
-        >>> plot_trajectory_curriculum(curriculum.stats, save_path='./curriculum', save_format='png')
+    This snippet will create a fig, add a trace to it and then optionally show it and save it to
+    a specified file with a specified suffix.
     """
     fig = go.Figure()
-    total_steps_to_last_eval = 0
-    for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evalutaion_interval
-        evaluations = task_stats.agent_evaluations
-        steps_count = task_stats.step_counts
-        steps_count[0] += total_steps_to_last_eval
-        steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
-        steps_to_eval = steps_cum[indices]
-        if len(steps_to_eval) < len(evaluations):
-            steps_to_eval = np.concatenate([[0], steps_to_eval])
-
-        fig.add_trace(go.Scatter(x=steps_to_eval, 
-                                y=evaluations, 
-                                mode='lines', 
-                                name=f'Task {task_id}'))
-            
-        total_steps_to_last_eval = steps_to_eval[-1]
-        
-    fig.update_layout(title_text='Curriculum evaluation trajectory',
-                      xaxis_title='Total number of steps to evaluation',
-                      yaxis_title='Evaluation score')
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Total num of steps to evaluation: %{x}",
-            "Evaluation score: %{y}"
-        ])
+    fig.update_layout(
+        plot_bgcolor='white'
     )
+    fig.update_xaxes(
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey'
+    )
+    fig.update_yaxes(
+        mirror=True,
+        ticks='outside',
+        showline=True,
+        linecolor='black',
+        gridcolor='lightgrey'
+    )
+
+    if suffix is None:
+        suffix = ""
+    else:
+        suffix = f"_{suffix}"
+    yield fig
+    
     if show:
         fig.show()
     if save_path:
+        if not save_path.endswith(save_format):
+            save_path += f'{suffix}.{save_format}'
+        else:
+            save_path = f"{'.'.join(save_path.split('.')[:-1])}{suffix}.{save_format}"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         if save_format == 'png':
-            fig.write_image(f"{save_path}_curriculum_eval_trajectory.png")
+            fig.write_image(save_path)
         else:
-            fig.write_html(f"{save_path}_curriculum_eval_trajectory.html")
-        return os.path.abspath(save_path)
-    
+            fig.write_html(save_path)
 
-def plot_curriculum_vs_nocurriculum(curriculum_stats: Dict[str, LearningStats], 
-                                    nocurriculum_stats: LearningStats, show: bool = False,
-                                    save_path: str = None, save_format: Literal['png', 'html'] = 'png', 
-                                    includes_init_eval: bool = False):
+
+def _get_domain_display_name(
+        domain: Union[TimeDomain, ValueDomain, list[TimeDomain], list[ValueDomain]]):
+    if isinstance(domain, list):
+        return "/".join([_get_domain_display_name(domain[i]) for i in range(len(domain))])
+    if domain == 'agent_evaluations':
+        return "Evaluation Score"
+    if domain == 'episode_rewards':
+        return "Episode Reward"
+    if domain == 'episode_rewards_moving_avg':
+        return "Episode Reward"
+    if domain == 'step_counts':
+        return "Step Count"
+    if domain == 'step_counts_moving_avg':
+        return "Step Count"
+    if domain == 'steps':
+        return "Step Count"
+    if domain == 'episodes':
+        return "Episodes"
+    if domain == 'wall_time':
+        return "Wall Time (seconds)"
+    if domain == 'cpu_time':
+        return "CPU Time"
+    raise ValueError(f"Invalid domain: {domain}")
+
+
+def _get_colors(
+        n_shades: int = 1, 
+        seed: Optional[int] = None,
+        query: Optional[int] = None,
+        n_queries: Optional[int] = None):
     """
-    Plots the comparison of curriculum learning with no curriculum learning.
+    Returns a list of ``n_shades`` colours that are similar to each other.
 
-    The chart is used to compare the agent's evaluation when teaching with a curriculum and without it. 
-    The X-axis shows the total number of steps to a given agent's evaluation, while the Y-axis shows the 
-    evaluation score obtained by the agent. The colors of the charts correspond to the appropriate tasks 
-    performed as part of the curriculum and the task that is performed without the curriculum, which is 
-    described in the legend.
+    If you know how many sets of shades you will query (i.e. how many times you will call this function
+    for a single figure) you can specify it with ``n_queries`` and tell the function which ``query``
+    it is in each call. Example
+
+    >>> n_queries: int = 5
+    >>> for i in range(n_queries):
+    >>>     colors = _get_colors(2, None, i, n_queries)
+
+    This way you ensure that all generated sets of shades are uniformly distributed on the Hue axis
+    in the HSV colour encoding.
+    """
+    def hsv_to_hex(h, s, v):
+        rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+        hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+        return hex_color
+
+    _rng = np.random.default_rng(seed)
+    if query is None or n_queries == 1:
+        base_hue = _rng.random()
+        hue_range = 0.2
+    else:
+        base_hue = 1/n_queries * (query % n_queries)
+        hue_range = 1/(3*n_queries)
+    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.7, 0.9))
+    shades: list = [base_color]
+
+    for i in range(1, n_shades):
+        h = base_color[0] + _rng.normal(0, hue_range)
+        if h < 0: h = h + 1
+        if h > 1: h = h - 1
+
+        s = np.clip(base_color[1] - 0.1 * i, 0.4, 1.0)
+        b = np.clip(base_color[2] - 0.1 * i, 0.4, 1.0)
+        shades.append((h, s, b))
+
+    hex_colors = []
+    for shade in shades:
+        h, s, b = shade
+        hex_colors.append(hsv_to_hex(h, s, b))
+    
+    return hex_colors
+
+
+def _get_task_time_offset(
+        task_trace_start: StartPoint, 
+        time_offsets: list[Union[float, int]]):
+    """
+    Returns the offset of the task trace starting point on the X axis
+    based on the chosen ``task_trace_start``.
+    """
+    if task_trace_start == 'zero':
+        return 0
+    if task_trace_start == 'mean':
+        return np.mean(time_offsets)
+    if task_trace_start == 'max':
+        return np.max(time_offsets)
+    if task_trace_start == 'q3':
+        return np.quantile(time_offsets, 0.75)
+    if task_trace_start == 'most':
+        return np.quantile(time_offsets, 0.90)
+    if task_trace_start == 'outliers':
+        q3 = np.quantile(time_offsets, 0.75)
+        q1 = np.quantile(time_offsets, 0.25)
+        iqr = q3 - q1 
+        return np.min([q3 + 1.5 * iqr, np.max(time_offsets)])
+    raise ValueError(f"Invalid time_offsets value: {time_offsets}")
+
+
+def _get_total_time(
+        task_stats: LearningStats,
+        time_domain: TimeDomain):
+    """
+    Returns the total time in a given time domain for a specified :class:`LearningStats` object.
+    """
+    if time_domain == "steps":
+        return np.sum(task_stats.step_counts)
+    elif time_domain == "episodes":
+        return len(task_stats.step_counts)
+    elif time_domain == "cpu_time":
+        return np.sum(task_stats.episode_cpu_times)
+    elif time_domain == "wall_time":
+        return np.sum(task_stats.episode_wall_times)
+    else:
+        raise ValueError(f"Unknown time domain: {time_domain}")
+
+
+def _add_trace(
+        fig: 'go.Figure',
+        x: npt.NDArray[Union[np.float32, np.int32]],
+        y: npt.NDArray[Union[np.float32, np.int32]],
+        color: Optional[str]=None,
+        **kwargs):
+    """
+    Adds a single trace to the figure. 
+    This is a wrapper to simplify code since it's used a lot of times
+    """
+    fig.add_trace(go.Scatter(
+        x=x, y=y, mode='lines',line=dict(color=color), **kwargs
+    ))
+
+
+def _add_std_region(
+        fig: 'go.Figure', 
+        timestamps: npt.NDArray[Union[np.float32, np.int32]], 
+        values: npt.NDArray[np.float32],
+        std: npt.NDArray[np.float32], 
+        color: Optional[str]=None):
+    """
+    Adds ``std`` values plot to the figure
+    """
+    _add_trace(fig, timestamps, values+std, showlegend=False, color=color)
+    _add_trace(fig, timestamps, values-std, showlegend=False, color=color, fill='tonexty')
+
+
+def _add_task_trajectory(
+        fig: 'go.Figure', 
+        task_runs: list[LearningStats],
+        task_trace_start: StartPoint,
+        time_domain: TimeDomain,
+        value_domain: ValueDomain,
+        show_std: bool,
+        show_run_traces: bool,
+        common_run_traces_start: bool,
+        color: Optional[str] = None,
+        name: Optional[str] = None,
+        time_offsets: Optional[list[Union[float, int]]] = None):
+    """
+    Adds a single task trajectory to the figure
+    """
+    if time_offsets is None:
+        time_offsets = np.zeros(len(task_runs))
+    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets)
+
+    agg = LearningStatsAggregator(task_runs)
+    values, timestamps = agg.get_aggregate(time_domain, value_domain)
+    timestamps += task_time_offset
+    _add_trace(fig, timestamps, values, color=color, name=name)
+    
+    if show_std:
+        std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
+        _add_std_region(fig, timestamps, values, std, color='#bbbbbb')
+    if not show_run_traces:
+        return
+    
+    for i, run in enumerate(task_runs):
+        agg = LearningStatsAggregator([run])
+        values, timestamps = agg.get_aggregate(time_domain, value_domain)
+        if common_run_traces_start:
+            timestamps += task_time_offset
+        else:
+            timestamps += time_offsets[i]
+        _add_trace(
+            fig, timestamps, values, color=color, opacity=np.sqrt(1/(2*len(task_runs))), showlegend=False)
+
+
+def _add_curriculum_trajectory(
+        fig: 'go.Figure', 
+        curriculum_runs: list[dict[str, LearningStats]],
+        time_domain: TimeDomain,
+        colors: Optional[list[str]] = None,
+        **kwargs):
+    """
+    Adds a curriculum trajectory to the figure
+    """
+    time_offsets = np.zeros(shape=len(curriculum_runs))
+    for i, task_name in enumerate(curriculum_runs[0].keys()):
+        task_runs = [run[task_name] for run in curriculum_runs]
+        _add_task_trajectory(fig, 
+                             task_runs, 
+                             name=task_name, 
+                             time_offsets=time_offsets, 
+                             time_domain=time_domain, 
+                             color=colors[i], 
+                             **kwargs)
+
+        for j, run in enumerate(curriculum_runs):
+            time_offsets[j] += _get_total_time(run[task_name], time_domain)
+
+
+def plot_trajectories(
+        runs: Union[Runs, list[Runs]],
+        time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
+        value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
+        show_std: Union[bool, list[bool]] = False,
+        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        show_run_traces: Union[bool, list[bool]] = False,
+        common_run_traces_start: Union[bool, list[bool]] = True,
+        as_separate_figs: bool = False,
+        show: bool = False,
+        save_path: Optional[str] = None, 
+        save_format: SaveFormat = 'png'):
+    """
+    Plots trajectories of specified task/curriculum runs.
 
     Args:
-        curriculum_stats: Learning statistics for tasks in the curriculum.
-        nocurriculum_stats: Learning statistics for the task without curriculum.
+        runs: A list of task/curriculum stats or a list which elements are lists of task/curriculum stats
+        time_domain: Time domain which will be used on the X-axis.
+            Can be either one of ``'steps'``, ``'episodes'``, ``'wall_time'``, ``'cpu_time'``
+            or a list of these values, one for each plotted trajectory. Defaults to ``'steps'``.
+        value_domain: Value domain which will be used on the Y-axis.
+            Can be either one of ``'agent_evaluations'``, ``'episode_rewards'``, 
+            ``'episode_rewards_moving_avg'``, ``'step_counts'``, ``'step_counts_moving_avg'``
+            or a list of these values, one for each plotted trajectory. Defaults to ``'agent_evaluations'``.
+        show_std: Whether to show standard deviation region around given trajectory.
+            Can be either a single bool or a list of bools, one for each plotted trajectory.
+            Defaults to ``False``.
+        task_trace_start: Point at which the next task in curriculum should start.
+            Only used with curriculum trajectories. Possible values are:
+
+            - ``'zero'`` - Each task trajectory will start at x=0,
+            - ``'mean'`` - Each task trajectory will start at the mean termination point of
+              previous trajectories,
+            - ``'q3'`` - Each task trajectory will start at the third quantile of previous
+              trajectories' termination points,
+            - ``'most'`` - Each task trajectory will start at 0.9 quantile of previous
+              trajectories' termiantion points,
+            - ``'outliers'`` - Each trajectory task will start at the outlier boundry of previous
+              trajectories' termination points (Q3 + 1.5IQR),
+            - ``'max'`` - Each task trajectory will start at the max termination point of
+              previous trajectories.
+
+            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
+            Defaults to ``'most'``.
+        show_run_traces: Whether to show individual run traces (with lower opacity)
+            Can either be a single value or a list of values, one for each plotted trajectory.
+            Defaults to ``False``.
+        common_run_traces_start: Whether individual run traces should start at the same point (the same
+            as their parent trajectory) or as continuations of their predecessors (when plotting
+            curriculum trajectory). Can either be a single value or a list of values, 
+            one for each plotted curriculum trajectory. Defaults to ``False``.
+        as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
+            and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
+            corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
-        includes_init_eval: Whether to include initial evaluation. Defaults to ``False``.
-    
+
     Raises:
-        ValueError: If the number of evaluations is greater than the number of steps to evaluation. 
-            This means that the flag of includes_init_eval was set to ``False``, but the number of evaluations
-            is greater than the number of steps to evaluation. This may be the problem if the flag was set to
-            ``True`` in the LearningTask class.
-
-        ValueError: If the number of evaluations is smaller than the number of steps to evaluation.
-            This means that the flag of includes_init_eval was set to ``True``, but the number of evaluations
-            is smaller than the number of steps to evaluation. This may be the problem if the flag was set to
-            ``False`` in the LearningTask class.
-
-    Returns:
-        Absolute path to the saved plot file if the ``save_path`` was provided.
-    
-    Note:
-        If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
-        the name of the saved plot, the _curriculum_vs_no_curriculum is added to the end of the ``save_path``
-
-    Warning:
-        Change the ``includes_init_eval`` to same value that you initialized in the 
-        :class:`academia.curriculum.LearningTask` class. Otherwise, the function will raises an ``ValueError``.
+        ValueError: If ``time_domain`` is invalid
+        ValueError: If ``value_domain`` is invalid
+        ValueError: If ``task_trace_start`` is invalid
     
     Examples:
-        Initialisation of a curriculum we want to plot:
 
-        >>> from academia.curriculum import LearningTask, Curriculum
-        >>> from academia.environments import LavaCrossing
-        >>> task1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> curriculum = Curriculum(
-        >>>     tasks=[task1, task2],
-        >>>     output_dir='./my_curriculum/',
-        >>> )
+        The following imports are needed for the following examples
 
-        Initialisation of a task without curriculum we want to plot:
+        >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
+        >>> import academia.tools.visualizations as vis
 
-        >>> no_curriculum = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2},
-        >>>     stop_conditions={'max_episodes': 1500},
-        >>> )
+        For details on how to configure agents see :mod:`academia.agents`
 
-        Defining an agent:
+        Plotting evaluations from a single task run
 
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent_curriculum = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent_no_curriculum = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
+        >>> task: LearningTask = ...
+        >>> agent = ...
+        >>> task.run(agent)
+        >>> stats: LearningStats = task.stats
+        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+
+        Plotting evaluations from a single curriculum run. See :mod:`academia.curriculum`
+        for more details on how to configure and run a curriculum.
+
+        >>> curriculum: Curriculum = ...
+        >>> agent = ...
+        >>> curriculum.run(agent)
+        >>> stats: dict[str, LearningStats] = curriculum.stats
+        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+
+        Plotting several runs of a single task with some additonal visuals
+
+        >>> task: LearningTask = ...
+        >>> n_runs =  5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     task.run(agent)
+        >>>     task_runs_stats.append(task.stats)
+        >>> vis.plot_trajectories(
+        >>>     task_runs_stats, 
+        >>>     show_run_traces=True,
+        >>>     show_std=True,
         >>> )
 
-        Running a curriculum:
+        Plotting curriculum vs task comparison
 
-        >>> curriculum.run(agent_curriculum, verbose=4)
+        >>> task: LearningTask = ...
+        >>> curriculum: Curriculum = ...
+        >>> n_runs = 5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> curriculum_runs_stats: list[dict[str, LearningStats]] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     task.run(agent)
+        >>>     task_runs_stats.append(task.stats)
+        >>>     agent = ...
+        >>>     curriculum.run(agent)
+        >>>     curriculum_runs_stats.append(curriculum.stats)
+        >>> vis.plot_trajectories(
+        >>>     [task_runs_stats, curriculum_runs_stats],
+        >>>     show_std=True,
+        >>>     show_run_traces=[True, False] # show individual traces only for the task
+        >>> )
 
-        Running a task without curriculum:
+        Plotting curriculum vs curriculum as separate figures with different time domains
 
-        >>> no_curriculum.run(agent_no_curriculum, verbose=4)
+        >>> curriculum_1: Curriculum = ...
+        >>> curriculum_2: Curriculum = ...
+        >>> n_runs = 5
+        >>> curriculum_1_runs_stats: list[dict[str, LearningStats]] = []
+        >>> curriculum_2_runs_stats: list[dict[str, LearningStats]] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     curriculum_1.run(agent)
+        >>>     curriculum_1_runs_stats.append(curriculum_1.stats)
+        >>>     agent = ...
+        >>>     curriculum_2.run(agent)
+        >>>     curriculum_2_runs_stats.append(curriculum_2.stats)
+        >>> vis.plot_trajectories(
+        >>>     [curriculum_1_runs_stats, curriculum_2_runs_stats],
+        >>>     as_separate_fig=True,
+        >>>     time_domain=["steps", "episodes"]
+        >>> )
 
-        Plotting the curriculum vs no curriculum:
+        Plotting a running average of steps in episodes in several runs of a single task
 
-        >>> from academia.tools.visualizations import plot_curriculum_vs_nocurriculum
-        >>> plot_curriculum_vs_nocurriculum(curriculum.stats, 
-        >>>                                 no_curriculum.stats, 
-        >>>                                 save_path='./curriculum', 
-        >>>                                 save_format='png')
+        >>> task: LearningTask = ...
+        >>> n_runs =  5
+        >>> task_runs_stats: list[LearningStats] = []
+        >>> for _ in range(n_runs):
+        >>>     agent = ...
+        >>>     task.run(agent)
+        >>>     task_runs_stats.append(task.stats)
+        >>> vis.plot_trajectories(
+        >>>     task_runs_stats,
+        >>>     value_domain='step_counts_moving_avg'
+        >>>     show_run_traces=True,
+        >>> )
     """
-    fig = go.Figure()
-    total_steps_to_last_eval = 0
-    for task_id, task_stats in curriculum_stats.items():
-        evalutaion_interval = task_stats.evaluation_interval
-        evaluations = task_stats.agent_evaluations
-        steps_count = task_stats.step_counts
-        steps_count[0] += total_steps_to_last_eval
-        steps_cum = np.cumsum(steps_count)
-        indices = np.arange(evalutaion_interval - 1, len(steps_cum), evalutaion_interval)
-        steps_to_eval = steps_cum[indices]
-        if includes_init_eval:
-            if len(np.concatenate([[total_steps_to_last_eval],steps_to_eval])) > len(evaluations):
-                raise ValueError(
-                    f"The flag includes_init_eval is set to True, but the number of evaluations "
-                    f"for task {task_id} is smaller than the number of steps to evaluation. "
-                    f"Make sure that the flag was set to True in the LearningTask class."
-                )
-            fig.add_trace(go.Scatter(x=np.concatenate([[total_steps_to_last_eval],steps_to_eval]), 
-                                    y=evaluations, mode='lines', name=f'Task {task_id}'))
-        else:
-            if len(steps_to_eval) < len(evaluations):
-                raise ValueError(
-                    f"The flag includes_init_eval is set to False, but the number of evaluations "
-                    f"for task {task_id} is greater than the number of steps to evaluation. "
-                    f"Make sure that the flag was set to False in the LearningTask class."
-                )
-            fig.add_trace(go.Scatter(x=steps_to_eval, y=evaluations, mode='lines', name=f'Task {task_id}'))
-            
-        total_steps_to_last_eval = steps_to_eval[-1]
-    nocurr_steps_cum =  np.cumsum(nocurriculum_stats.step_counts)
-    nocurr_indices = np.arange(evalutaion_interval - 1, len(nocurr_steps_cum), evalutaion_interval)
-    no_curr_steps_to_eval = nocurr_steps_cum[nocurr_indices]
     
-    if len(no_curr_steps_to_eval) < len(nocurriculum_stats.agent_evaluations):
-        no_curr_steps_to_eval = np.concatenate([[0], no_curr_steps_to_eval])
+    if not isinstance(runs[0], list):
+        runs = [runs]
 
-    fig.add_trace(go.Scatter(x=no_curr_steps_to_eval, 
-                             y=nocurriculum_stats.agent_evaluations, 
-                             mode='lines', 
-                             name='No curriculum'
-                             ))
-    fig.update_layout(title_text='Curriculum vs No Curriculum',
-                      xaxis_title='Total number of steps to evaluation',
-                      yaxis_title='Evaluation score')
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Total num of steps to evaluation: %{x}",
-            "Evaluation score: %{y}"
-        ])
-    )
-    if show:
-        fig.show()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}_curriculum_vs_no_curriculum.png")
-        else:
-            fig.write_html(f"{save_path}_curriculum_vs_no_curriculum.html")
-        return os.path.abspath(save_path)
+    # compile arguments of similar nature into a single dictionary
+    # to be passed as kwargs later on
+    trajectories_kwargs = {
+        'time_domain': time_domain,
+        'value_domain': value_domain,
+        'show_std': show_std,
+        'show_run_traces': show_run_traces,
+        'task_trace_start': task_trace_start,
+        'common_run_traces_start': common_run_traces_start
+    }
+    def _iterate_trajectories_kwargs():
+        for i in range(len(runs)):
+            trajectory_kwargs = {
+                kwarg_name: trajectories_kwargs[kwarg_name][i] for kwarg_name in trajectories_kwargs}
+            yield trajectory_kwargs
 
+    # since we allow the user to either pass single values of a list of values (one for each
+    # trajectory) we have to convert all non-list values to lists so that it's compatible
+    # with the rest of the code
+    for kwarg_name, value in trajectories_kwargs.items():
+        if not isinstance(value, list):
+            trajectories_kwargs[kwarg_name] = [value] * len(runs)
 
-def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[LearningStats],
-                           show: bool = False, save_path: str = None, 
-                           save_format: Literal['png', 'html'] = 'png'):
+    if as_separate_figs:
+        # recursively call plot_trajectories for each trajectory
+        for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
+            trajectory = runs[i]
+            new_save_path = None if save_path is None else save_path + f'_{i}'
+            plot_trajectories(
+                [trajectory], 
+                as_separate_figs=False, 
+                show=show, 
+                save_path=new_save_path, 
+                save_format=save_format, 
+                **trajectory_kwargs)
+        return
+
+    with _create_figure(show, save_path, save_format=save_format) as fig:
+        for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
+            trajectory = runs[i]
+            if isinstance(trajectory[0], LearningStats):
+                color = _get_colors(1, i, i, len(runs))[0]
+                _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
+            if isinstance(trajectory[0], dict):
+                colors = _get_colors(len(trajectory[0]), i, i, len(runs))
+                _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
+        fig.update_layout(
+            xaxis_title=f"{_get_domain_display_name(time_domain)}",
+            yaxis_title=f"{_get_domain_display_name(value_domain)}"
+        )
+    
+
+def plot_evaluation_impact(
+        n_episodes_x: list[int], 
+        task_runs_y: list[LearningTaskRuns],
+        show: bool = False,
+        save_path: Optional[str] = None, 
+        save_format: SaveFormat = 'png',
+        ):
     """
     Plots the impact of learning duration in task with difficulty level = x to evaluation 
-    of task with difficulty level = y.
-
-    The purpose of this plot is to show how the learning duration in task with difficulty level = x
-    affects the evaluation of task with difficulty level = y. The X-axis shows the number of episodes
-    in task with difficulty level = x, while the Y-axis shows the evaluation score obtained by the agent
-    in task with difficulty level = y. 
 
     Args:
-        num_of_episodes_lvl_x: Number of episodes in task X.
-        stats_lvl_y: Learning statistics for tasks in level Y.
+        n_episodes_x: Number of episodes in task X.
+        task_runs_y: Learning statistics for tasks in level Y.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -523,312 +545,66 @@ def plot_evaluation_impact(num_of_episodes_lvl_x: List[int], stats_lvl_y: List[L
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
             environment.
-
-        ValueError: If the number of evaluation scores is not equal to the number of tasks at level x.
-            This means that the evaluation was not performed only at the end of the task, which is necessary to
-            correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
-            this task.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
-        the name of the saved plot, the _evaluation_impact is added to the end of the ``save_path``
-
-    Warning:
-        It is important that evaluations in task with difficulty level = y
-        are only performed at the end of the task and that the number of episodes in this task should be fixed
-        to correctly measure the impact of learning duration in task with difficulty level = x to evaluation of 
-        this task.     
+        the name of the saved plot, the ``"_evaluation_impact"`` is added to the end of the ``save_path``
     
     Examples:
-        Initialisation of a diffrent pairs we want to analyze:
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
-        >>> task0_v500 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task1_v500 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task0_v700 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 700},
-        >>> )
-        >>> task1_v700 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task0_v1000 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task1_v1000 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-
-        Initialisation of agents:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent_v500 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent_v700 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent_v1000 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        
-        Initialisation of a curriculums and running them:
-
-        >>> curriculum_v500 = Curriculum(
-        >>>     tasks=[task0_v500, task1_v500],
-        >>>     output_dir='./curriculum_v500/',
-        >>> )
-        >>> curriculum_v500.run(agent, verbose=4)
-        >>> curriculum_v700 = Curriculum(
-        >>>     tasks=[task0_v700, task1_v700],
-        >>>     output_dir='./curriculum_v700/',
-        >>> )
-        >>> curriculum_v700.run(agent, verbose=4)
-        >>> curriculum_v1000 = Curriculum(
-        >>>     tasks=[task0_v1000, task1_v1000],
-        >>>     output_dir='./curriculum_v1000/',
-        >>> )
-        >>> curriculum_v1000.run(agent, verbose=4)
-
-        Plotting the evaluation impact:
-
-        >>> from academia.tools.visualizations import plot_evaluation_impact
-        >>> plot_evaluation_impact([500, 700, 1000], 
-        >>>                        [curriculum_v500.stats['2'], curriculum_v700.stats['2'], curriculum_v1000.stats['2']],
-        >>>                         save_path='./evaluation_impact', 
-        >>>                         save_format='png')
+        >>> n_episodes_x = [100, 500, 1000]
+        >>> task_runs_y: list[list[LearningStats]] = []
+        >>> n_runs = 5
+        >>> for nex in n_episodes_x:
+        >>>     curriculum = Curriculum([
+        >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_episodes': nex})
+        >>>         LearningTask(LavaCrossing, {'difficulty': 1}, {'max_episodes': 1000})
+        >>>     ])
+        >>>     final_task_runs: list[LearningStats] = []
+        >>>     for _ in range(n_runs)
+        >>>         agent = ...  
+        >>>         curriculum.run(agent)
+        >>>         final_task_runs.append(curriculum.stats['2'])
+        >>>     task_runs_y.append(final_task_runs)
+        >>>
+        >>> import academia.tools.visualizations as vis
+        >>> vis.plot_evaluation_impact(n_episodes_x, task_runs_y)
     """
-    agent_evals_lvl_y = [task.agent_evaluations for task in stats_lvl_y]
-
-    if len(num_of_episodes_lvl_x) != len(stats_lvl_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
     
-    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_y):
-        raise ValueError(
-            f"Agent evaluations should only be performed at the end of tasks with a level "
-            f"of difficulty y."
+    if len(n_episodes_x) != len(task_runs_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
+
+    agent_evaluations = []
+    for task_runs in task_runs_y:
+        mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
+        agent_evaluations.append(mean_eval)
+
+    with _create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
+        _add_trace(fig, n_episodes_x, agent_evaluations)
+        fig.update_layout(
+            title="Impact of learning duration in task x on the evaluation of task y",
+            xaxis_title="Number of episodes in task x",
+            yaxis_title="Evaluation score in task y"
         )
 
-    fig = px.line(x=num_of_episodes_lvl_x, y=agent_evals_lvl_y,
-                          title='Impact of learning duration in task x to evaluation of task y')
-    fig.update_layout(
-        xaxis_title="Number of episodes in task X",
-        yaxis_title="Evaluation score in task Y"
-    )
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Number of episodes in task X: %{x}",
-            "Evaluation score in task Y: %{y}"
-        ])
-    )
-    if show:
-        fig.show()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}_evaluation_impact.png")
-        else:
-            fig.write_html(f"{save_path}_evaluation_impact.html")
-        return os.path.abspath(save_path)
 
-
-def plot_time_impact(stats_lvl_x: List[LearningStats], stats_lvl_y: List[LearningStats], 
-                     time_domain_x: Literal["steps", "episodes", "cpu_time", "wall_time"] = "episodes",
-                     time_domain_y: Literal["steps", "episodes", "cpu_time", "wall_time", "as_x"] = "as_x",
-                     show: bool = False, save_path: str = None, save_format: Literal['png', 'html'] = 'png'):
+def plot_evaluation_impact_2d(
+        n_episodes_x: list[int], 
+        n_episodes_y: list[int],
+        task_runs_z: list[LearningTaskRuns], 
+        show: bool = False, 
+        save_path: str = None,
+        save_format: SaveFormat = 'png'):
     """
-    Plots the impact of the number of episodes in task x on the total time spent in both tasks.
-
-    The purpose of this plot is to show how the number of episodes in task x affects the total 
-    time spent in both tasks. It is done by testing the curriculum on pairs of tasks with two
-    specific levels of difficulty in order to examine how the number of episodes spent in the easier
-    one affects the total time spent in both tasks when the stop condition in harder task is specified to reach 
-    the fixed value of agent evaluation eg. equals 200.
-
-    On the X-axis we have the number of episodes in task x, while on the Y-axis we have the total time spent in 
-    both tasks.
+    Plots the impact of learning duration in task x and task y to evaluation of task z.
+    See examples for more details
 
     Args:
-        stats_lvl_x: Learning statistics for tasks in level X.
-        stats_lvl_y: Learning statistics for tasks in level Y.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
-        save_format: File format for saving the plot. Defaults to 'png'.
-
-    Raises:
-        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
-            the number of tasks at level x and level y is equal because the experiment involves testing 
-            the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
-            the number of episodes spent in the easier one affects the total time spent in both tasks.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
-
-    Note:
-        If save path is provided, the plot will be saved to the specified path. To increase the clarity of
-        the name of the saved plot, the _time_impact is added to the end of the ``save_path``
-
-    Examples:
-        Initialisation of a diffrent pairs we want to analyze:
-
-        >>> from academia.curriculum import LearningTask, Curriculum
-        >>> from academia.environments import LavaCrossing
-        >>> task0_v500 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task1_v500 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
-        >>> task0_v700 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 700},
-        >>> )
-        >>> task1_v700 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
-
-        Initialisation of agents:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent_v500 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent_v700 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-
-        Initialisation of a curriculums and running them:
-
-        >>> curriculum_v500 = Curriculum(
-        >>>     tasks=[task0_v500, task1_v500],
-        >>>     output_dir='./curriculum_v500/',
-        >>> )
-        >>> curriculum_v500.run(agent, verbose=4)
-        >>> curriculum_v700 = Curriculum(
-        >>>     tasks=[task0_v700, task1_v700],
-        >>>     output_dir='./curriculum_v700/',
-        >>> )
-        >>> curriculum_v700.run(agent, verbose=4)
-
-        Plotting the time impact:
-
-        >>> from academia.tools.visualizations import plot_time_impact
-        >>> plot_time_impact([curriculum_v500.stats['1'], curriculum_v700.stats['1']], 
-        >>>                  [curriculum_v500.stats['2'], curriculum_v700.stats['2']],
-        >>>                   time_domain_x="steps", 
-        >>>                   save_path='./time_impact', 
-        >>>                   save_format='png')
-    """
-    if len(stats_lvl_x) != len(stats_lvl_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
-    
-    if time_domain_y == "as_x":
-        time_domain_y = time_domain_x
-    
-    x_data, x_domain = _extract_time_data(stats_lvl_x, time_domain_x)
-
-    y_data, y_domain = _extract_time_data(stats_lvl_y, time_domain_y)
-
-    # we want to show total time on y-axis, so we need to add x_data to y_data
-    y_data = np.sum([x_data, y_data], axis=0) 
-
-    fig = px.line(x=x_data, y=y_data, markers=True,
-                          title='Impact of learning duration in task x on total time spent in both tasks')
-    fig.update_layout(
-        xaxis_title=f"Learning duration in task X ({x_domain})",
-        yaxis_title=f"Total time spent in both tasks ({y_domain})"
-    )
-    fig.update_traces(
-        hovertemplate="<br>".join([
-            "Learning duration in task X: %{x}",
-            "Total time spent in both tasks: %{y}"
-        ])
-    )
-    if show:
-        fig.show()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}_time_impact.png")
-        else:
-            fig.write_html(f"{save_path}_time_impact.html")
-        return os.path.abspath(save_path)
-
-
-def _extract_time_data(stats: List[LearningStats], time_domain: str):
-    """
-    Extracts the data from the learning statistics for the given time domain.
-
-    Args:
-        stats: Learning statistics for tasks in level X.
-        time_domain: Time domain to extract data for.
-
-    Returns:
-        List of data for the given time domain.
-    """
-    if time_domain == "steps":
-        return [np.sum(task.step_counts) for task in stats], "steps"
-    elif time_domain == "episodes":
-        return [len(task.step_counts) for task in stats], "episodes"
-    elif time_domain == "cpu_time":
-        return [np.sum(task.episode_cpu_times) for task in stats], "cpu_time"
-    elif time_domain == "wall_time":
-        return [np.sum(task.episode_wall_times) for task in stats], "wall_time"
-    else:
-        raise ValueError(f"Unknown time domain: {time_domain}")
-
-
-def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_episodes_lvl_y: List[int], 
-                                    stats_lvl_z: List[LearningStats], show: bool = False, save_path: str = None, 
-                                    save_format: Literal['png', 'html'] = 'png'):
-    """
-    Plots the impact of learning duration in task x and task y to evaluation of task z. The purpose of this plot is 
-    to show how the learning duration in task x and task y affects the evaluation of task z. It is done by testing 
-    the curriculum on group of three tasks with three specific levels of difficulty in order to examine how the number 
-    of episodes spent in the easier ones affects the evaluation of the agent in a more difficult environment.
-
-    Args:
-        num_of_episodes_lvl_x: Number of episodes in task X.
-        num_of_episodes_lvl_y: Number of episodes in task Y.
-        stats_lvl_z: Learning statistics for tasks in level Z.
+        n_episodes_x: Number of episodes in task X.
+        n_episodes_y: Number of episodes in task Y.
+        task_runs_z: Learning statistics for tasks in level Z.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -838,164 +614,148 @@ def plot_multiple_evaluation_impact(num_of_episodes_lvl_x: List[int], num_of_epi
             It is assumed that the number of tasks at level x, level y and level z is equal 
             because the experiment involves testing the curriculum on group of three tasks with 
             three specific levels of difficulty in order to examine how the number of episodes spent 
-            in the easier ones affects the evaluation of the agent in a more difficult environment.
-
-        ValueError: If the number of evaluation scores is not equal to the number of tasks at level x and level y.
-            It is assumed that the evaluation was not performed only at the end of the task, which is necessary to
-            correctly measure the impact of learning duration in task x and task y to evaluation of task z.
-
-    Returns:
-        Absolute path to the saved plot file if ``save_path`` was provided.
+            in the easier ones affects the evaluation of the agent in the more difficult environment.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of
-        the name of the saved plot, the _multiple_evaluation_impact is added to the end of the ``save_path``
+        the name of the saved plot, the ``"_eval_impact_2d"`` suffix is added to the end of the ``save_path``
 
-    Warning:
-        It is important that evaluations in task with difficulty level = z
-        are only performed at the end of the task and that the number of episodes in this task should be fixed
-        to correctly measure the impact of learning duration in task with difficulty level = x and task with 
-        difficulty level = y to evaluation of this task.
-    
     Examples:
-
-        Initialisation of a diffrent groups we want to analyze:
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
-        >>> task_curr0_v0 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 500},
-        >>> )
-        >>> task_curr0_v1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task_curr0_v2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
-        >>> curriculum0 = Curriculum(
-        >>>     tasks=[task_curr0_v0, task_curr0_v1, task_curr0_v2],
-        >>>     output_dir='./curriculum0/',
-        >>> )
-        >>> task_curr1_v0 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 700},
-        >>> )
-        >>> task_curr1_v1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 1200},
-        >>> )
-        >>> task_curr1_v2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
-        >>> curriculum1 = Curriculum(
-        >>>     tasks=[task_curr1_v0, task_curr1_v1, task_curr1_v2],
-        >>>     output_dir='./curriculum1/',
-        >>> )
-        >>> task_curr2_v0 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 0},
-        >>>     stop_conditions={'max_episodes': 1000},
-        >>> )
-        >>> task_curr2_v1 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 1},
-        >>>     stop_conditions={'max_episodes': 600},
-        >>> )
-        >>> task_curr2_v2 = LearningTask(
-        >>>     env_type=LavaCrossing,
-        >>>     env_args={'difficulty': 2},
-        >>>     stop_conditions={'min_evaluation_score': 200},
-        >>> )
-        >>> curriculum2 = Curriculum(
-        >>>     tasks=[task_curr2_v0, task_curr2_v1, task_curr2_v2],
-        >>>     output_dir='./curriculum2/',
-        >>> )
-
-        Initialisation of agents:
-
-        >>> from academia.agents import DQNAgent
-        >>> from academia.utils.models import lava_crossing
-        >>> agent0 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent1 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-        >>> agent2 = DQNAgent(
-        >>>     n_actions=LavaCrossing.N_ACTIONS,
-        >>>     nn_architecture=lava_crossing.MLPStepDQN,
-        >>>     random_state=123,
-        >>> )
-
-        Running curriculums:
-
-        >>> curriculum0.run(agent0, verbose=4)
-        >>> curriculum1.run(agent1, verbose=4)
-        >>> curriculum2.run(agent2, verbose=4)
-
-        Plotting the multiple evaluation impact:
-
-        >>> from academia.tools.visualizations import plot_multiple_evaluation_impact
-        >>> plot_multiple_evaluation_impact([500, 700, 1000], [1000, 1200, 600], 
-        >>>                                 [curriculum0.stats['3'], curriculum1.stats['3'], curriculum2.stats['3']],
-        >>>                                 save_path='./multiple_evaluation_impact', 
-        >>>                                 save_format='png')
+        >>> n_episodes_x = [100, 500]
+        >>> n_episodes_y = [200, 400]
+        >>> task_runs_z: list[list[LearningStats]] = []
+        >>> n_runs = 5
+        >>> for nex in n_episodes_x:
+        >>>     for ney in n_episodes_y:
+        >>>         curriculum = Curriculum([
+        >>>             LearningTask(LavaCrossing, {'difficulty': 0}, {'max_episodes': nex})
+        >>>             LearningTask(LavaCrossing, {'difficulty': 1}, {'max_episodes': ney})
+        >>>             LearningTask(LavaCrossing, {'difficulty': 2}, {'max_episodes': 1000})
+        >>>         ])
+        >>>         final_task_runs: list[LearningStats] = []
+        >>>         for _ in range(n_runs)
+        >>>             agent = ...  
+        >>>             curriculum.run(agent)
+        >>>             final_task_runs.append(curriculum.stats['3'])
+        >>>         task_runs_z.append(final_task_runs)
+        >>>
+        >>> import academia.tools.visualizations as vis
+        >>> # the provided lists should over all tested combinations
+        >>> n_episodes_x = [100, 100, 500, 500]
+        >>> n_episodes_y = [200, 400, 200, 400]
+        >>> vis.plot_evaluation_impact_2d(n_episodes_x, n_episodes_y, task_runs_z)
     """
-    agent_evals_lvl_z = [task.agent_evaluations for task in stats_lvl_z]
 
-    if len(num_of_episodes_lvl_x) != len(num_of_episodes_lvl_y) or \
-       len(num_of_episodes_lvl_x) != len(stats_lvl_z) or \
-       len(num_of_episodes_lvl_y) != len(stats_lvl_z):
+    if len(n_episodes_x) != len(n_episodes_y) or len(n_episodes_x) != len(task_runs_z):
         raise ValueError("The number of tasks at level x, level y and level z should be equal.")
     
-    
-    if len(num_of_episodes_lvl_x) != len(agent_evals_lvl_z) or len(num_of_episodes_lvl_y) != len(agent_evals_lvl_z):
-        raise ValueError(
-            f"Agent evaluations should only be performed at the end of tasks with a level "
-            f"of difficulty z."
+    agent_evaluations = []
+    for task_runs in task_runs_z:
+        mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
+        agent_evaluations.append(mean_eval)
+
+    with _create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
+        fig.add_trace(go.Scatter(
+            x=n_episodes_x,
+            y=n_episodes_y,
+            mode='markers',
+            marker=dict(
+                size=16,
+                color=agent_evaluations,
+                colorscale='Viridis',
+                showscale=True
+            )
+        ))
+        fig.update_layout(
+            title="Impact of learning duration in task x and task y on the evaluation of task z",
+            xaxis_title="Number of episodes in task x",
+            yaxis_title="Number of episodes in task y"
         )
 
-    fig = px.scatter(x=num_of_episodes_lvl_x, 
-                     y=num_of_episodes_lvl_y, 
-                     color=agent_evals_lvl_z,
-                     color_continuous_scale='Greens',
-                     labels = {'color': 'Evaluation score in task Z'},
-                     text=np.round(agent_evals_lvl_z, 1),
-                     title='Impact of learning duration in task x and task y to evaluation of task z'
-                     )
+
+def plot_time_impact(
+        task_runs_x: list[LearningTaskRuns], 
+        task_runs_y: list[LearningTaskRuns],
+        time_domain_x: TimeDomain = "episodes",
+        time_domain_y: Union[TimeDomain, Literal["as_x"]] = "as_x",
+        show: bool = False, 
+        save_path: str = None, 
+        save_format: SaveFormat = 'png'):
+    """
+    Plots the impact of the number of episodes in task x on the total time spent in both tasks.
+    See examples for more details
+
+    Args:
+        task_runs_x: Learning statistics for tasks in level X.
+        task_runs_y: Learning statistics for tasks in level Y.
+        time_domain_x: Time domain which will be used on the X-axis.
+        time_domain_y: Time domain which will be used on the Y-axis.
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Raises:
+        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
+            the number of tasks at level x and level y is equal because the experiment involves testing 
+            the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
+            the number of episodes spent in the easier one affects the total time spent in both tasks.
+        ValueError: If ``time_domain`` is invalid
+
+    Note:
+        If save path is provided, the plot will be saved to the specified path. To increase the clarity of
+        the name of the saved plot, the ``"_time_impact"`` suffix is added to the end of the ``save_path``
+
+    Examples:
+        
+        >>> from academia.environments import LavaCrossing
+        >>> from academia.curriculum import LearningTask, LearningStats, Curriculum
+        >>>
+        >>> wall_time_stops = [600, 900, 1200] # 10, 15 and 20 minutes
+        >>> # the exact time at which the task stops might slightly differ
+        >>> # from the set stop condition as it is only checked at the end of each episode
+        >>> n_runs = 5
+        >>> task_runs_x: list[list[LearningStats]] = []
+        >>> task_runs_y: list[list[LearningStats]] = []
+        >>> for wts in wall_time_stops:
+        >>>     curriculum = Curriculum([
+        >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_wall_time': wts})
+        >>>         LearningTask(LavaCrossing, {'difficulty': 1}, {'min_evaluation_score': 0.9})
+        >>>     ])
+        >>>     first_task_runs: list[LearningStats] = []
+        >>>     second_task_runs: list[LearningStats] = []
+        >>>     for _ in range(n_runs):
+        >>>         agent = ...
+        >>>         curriculum.run(agent)
+        >>>         first_task_runs.append(curriculum.stats['1'])
+        >>>         second_task_runs.append(curriculum.stats['2'])
+        >>>     task_runs_x.append(first_task_runs)
+        >>>     task_runs_y.append(second_task_runs)
+        >>>
+        >>> import academia.tools.visualizations as vis
+        >>> vis.plot_time_impact(task_runs_x, task_runs_y, time_domain_x="wall_time")  
+    """
     
-    fig.update_traces(
-        marker_size=48,
-        hovertemplate="<br>".join(["Number of episodes in task X: %{x}",
-                                   "Number of episodes in task Y: %{y}",
-                                   "Evaluation score in task Z: %{marker.color:.3f}"
-                                   ]),
-        textfont_color='black'
+    if len(task_runs_x) != len(task_runs_y):
+        raise ValueError("The number of tasks at level x and level y should be equal.")
+    if time_domain_y == "as_x":
+        time_domain_y = time_domain_x
+
+    x_times = []
+    for task_runs in task_runs_x:
+        x_times.append(np.mean([_get_total_time(task_stats, time_domain_x) for task_stats in task_runs]))
+    xy_times = []
+    for task_runs in zip(task_runs_x, task_runs_y):
+        x_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[0]])
+        y_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[1]])
+        xy_times.append(x_time + y_time)
+
+    with _create_figure(show, save_path, 'time_impact', save_format) as fig:
+        _add_trace(fig, x_times, xy_times)
+        fig.update_layout(
+            xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
+            yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
+            title="Impact of learning duration in task x on the total time spent in both tasks"
         )
-    
-    fig.update_xaxes(title_text='Number of Episodes Level X')
-    fig.update_yaxes(title_text='Number of Episodes Level Y')
-    if show:
-        fig.show()
-    if save_path:
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
-            fig.write_image(f"{save_path}_multiple_evaluation_impact.png")
-        else:
-            fig.write_html(f"{save_path}_multiple_evaluation_impact.html")
-        return os.path.abspath(save_path)
-    
