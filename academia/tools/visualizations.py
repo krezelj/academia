@@ -192,7 +192,7 @@ def _get_task_time_offset(
         q3 = np.quantile(time_offsets, 0.75)
         q1 = np.quantile(time_offsets, 0.25)
         iqr = q3 - q1 
-        return np.min(q3 + 1.5 * iqr, np.max(time_offsets))
+        return np.min([q3 + 1.5 * iqr, np.max(time_offsets)])
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -303,8 +303,8 @@ def _add_curriculum_trajectory(
                              color=colors[i], 
                              **kwargs)
 
-        for i, run in enumerate(curriculum_runs):
-            time_offsets[i] += _get_total_time(run[task_name], time_domain)
+        for j, run in enumerate(curriculum_runs):
+            time_offsets[j] += _get_total_time(run[task_name], time_domain)
 
 
 def plot_trajectories(
