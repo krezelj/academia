@@ -89,10 +89,10 @@ class TestCurriculum(unittest.TestCase):
             # act
             sut = Curriculum.load(config_file_path)
             # assert
-            self.assertEqual('./hello_output', sut.output_dir)
-            self.assertEqual('Petr Cech', sut.tasks[0].name)
-            self.assertEqual('Gary Cahill', sut.tasks[1].name)
-            self.assertEqual('Cesar Azpilicueta', sut.tasks[2].name)
+        self.assertEqual('./hello_output', sut.output_dir)
+        self.assertEqual('Petr Cech', sut.tasks[0].name)
+        self.assertEqual('Gary Cahill', sut.tasks[1].name)
+        self.assertEqual('Cesar Azpilicueta', sut.tasks[2].name)
 
     def test_loading_config_task_separate_file(self):
         """
@@ -118,8 +118,8 @@ class TestCurriculum(unittest.TestCase):
                 f.write("Craig Forsyth")
             # act
             sut = Curriculum.load(config_file_path)
-            # assert
-            self.assertEqual('Craig Forsyth', sut.tasks[0].name)
+        # assert
+        self.assertEqual('Craig Forsyth', sut.tasks[0].name)
 
     def test_saving_loading_config(self):
         """
@@ -132,9 +132,11 @@ class TestCurriculum(unittest.TestCase):
             save_path = curriculum_to_save.save(os.path.join(temp_dir, 'config.curriculum.yml'))
             self.assertTrue(os.path.exists(save_path))
             sut = Curriculum.load(save_path)
-            self.assertEqual(curriculum_to_save.output_dir, sut.output_dir)
-            self.assertEqual(curriculum_to_save.tasks[0].name, sut.tasks[0].name, msg='Task order wrong')
-            self.assertEqual(curriculum_to_save.tasks[1].name, sut.tasks[1].name, msg='Task order wrong')
+        self.assertEqual(curriculum_to_save.output_dir, sut.output_dir)
+        self.assertEqual(len(curriculum_to_save.tasks), len(sut.tasks),
+                         msg='Task count should be equal in both curricula')
+        self.assertEqual(curriculum_to_save.tasks[0].name, sut.tasks[0].name, msg='Task order wrong')
+        self.assertEqual(curriculum_to_save.tasks[1].name, sut.tasks[1].name, msg='Task order wrong')
 
     def test_saving_loading_path(self):
         """
