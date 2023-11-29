@@ -189,7 +189,7 @@ class LearningTask(SavableLoadable):
                  evaluation_count: int = 5,
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
-                 exploration_reset_value: Optional[int] = None,
+                 exploration_reset_value: Optional[float] = None,
                  name: Optional[str] = None,
                  agent_save_path: Optional[str] = None,
                  stats_save_path: Optional[str] = None,
