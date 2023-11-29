@@ -154,27 +154,32 @@ class TestLearningTask(unittest.TestCase):
                                    mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
                 sut = LearningTask.load(config_file_path)
 
-            # run the task to be able to check some of the parameters validity later
-            sut.run(mock_agent)
+        # run the task to be able to check some of the parameters validity later
+        sut.run(mock_agent)
 
-            self.assertEqual('Reece James', sut.name)
-            self.assertEqual(24, sut.stats.evaluation_interval)
-            self.assertEqual(f'{temp_dir}/secret_agent_123', sut.agent_save_path)
-            self.assertEqual(f'{temp_dir}/super_stats_321', sut.stats_save_path)
-            # stop condition
-            self.assertEqual(2, len(sut.stats.episode_rewards))
+        self.assertEqual('Reece James', sut.name)
+        self.assertEqual(24, sut.stats.evaluation_interval)
+        self.assertEqual(f'{temp_dir}/secret_agent_123', sut.agent_save_path)
+        self.assertEqual(f'{temp_dir}/super_stats_321', sut.stats_save_path)
+        # stop condition
+        self.assertEqual(2, len(sut.stats.episode_rewards))
 
     def test_saving_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
         Task's configuration should be saved in a way that loading it will produce a task of
         identical configuration
         """
-        task_to_save = _get_learning_task(mock_env, other_task_args={
+        task_to_save_config = {
             'name': 'Frank Lampard',
             'evaluation_interval': 8,
+            'include_init_eval': False,
+            'evaluation_count': 26,
+            'greedy_evaluation': False,
+            'exploration_reset_value': 33,
             'agent_save_path': './agent_path',
             'stats_save_path': './stats_path',
-        })
+        }
+        task_to_save = _get_learning_task(mock_env, other_task_args=task_to_save_config)
         with tempfile.TemporaryDirectory() as temp_dir:
             save_path = task_to_save.save(os.path.join(temp_dir, 'test.task.yml'))
             self.assertTrue(os.path.exists(save_path))
@@ -183,10 +188,11 @@ class TestLearningTask(unittest.TestCase):
             with mock.patch.object(LearningTask, 'get_type',
                                    mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
                 sut = LearningTask.load(save_path)
-            self.assertEqual(task_to_save.name, sut.name)
-            self.assertEqual(task_to_save.stats.evaluation_interval, sut.stats.evaluation_interval)
-            self.assertEqual(task_to_save.agent_save_path, sut.agent_save_path)
-            self.assertEqual(task_to_save.stats_save_path, sut.stats_save_path)
+        sut_config = sut.to_dict()
+        sut_config.pop('env_type')
+        sut_config.pop('env_args')
+        sut_config.pop('stop_conditions')
+        self.assertEqual(task_to_save_config, sut_config)
 
     def test_saving_loading_path(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
