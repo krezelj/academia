@@ -462,8 +462,9 @@ class LearningTask(SavableLoadable):
             'evaluation_count': self.__evaluation_count,
             'include_init_eval': self.__include_init_eval,
             'greedy_evaluation': self.__greedy_evaluation,
-            'exploration_reset_value': self.__exploration_reset_value,
         }
+        if self.__exploration_reset_value is not None:
+            task_data['exploration_reset_value'] = self.__exploration_reset_value
         if self.name is not None:
             task_data['name'] = self.name
         if self.agent_save_path is not None:
