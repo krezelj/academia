@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+# script should be run at the experiments/experiment_1 directory level
 sys.path.append('..\\..')
 
 from academia.curriculum import Curriculum, LearningTask
