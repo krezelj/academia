@@ -1,17 +1,20 @@
+import logging
+import json
+import os
+import sys
+
+sys.path.append('..\\..')
+
 from academia.curriculum import Curriculum, LearningTask
 from academia.environments import LavaCrossing
 from academia.agents import DQNAgent
 from academia.utils.models.lava_crossing import MLPStepDQN
 
-import logging
-import json
-import os
-
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)-19s] [%(levelname)-8s] %(name)s: %(message)s ',
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='run_0.1.log',
+    filename='run.log',
 )
 
 is_empty = os.stat('meta.json').st_size == 0
@@ -28,7 +31,7 @@ if is_empty:
         json.dump(params_rounds, file, indent=4)
 
 
-def run_curriculum(n_rounds):
+def run_experiment(n_rounds):
     with open('meta.json', 'r') as meta_file:
         params_sets = json.load(meta_file)
 
@@ -65,6 +68,8 @@ def run_curriculum(n_rounds):
             curriculum.save(f"configs/curriculum_eps={selected_params['epsilon_reset_value']}")
         curriculum.run(agent, verbose=2)
 
-        params_sets[idx] += 1
+        params_sets[idx]['round'] += 1
         with open('meta.json', 'w') as meta_file:
             json.dump(params_sets, meta_file, indent=4)
+
+run_experiment(1)
