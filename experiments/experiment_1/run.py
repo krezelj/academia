@@ -14,7 +14,7 @@ logging.basicConfig(
     filename='run_0.1.log',
 )
 
-is_empty = not bool(os.stat('meta.json').st_size)
+is_empty = os.stat('meta.json').st_size == 0
 
 if is_empty:
     params_rounds = [
