@@ -17,15 +17,18 @@ N_RUNS = 10
 
 task_lvl_0 = LearningTask(env_type=LavaCrossing, 
                           env_args={'difficulty': 0, 'append_step_count': True}, 
-                          stop_conditions={'min_evaluation_score' : 0.8})
+                          stop_conditions={'min_evaluation_score' : 0.8},
+                          exploration_reset_value=1.0)
 
 task_lvl_1 = LearningTask(env_type=LavaCrossing, 
                           env_args={'difficulty': 1, 'append_step_count': True}, 
-                          stop_conditions={'min_evaluation_score' : 0.8})
+                          stop_conditions={'min_evaluation_score' : 0.8},
+                          exploration_reset_value=1.0)
 
 task_lvl_2 = LearningTask(env_type=LavaCrossing, 
                           env_args={'difficulty': 2, 'append_step_count': True}, 
-                          stop_conditions={'min_evaluation_score' : 0.8})
+                          stop_conditions={'min_evaluation_score' : 0.8},
+                          exploration_reset_value=1.0)
 
 with open('experiments/experiment_1/meta.txt', 'r') as file:
     iter = sum(1 for line in file)
@@ -48,4 +51,3 @@ for i in range(N_RUNS - iter):
         f.write(f'Curriculum no. {iter} has been done.\n')
 
     iter += 1
-    
