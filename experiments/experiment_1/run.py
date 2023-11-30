@@ -59,9 +59,10 @@ def run_curriculum(n_rounds):
         curriculum = Curriculum(tasks=list_of_tasks,
                                 output_dir=(
                                     f"outputs/eps={selected_params['epsilon_reset_value']}/"
-                                    f"curriculum_iter={selected_params['round']+1}")
+                                    f"curriculum_iter={selected_params['round'] + 1}")
                                 )
-        curriculum.save(f"configs/curriculum_eps={selected_params['epsilon_reset_value']}")
+        if selected_params['round'] == 0:
+            curriculum.save(f"configs/curriculum_eps={selected_params['epsilon_reset_value']}")
         curriculum.run(agent, verbose=2)
 
         params_sets[idx] += 1
