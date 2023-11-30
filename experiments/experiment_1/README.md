@@ -16,7 +16,8 @@ To conduct the mentioned experiment, five different experiments will be carried 
 | 0.6                 | 0.9994        |
 | 0.3                 | 0.9995        |
 | 0.1                 | 0.9996        |
-| 0.03                | 0.9997
+| 0.03                | 0.9997        |
+
 Each experiment will be repeated `10 times`, and the results will be averaged to obtain more stable outcomes and minimize the hypothesis that the obtained results are purely coincidental.
 
 The experiment will be conducted on the LavaCrossing environment at difficulty levels 0, 1, 2, with the agent's learning stopping condition set at `min_evaluation_score` = 0.8.
