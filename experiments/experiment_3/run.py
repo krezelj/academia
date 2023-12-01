@@ -57,10 +57,11 @@ def get_task(
         min_evaluation_score: int = 250,
         max_steps: int = np.inf,
         greedy_evaluation: bool = True,
-        save_path: Optional[str] = None):
+        save_path: Optional[str] = None,
+        random_state: Optional[int] = None):
     task = LearningTask(
         LunarLander,
-        env_args={'difficulty': difficulty, 'random_state': 42, 'append_step_count': True},
+        env_args={'difficulty': difficulty, 'random_state': random_state, 'append_step_count': True},
         stop_conditions={
             'min_evaluation_score': min_evaluation_score,
             'max_steps': max_steps},
@@ -73,12 +74,12 @@ def get_task(
     return task
 
 
-def get_curriculum(greedy_evaluation: bool, output_dir: str):
+def get_curriculum(greedy_evaluation: bool, output_dir: str, random_state: int):
     tasks = [
-        get_task(0, 250, greedy_evaluation=greedy_evaluation),
-        get_task(1, 250, greedy_evaluation=greedy_evaluation),
-        get_task(2, 250, greedy_evaluation=greedy_evaluation),
-        get_task(3, 250, greedy_evaluation=greedy_evaluation),
+        get_task(0, 250, greedy_evaluation=greedy_evaluation, random_state=random_state),
+        get_task(1, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
+        get_task(2, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
+        get_task(3, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+3000),
     ]
     curriculum = Curriculum(
         tasks,
@@ -89,18 +90,21 @@ def get_curriculum(greedy_evaluation: bool, output_dir: str):
 
 def get_runnable(
         runnable_type: Literal['curr', 'nocurr'], 
-        agent_type: Literal['ppo', 'dqn'], 
+        agent_type: Literal['ppo', 'dqn'],
         i: int,
-        max_steps: int):
+        max_steps: int,
+        random_state: int,):
     if runnable_type == 'curr':
         return get_curriculum(
             greedy_evaluation=True,
-            output_dir=f'./outputs/{agent_type}/curriculum_{i}'
+            output_dir=f'./outputs/{agent_type}/curriculum_{i}',
+            random_state=random_state,
         )
     elif runnable_type == 'nocurr':
         return get_task(
             save_path=f'./outputs/{agent_type}/nocurriculum_{i}/nocurr',
             max_steps=max_steps,
+            random_state=random_state,
         )
     raise ValueError(f"Invalid runnable type: {runnable_type}")
 
@@ -211,14 +215,14 @@ def run_experiment(
         else:
             max_steps = np.inf
 
-        runnable = get_runnable(runnable_type, agent_type, i, max_steps=max_steps)
+        runnable = get_runnable(runnable_type, agent_type, i, max_steps=max_steps, random_state=random_state)
         runnable.save(f'./configs/{agent_type}_{runnable_type}_{i}')
 
         try:
             _logger.info(f"Starting {runnable_type} for {agent_type} (run {i+1})")
             runnable.run(agent, verbose=2)
             _logger.info(f"Finished {runnable_type} for {agent_type} (run {i+1})")
-        except KeyboardInterrupt:
+        except:
             save_meta(meta)
 
         meta[agent_type][f'{runnable_type}_runs'] += 1
