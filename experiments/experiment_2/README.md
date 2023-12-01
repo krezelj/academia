@@ -22,7 +22,7 @@ The second scenario utilizes a more traditional approach. An agent doesn't
 move between different difficulty levels - instead it goes straight into the 
 final level and tries to learn it from scratch. The run ends once the agent 
 reaches evaluation score threshold of 0.9 or once the maximum number of 
-episodes is reached.
+steps is reached.
 
 This experiment will be conducted on both DQN and PPO algorithms. Each run 
 will be repeated 10 times to minimize the impact of randomness on the results.
