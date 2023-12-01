@@ -207,7 +207,7 @@ def run_experiment(
         agent = get_agent(agent_type, random_state)
 
         if runnable_type == 'nocurr':
-            max_steps = meta[agent_type]['curr_steps_sum'] / meta['n_runs']
+            max_steps = 3 * meta[agent_type]['curr_steps_sum'] / meta['n_runs']
         else:
             max_steps = np.inf
 
