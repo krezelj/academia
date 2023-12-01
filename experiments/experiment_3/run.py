@@ -94,7 +94,7 @@ def get_runnable(
         max_steps: int):
     if runnable_type == 'curr':
         return get_curriculum(
-            greedy_evaluation=(agent_type=='dqn'),
+            greedy_evaluation=True,
             output_dir=f'./outputs/{agent_type}/curriculum_{i}'
         )
     elif runnable_type == 'nocurr':
