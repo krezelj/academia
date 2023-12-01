@@ -129,7 +129,7 @@ def determine_next_run(
         meta: dict, 
         force_agent_type: Optional[Literal['dqn', 'ppo']] = None,
         allow_curr: bool = True,
-        allow_nocurr: bool = True,):
+        allow_nocurr: bool = True):
     n_runs = meta['n_runs']
     can_use_ppo = force_agent_type is None or force_agent_type == 'ppo'
     can_use_dqn = force_agent_type is None or force_agent_type == 'dqn'
@@ -198,7 +198,8 @@ def run_experiment(
             _logger.info("Reached time limit. Stopping experiment.")
             break
 
-        agent_type, runnable_type, i, random_state = determine_next_run(meta, force_agent_type)
+        agent_type, runnable_type, i, random_state = determine_next_run(
+            meta, force_agent_type, allow_curr, allow_nocurr)
         if agent_type is None:
             _logger.info("No allowed configurations left. Stopping experiment.")
             break
@@ -233,9 +234,9 @@ def run_experiment(
 
 def parse_options(*args):
     _argparser = argparse.ArgumentParser()
-    _argparser.add_argument('-t', '--time', action='store', default=np.inf,
+    _argparser.add_argument('-t', '--time', action='store', default=1_000_000_000,
                             help='Maximum wall time')
-    _argparser.add_argument('-r', '--runs', action='store', default=np.inf,
+    _argparser.add_argument('-r', '--runs', action='store', default=1_000_000_000,
                             help='Maximum runs')
     _argparser.add_argument('-a', '--agent', action='store',
                             help='Agent type ("dqn"/"ppo")')
@@ -246,8 +247,8 @@ def parse_options(*args):
     args = _argparser.parse_args()
     return {
         'force_agent_type': args.agent,
-        'wall_time': args.time,
-        'n_runs': args.runs,
+        'wall_time': float(args.time),
+        'n_runs': int(args.runs),
         'allow_curr': args.discurriculum,
         'allow_nocurr': args.disnocurriculum
     }
