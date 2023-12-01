@@ -23,7 +23,7 @@ logging.basicConfig(
     filename='experiment_3.log',
 )
 
-_logger = logging.getLogger('academia.curriculum')
+_logger = logging.getLogger('experiments')
 
 
 def load_meta():
@@ -236,7 +236,7 @@ def run_experiment(
     save_meta(meta)
 
 
-def parse_options(*args):
+def parse_options():
     _argparser = argparse.ArgumentParser()
     _argparser.add_argument('-t', '--time', action='store', default=1_000_000_000,
                             help='Maximum wall time')
@@ -259,7 +259,7 @@ def parse_options(*args):
         
 
 def main():
-    kwargs = parse_options(*sys.argv[1:])
+    kwargs = parse_options()
     run_experiment(**kwargs)
     
 
