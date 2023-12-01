@@ -50,14 +50,15 @@ def run_experiment(n_rounds):
                          epsilon_decay=selected_params['epsilon_decay'],
                          min_epsilon=0.01,
                          batch_size=128,
-                         random_state=123)
+                         random_state=selected_params['round'] + int(selected_params['epsilon_decay'] * 10000))
         list_of_tasks = []
         for difficulty in range(3):
             list_of_tasks.append(LearningTask(env_type=LavaCrossing,
                                               env_args={'difficulty': difficulty,
                                                         'append_step_count': True,
-                                                        'random_state': 123},
+                                                        'random_state': difficulty},
                                               stop_conditions={'min_evaluation_score': 0.8},
+                                              evaluation_count=25,
                                               exploration_reset_value=selected_params['epsilon_reset_value']))
 
         curriculum = Curriculum(tasks=list_of_tasks,
@@ -72,5 +73,6 @@ def run_experiment(n_rounds):
         params_sets[idx]['round'] += 1
         with open('meta.json', 'w') as meta_file:
             json.dump(params_sets, meta_file, indent=4)
+
 
 run_experiment(1)
