@@ -88,7 +88,6 @@ if __name__ == '__main__':
 
     # DQN curriculum
     if args.curriculum:
-        print(1)
         runs_done = meta.get('runs_done_dqn_curr', 0)
         while runs_done < max_runs:
             agent = DQNAgent(
@@ -102,7 +101,6 @@ if __name__ == '__main__':
 
     # DQN no_curriculum
     if args.nocurriculum:
-        print(2)
         runs_done = meta.get('runs_done_dqn_nocurr', 0)
         while runs_done < max_runs:
             agent = DQNAgent(
