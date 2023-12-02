@@ -54,14 +54,14 @@ def save_meta(meta: dict):
 
 def get_task(
         difficulty: int = 3,
-        min_evaluation_score: int = 250,
+        min_evaluation_score: int = 200,
         max_steps: int = np.inf,
         greedy_evaluation: bool = True,
         save_path: Optional[str] = None,
         random_state: Optional[int] = None):
     task = LearningTask(
         LunarLander,
-        env_args={'difficulty': difficulty, 'random_state': random_state, 'append_step_count': True},
+        env_args={'difficulty': difficulty, 'random_state': random_state, 'append_step_count': False},
         stop_conditions={
             'min_evaluation_score': min_evaluation_score,
             'max_steps': max_steps},
@@ -76,10 +76,10 @@ def get_task(
 
 def get_curriculum(greedy_evaluation: bool, output_dir: str, random_state: int):
     tasks = [
-        get_task(0, 250, greedy_evaluation=greedy_evaluation, random_state=random_state),
-        get_task(1, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
-        get_task(2, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
-        get_task(3, 250, greedy_evaluation=greedy_evaluation, random_state=random_state+3000),
+        get_task(0, 200, greedy_evaluation=greedy_evaluation, random_state=random_state),
+        get_task(1, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
+        get_task(2, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
+        get_task(3, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+3000),
     ]
     curriculum = Curriculum(
         tasks,
@@ -112,7 +112,7 @@ def get_runnable(
 def get_agent(agent_type: Literal['dqn', 'ppo'], random_state: int):
     if agent_type == 'dqn':
         return DQNAgent(
-            lunar_lander.MLPStepDQN,
+            lunar_lander.MLPDQN,
             n_actions=4,
             epsilon_decay=0.9995,
             device='cpu',
@@ -120,11 +120,14 @@ def get_agent(agent_type: Literal['dqn', 'ppo'], random_state: int):
         )
     if agent_type == 'ppo':
         return PPOAgent(
-            lunar_lander.MLPStepActor,
-            lunar_lander.MLPStepCritic,
+            lunar_lander.MLPActor,
+            lunar_lander.MLPCritic,
             n_actions=4,
             n_episodes=10,
+            gamma=0.99,
             device='cpu',
+            lr=0.0003,
+            entropy_coefficient=0,
             random_state=random_state
         )
 
@@ -188,6 +191,7 @@ def run_experiment(
         force_agent_type: Optional[Literal['ppo', 'dqn']] = None,
         allow_curr: bool = True,
         allow_nocurr: bool = True,
+        verbose: int = 2
         ):
     
     meta = load_meta()
@@ -220,10 +224,10 @@ def run_experiment(
 
         try:
             _logger.info(f"Starting {runnable_type} for {agent_type} (run {i+1})")
-            runnable.run(agent, verbose=2)
+            runnable.run(agent, verbose=verbose)
             _logger.info(f"Finished {runnable_type} for {agent_type} (run {i+1})")
         except:
-            save_meta(meta)
+            break
 
         meta[agent_type][f'{runnable_type}_runs'] += 1
         if runnable_type == 'curr':
@@ -238,6 +242,8 @@ def run_experiment(
 
 def parse_options():
     _argparser = argparse.ArgumentParser()
+    _argparser.add_argument('-v', '--verbose', action='store', default=2,
+                            help='Verbosity')
     _argparser.add_argument('-t', '--time', action='store', default=1_000_000_000,
                             help='Maximum wall time')
     _argparser.add_argument('-r', '--runs', action='store', default=1_000_000_000,
@@ -254,7 +260,8 @@ def parse_options():
         'wall_time': float(args.time),
         'n_runs': int(args.runs),
         'allow_curr': args.discurriculum,
-        'allow_nocurr': args.disnocurriculum
+        'allow_nocurr': args.disnocurriculum,
+        'verbose': int(args.verbose)
     }
         
 

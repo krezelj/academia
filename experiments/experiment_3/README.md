@@ -15,16 +15,16 @@ LunarLander environment with difficulty level set to 3.
 
 In the first scenario a Curriculum Learning approach is used. An agent starts 
 on the easiest level (difficulty level 0). It moves to the next one once it 
-reaches an evaluation score of 250. The run ends once the agent reaches that 
+reaches an evaluation score of 200. The run ends once the agent reaches that 
 threshold on the final level (difficulty level 3).
 
 The second scenario utilizes a more traditional approach. An agent doesn't 
 move between different difficulty levels - instead it goes straight into the 
 final level and tries to learn it from scratch. The run ends once the agent 
-reaches evaluation score threshold of 250 or once the maximum number of 
+reaches evaluation score threshold of 200 or once the maximum number of 
 steps is reached.
 
 This experiment will be conducted on both DQN and PPO algorithms. Each run 
 will be repeated 10 times to minimize the impact of randomness on the results.
 
-**satisfactory i.e. reaching the evaluation score threshold of 250* 
+**satisfactory i.e. reaching the evaluation score threshold of 200* 
