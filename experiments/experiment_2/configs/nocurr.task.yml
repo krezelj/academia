@@ -8,4 +8,4 @@ stop_conditions:
   max_steps: 0  # TBD
 evaluation_interval: 100
 evaluation_count: 5
-include_init_eval: False
+include_init_eval: True
