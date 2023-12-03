@@ -63,7 +63,7 @@ class LearningTask(SavableLoadable):
             :attr:`stop_predicates`.
         evaluation_interval: Controls how often evaluations are conducted. Defaults to 100.
         evaluation_count: Controls how many evaluation episodes are run during a single evaluation.
-            Final agent evaluation will be the mean of these individual evaluations. Defaults to 5.
+            Final agent evaluation will be the mean of these individual evaluations. Defaults to 25.
         include_init_eval: Whether or not to evaluate an agent before the training starts (i.e. right at the
             start of the :func:`run` method). Defaults to ``True``.
         greedy_evaluation: Whether or not the evaluation should be performed in greedy mode.
@@ -186,7 +186,7 @@ class LearningTask(SavableLoadable):
                  env_type: Type[ScalableEnvironment],
                  env_args: dict, stop_conditions: dict,
                  evaluation_interval: int = 100,
-                 evaluation_count: int = 5,
+                 evaluation_count: int = 25,
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
                  exploration_reset_value: Optional[float] = None,
