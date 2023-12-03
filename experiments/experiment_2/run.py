@@ -41,7 +41,7 @@ def _run_curr(run_no: int, agent_):
     curriculum.output_dir = output_dir
     # run
     _logger.info(f'Starting curriculum run {run_no} for agent {agent_name}.')
-    curriculum.run(agent_, verbose=4)
+    curriculum.run(agent_, verbose=2)
     _logger.info(f'Completed curriculum run {run_no} for agent {agent_name}.')
 
 
