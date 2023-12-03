@@ -55,7 +55,7 @@ def _run_no_curr(run_no: int, agent_):
     nocurriculum.stats_save_path = os.path.join(output_dir, 'stats')
     # run
     _logger.info(f'Starting nocurriculum run {run_no} for agent {agent_name}.')
-    nocurriculum.run(agent_, verbose=4)
+    nocurriculum.run(agent_, verbose=2)
     _logger.info(f'Completed nocurriculum run {run_no} for agent {agent_name}.')
 
 
