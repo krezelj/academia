@@ -36,7 +36,7 @@ class PPOAgent(Agent):
         n_episodes: Number of episodes to take between training sessions. 
             If set to None :attr:`n_steps` will be used instead. 
             Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
-            Defaults to ``None``.
+            Defaults to 10.
         clip: Clip rate hyperparameter from the PPO algorithm. Defaults to 0.2,
         lr: Learning rate used by (Adam) optimisers. The same value is used for both actor and critic.
             Defaults to ``3e-4``.
@@ -244,7 +244,7 @@ class PPOAgent(Agent):
                  batch_size: int = 64,
                  n_epochs: int = 10,
                  n_steps: Optional[int] = None,
-                 n_episodes: Optional[int] = None,
+                 n_episodes: Optional[int] = 10,
                  clip: float = 0.2,
                  lr: float = 3e-4,
                  covariance_fill: float = 0.5,
