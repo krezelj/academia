@@ -93,6 +93,7 @@ if __name__ == '__main__':
             agent = DQNAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 nn_architecture=door_key.MLPStepDQN,
+                batch_size=128,
                 random_state=runs_done,
             )
             _run_curr(runs_done + 1, agent)
@@ -106,6 +107,7 @@ if __name__ == '__main__':
             agent = DQNAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 nn_architecture=door_key.MLPStepDQN,
+                batch_size=128,
                 random_state=runs_done + max_runs,
             )
             _run_no_curr(runs_done + 1, agent)
