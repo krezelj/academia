@@ -27,7 +27,7 @@ class PPOAgent(Agent):
         n_actions: Number of possible actions in the environment.
         discrete: Whether the agent's action space is discrete. Defaults to ``True``
         batch_size: The size of the minibatch used during training. Defaults to 64.
-        n_epochs: Number of epochs per training. Defaults to 10.
+        n_epochs: Number of epochs per training. Defaults to 5.
         n_steps: Minimum number of steps to take between training sessions. Note that if the minimum
             is reached during an episode the episode will still finish and the remaining steps
             will be included in the buffer. If set to None :attr:`n_episodes` will be used instead. 
@@ -242,7 +242,7 @@ class PPOAgent(Agent):
                  n_actions: int,
                  discrete: bool = True,
                  batch_size: int = 64,
-                 n_epochs: int = 10,
+                 n_epochs: int = 5,
                  n_steps: Optional[int] = None,
                  n_episodes: Optional[int] = 10,
                  clip: float = 0.2,
