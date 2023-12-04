@@ -794,10 +794,15 @@ class LearningStatsAggregator:
         timestamps_union = np.unique(all_timestamps)
 
         interpolated_stats = np.zeros(shape=(len(self.stats), len(timestamps_union)))
+        populated_idx = []
         for i, task_stats in enumerate(self.stats):
+            if len(task_stats) == 0 and not \
+                    (self.__includes_init_eval(task_stats) and value_domain == 'agent_evaluations'):
+                continue
+            populated_idx.append(i)
             interpolated_stats[i,:] = np.interp(
                 timestamps_union, tasks_timestamps[i], getattr(task_stats, value_domain))
-        return interpolated_stats, timestamps_union
+        return interpolated_stats[populated_idx, :], timestamps_union
 
     def __get_timestamps(self, 
                          task_stats: LearningStats,
