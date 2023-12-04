@@ -124,6 +124,7 @@ if __name__ == '__main__':
                 critic_architecture=door_key.MLPStepCritic,
                 random_state=runs_done + 2*max_runs,
                 n_episodes=10,
+                n_epochs=10,
             )
             _run_curr(runs_done + 1, agent)
             runs_done += 1
@@ -139,6 +140,7 @@ if __name__ == '__main__':
                 critic_architecture=door_key.MLPStepCritic,
                 random_state=runs_done + 3*max_runs,
                 n_episodes=10,
+                n_epochs=10,
             )
             _run_no_curr(runs_done + 1, agent)
             runs_done += 1
