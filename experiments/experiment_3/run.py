@@ -58,14 +58,17 @@ def get_task(
         max_steps: int = np.inf,
         greedy_evaluation: bool = True,
         save_path: Optional[str] = None,
-        random_state: Optional[int] = None):
+        random_state: Optional[int] = None,
+        max_episodes: int = np.inf):
     task = LearningTask(
         LunarLander,
         env_args={'difficulty': difficulty, 'random_state': random_state, 'append_step_count': False},
         stop_conditions={
             'min_evaluation_score': min_evaluation_score,
-            'max_steps': max_steps},
-        evaluation_count=25,
+            'max_steps': max_steps,
+            'max_episodes': max_episodes
+            },
+        evaluation_count=50,
         greedy_evaluation=greedy_evaluation,
         exploration_reset_value=0.3,
         stats_save_path=save_path,
@@ -79,7 +82,7 @@ def get_curriculum(greedy_evaluation: bool, output_dir: str, random_state: int):
         get_task(0, 200, greedy_evaluation=greedy_evaluation, random_state=random_state),
         get_task(1, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
         get_task(2, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
-        get_task(3, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+3000),
+        get_task(3, 200, greedy_evaluation=greedy_evaluation, random_state=random_state+3000, max_episodes=3000)
     ]
     curriculum = Curriculum(
         tasks,
@@ -124,6 +127,7 @@ def get_agent(agent_type: Literal['dqn', 'ppo'], random_state: int):
             lunar_lander.MLPCritic,
             n_actions=4,
             n_episodes=10,
+            n_epochs=4,
             gamma=0.99,
             device='cpu',
             lr=0.0003,
