@@ -11,9 +11,10 @@ from academia.environments.base import ScalableEnvironment
 _logger = logging.getLogger('academia.curriculum')
 
 def _ppoagent_thoughts_handler(agent : Agent, state : Any) -> str:
-    state = torch.unsqueeze(torch.tensor(state), dim=0)
+    state = torch.unsqueeze(torch.tensor(state), dim=0).float()
     probs = agent.actor(state).tolist()[0]
     state_value = agent.critic(state).tolist()[0]
+    state = state[0]
     return f"Agent Thoughts\n"\
             + f"\tAction probs.: {[np.round(p, 2) for p in probs]}\n"\
             + f"\tState value:   {np.round(state_value, 3)}\n"\
