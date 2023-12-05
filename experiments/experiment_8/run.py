@@ -74,7 +74,7 @@ def get_task(
             'max_steps': max_steps,
             'max_episodes': max_episodes
             },
-        evaluation_count=20,
+        evaluation_count=25,
         stats_save_path=save_path,
         agent_save_path=save_path
     )
@@ -137,8 +137,8 @@ def determine_next_run(
         allow_curr: bool = True,
         allow_nocurr: bool = True):
     n_runs = meta['n_runs']
-    can_use_dense = reward_density is None or reward_density == 'sparse'
-    can_use_sparse = reward_density is None or reward_density == 'dense'
+    can_use_dense = reward_density is None or reward_density == 'dense'
+    can_use_sparse = reward_density is None or reward_density == 'sparse'
 
     # dense curr
     if can_use_dense and \
@@ -214,7 +214,7 @@ def run_experiment(
         agent = get_agent(random_state)
 
         if runnable_type == 'nocurr':
-            max_steps = 3 * meta[reward_density]['curr_steps_sum'] / meta['n_runs']
+            max_steps = 2 * meta[reward_density]['curr_steps_sum'] / meta['n_runs']
         else:
             max_steps = np.inf
 
