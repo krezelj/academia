@@ -20,7 +20,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)-19s] [%(levelname)-8s] %(name)s: %(message)s ',
     datefmt='%Y-%m-%d %H:%M:%S',
-    filename='experiment_3.log',
+    filename='experiment_8.log',
 )
 
 _logger = logging.getLogger('experiments')
@@ -67,6 +67,7 @@ def get_task(
             'random_state': random_state, 
             'append_step_count': False,
             'reward_density': reward_density,
+            'append_step_count': True,
             'max_steps': 500},
         stop_conditions={
             'min_evaluation_score': min_evaluation_score,
