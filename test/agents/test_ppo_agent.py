@@ -163,7 +163,10 @@ class TestPPOAgent(unittest.TestCase):
             PPOAgent(
                 actor_architecture=ms_pacman.MLPActor,
                 critic_architecture=ms_pacman.MLPCritic,
-                n_actions=9)
+                n_actions=9,
+                n_steps=None,
+                n_episodes=None,
+            )
             
     def test_file_path_suffixed(self):
         # arrange
@@ -172,6 +175,7 @@ class TestPPOAgent(unittest.TestCase):
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
             n_steps=5,
+            n_episodes=None,
         )
         # act
         tmpfile = tempfile.NamedTemporaryFile(suffix='.agent.zip', delete=False)
@@ -188,6 +192,7 @@ class TestPPOAgent(unittest.TestCase):
             critic_architecture=ms_pacman.MLPCritic,
             n_actions=9,
             n_steps=5,
+            n_episodes=None,
         )
         # act 
         tmpfile = tempfile.NamedTemporaryFile(delete=False)
@@ -208,6 +213,7 @@ class TestPPOAgent(unittest.TestCase):
             batch_size=128,
             n_epochs=5,
             n_steps=10,
+            n_episodes=None,
             clip=0.1,
             gamma=0.8,
             random_state=0,
