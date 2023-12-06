@@ -419,10 +419,10 @@ class TestLearningStatsAggregator(unittest.TestCase):
         
     def test_timestamp_count(self):
         # arrange
-        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 3})
         stats_1.step_counts = np.array([0, 5, 3])
         stats_1.episode_rewards = np.array([0, 0, 0])
-        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 3})
         # cumulative sum is 5 for second episode, the same as for stats_1
         stats_2.step_counts = np.array([1, 4, 2])
         stats_2.episode_rewards = np.array([0, 0, 0])
@@ -456,11 +456,11 @@ class TestLearningStatsAggregator(unittest.TestCase):
     def test_wall_cpu_time_domains(self):
         for time_domain in ['episode_wall_times', 'episode_cpu_times']:
             # arrange
-            stats_1 = mock.MagicMock(spec=LearningStats)
+            stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 200})
             stats_1.step_counts = np.ones(shape=200)
             stats_1.episode_rewards = np.ones(shape=200)
             setattr(stats_1, time_domain, np.random.random(size=200))
-            stats_2 = mock.MagicMock(spec=LearningStats)
+            stats_2 = mock.MagicMock(spec=LearningStats,**{"__len__.return_value": 250})
             stats_2.step_counts = np.ones(shape=250)
             stats_2.episode_rewards = np.ones(shape=250) * 2
             setattr(stats_2, time_domain, np.random.random(size=250))
@@ -529,10 +529,10 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
     def test_single_task_reward_aggregation(self):
         # arrange
-        stats_1 = mock.MagicMock(spec=LearningStats)
+        stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 100})
         stats_1.step_counts = np.ones(100)
         stats_1.episode_rewards = np.ones(100)
-        stats_2 = mock.MagicMock(spec=LearningStats)
+        stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 200})
         stats_2.step_counts = np.ones(200)
         stats_2.episode_rewards = np.ones(200) * 2
         stats = [stats_1, stats_2]
@@ -554,15 +554,27 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats = [
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(200), episode_rewards=np.ones(200), spec=LearningStats), 
+                    step_counts = np.ones(200),
+                    episode_rewards=np.ones(200),
+                    **{"__len__.return_value": 200},
+                    spec=LearningStats), 
                 '2': mock.MagicMock(
-                    step_counts = np.ones(250), episode_rewards=np.ones(250), spec=LearningStats)
+                    step_counts = np.ones(250),
+                    episode_rewards=np.ones(250),
+                    **{"__len__.return_value": 250},
+                    spec=LearningStats)
             },
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(180), episode_rewards=np.ones(180) * 2), 
+                    step_counts = np.ones(180),
+                    episode_rewards=np.ones(180) * 2,
+                    **{"__len__.return_value": 180},
+                    spec=LearningStats), 
                 '2': mock.MagicMock(
-                    step_counts = np.ones(270), episode_rewards=np.ones(270) * 3)
+                    step_counts = np.ones(270),
+                    episode_rewards=np.ones(270) * 3,
+                    **{"__len__.return_value": 270},
+                    spec=LearningStats)
             }
         ]
         sut = LearningStatsAggregator(stats)
