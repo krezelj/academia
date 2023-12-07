@@ -621,7 +621,7 @@ class LearningStats(SavableLoadable):
                 'evaluation_interval': self.evaluation_interval,
             }
             json.dump(data, file, indent=4)
-        return path
+        return os.path.abspath(path)
 
 
 AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
