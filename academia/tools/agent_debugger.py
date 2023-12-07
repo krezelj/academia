@@ -21,7 +21,7 @@ def _ppoagent_thoughts_handler(agent : Agent, state : Any) -> str:
             + f"\tBest action:   {agent.get_action(state, greedy=True)}"
 
 def _dqnagent_thoughts_handler(agent : Agent, state : Any) -> str:
-    qvals = agent.network(state).tolist()
+    qvals = agent.network(torch.tensor(state, dtype=torch.float32)).tolist()
     return f"Agent Thoughts\n"\
             + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
             + f"\tBest action: {agent.get_action(state, greedy=True)}"
