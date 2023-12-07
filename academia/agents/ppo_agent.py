@@ -582,7 +582,7 @@ class PPOAgent(Agent):
             agent_state['buffer'] = buffer_state
 
             agent_temp = tempfile.NamedTemporaryFile(delete=False, mode='w')
-            json.dump(agent_state, agent_temp, indent=4)
+            json.dump(agent_state, agent_temp)
             agent_temp.flush()  # otherwise file is empty
 
             zf.write(actor_temp.name, 'actor.pth')

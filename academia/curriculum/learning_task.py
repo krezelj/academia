@@ -620,8 +620,8 @@ class LearningStats(SavableLoadable):
                 'episode_cpu_times': self.episode_cpu_times.tolist(),
                 'evaluation_interval': self.evaluation_interval,
             }
-            json.dump(data, file, indent=4)
-        return path
+            json.dump(data, file)
+        return os.path.abspath(path)
 
 
 AggregateTuple = tuple[npt.NDArray[np.float32], npt.NDArray[Union[np.int32, np.float32]]]
