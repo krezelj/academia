@@ -6,37 +6,43 @@ import torch
 import numpy as np
 
 from academia.agents.base import Agent
+from academia.agents import *
 from academia.environments.base import ScalableEnvironment
 
 _logger = logging.getLogger('academia.curriculum')
 
-def _ppoagent_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _ppoagent_thoughts_handler(agent: PPOAgent, state: Any) -> str:
     state = torch.unsqueeze(torch.tensor(state), dim=0).float()
     probs = agent.actor(state).tolist()[0]
     state_value = agent.critic(state).tolist()[0]
     state = state[0]
     return f"Agent Thoughts\n"\
-            + f"\tAction probs.: {[np.round(p, 2) for p in probs]}\n"\
-            + f"\tState value:   {np.round(state_value, 3)}\n"\
-            + f"\tBest action:   {agent.get_action(state, greedy=True)}"
+        + f"\tAction probs.: {[np.round(p, 2) for p in probs]}\n"\
+        + f"\tState value:   {np.round(state_value, 3)}\n"\
+        + f"\tBest action:   {agent.get_action(state, greedy=True)}"
 
-def _dqnagent_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _dqnagent_thoughts_handler(agent: DQNAgent, state: Any) -> str:
     qvals = agent.network(torch.tensor(state, dtype=torch.float32)).tolist()
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}"
 
-def _qlagent_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _qlagent_thoughts_handler(agent: QLAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}"
 
-def _sarsa_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _sarsa_thoughts_handler(agent: SarsaAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}"
+
 
 class AgentDebugger:
     """
