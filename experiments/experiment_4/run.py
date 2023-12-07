@@ -2,7 +2,6 @@ import logging
 import json
 import os
 import sys
-import time
 
 # script should be run at the experiments/experiment_1 directory level
 sys.path.append('..\\..')
@@ -72,32 +71,32 @@ def run_experiment(n_rounds):
         task1 = LearningTask(env_type=LavaCrossing,
                              env_args={'difficulty': 0,
                                        'append_step_count': True,
-                                       'random_state': 1},
+                                       'random_state': selected_params['round']},
                              stop_conditions={'max_episodes': selected_params['episodes_task1']},
                              evaluation_count=25)
 
         task2 = LearningTask(env_type=LavaCrossing,
                              env_args={'difficulty': 1,
                                        'append_step_count': True,
-                                       'random_state': 2},
+                                       'random_state': selected_params['round']},
                              stop_conditions=stop_condition,
                              evaluation_count=eval_count,
                              evaluation_interval=eval_interval)
 
         curriculum = Curriculum(tasks=[task1, task2],
                                 output_dir=(
-                                    f"outputs/epochs={selected_params['episodes_task1']}_impact="
-                                    f"{selected_params['type_of_impact']}/curriculum_iter={selected_params['round'] + 1}")
+                                    f"outputs/{selected_params['type_of_impact']}/episodes_{selected_params['episodes_task1']}"
+                                    f"/curriculum_iter_{selected_params['round'] + 1}")
                                 )
-        if selected_params['round'] == 0:
-            curriculum.save(
-                f"configs/epochs={selected_params['episodes_task1']}_impact={selected_params['type_of_impact']}")
+
+        curriculum.save(
+            f"configs/{selected_params['type_of_impact']}/episodes_{selected_params['episodes_task1']}"
+            f"/curriculum_iter_{selected_params['round'] + 1}")
         curriculum.run(agent, verbose=2)
 
         params_sets[idx]['round'] += 1
         with open('meta.json', 'w') as meta_file:
             json.dump(params_sets, meta_file, indent=4)
-        time.sleep(240)
 
 
 if __name__ == '__main__':

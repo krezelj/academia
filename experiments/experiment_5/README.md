@@ -12,7 +12,7 @@ learning time at the easier level on the training time of the agent at the more 
 values were tested as stop conditions: 750/1000/1250/1500/1750 in the easier task. The stop condition for the minimum 
 average evaluation score of the agent in the second task was set to 0.8. For each specific episode value in the easier 
 task, the experiment was repeated 10 times, changing the agent's seed (used for initializing the neural network architecture) 
-to mitigate the likelihood of randomness and focus the results for greater reliability.
+to mitigate the influence of randomness and focus the results for greater reliability.
 
 Moving on to the second part of the experiment, investigating the influence of learning time at the easier level on the 
 final average evaluation of the agent at the more challenging level, the same five episode values were examined as stop 
