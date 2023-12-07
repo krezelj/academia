@@ -12,6 +12,8 @@ from academia.environments import LavaCrossing
 from academia.agents import PPOAgent
 from academia.utils.models import lava_crossing
 
+
+_logger = logging.getLogger('experiments')
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)-19s] [%(levelname)-8s] %(name)s: %(message)s ',
@@ -47,7 +49,7 @@ def run_experiment(n_rounds):
             ((params_set, index) for index, params_set in enumerate(params_sets) if params_set["round"] < 10),
             (None, None))
         if selected_params is None:
-            logging.info("All params are exhausted.")
+            _logger.info("All params are exhausted.")
             return
 
         agent = PPOAgent(
@@ -98,4 +100,5 @@ def run_experiment(n_rounds):
         time.sleep(240)
 
 
-run_experiment(1)
+if __name__ == '__main__':
+    run_experiment(1)
