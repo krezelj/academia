@@ -620,7 +620,7 @@ class LearningStats(SavableLoadable):
                 'episode_cpu_times': self.episode_cpu_times.tolist(),
                 'evaluation_interval': self.evaluation_interval,
             }
-            json.dump(data, file, indent=4)
+            json.dump(data, file)
         return os.path.abspath(path)
 
 

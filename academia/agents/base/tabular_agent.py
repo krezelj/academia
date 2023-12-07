@@ -99,7 +99,7 @@ class TabularAgent(EpsilonGreedyAgent):
             path += '.agent.json'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
-            json.dump(learner_state_dict, file, indent=4)
+            json.dump(learner_state_dict, file)
         return os.path.abspath(path)
 
     @classmethod

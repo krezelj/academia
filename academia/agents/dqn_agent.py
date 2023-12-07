@@ -308,7 +308,7 @@ class DQNAgent(EpsilonGreedyAgent):
                 'device': str(self.device),
                 'train_step': self.train_step,
             }
-            json.dump(dict(learner_state_dict), agent_temp, indent=4)
+            json.dump(dict(learner_state_dict), agent_temp)
             agent_temp.flush()
 
             zf.write(network_temp.name, 'network.pth')
