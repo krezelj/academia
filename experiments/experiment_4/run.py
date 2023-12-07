@@ -23,16 +23,16 @@ is_empty = os.stat('meta.json').st_size == 0
 
 if is_empty:
     params_rounds = [
-        {"episodes_task1": 500, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 750, "type_of_impact": 'time', "round": 0},
         {"episodes_task1": 1000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 1250, "type_of_impact": 'time', "round": 0},
         {"episodes_task1": 1500, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 2000, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 2500, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 500, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 1750, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 750, "type_of_impact": 'eval', "round": 0},
         {"episodes_task1": 1000, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 1250, "type_of_impact": 'eval', "round": 0},
         {"episodes_task1": 1500, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 2000, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 2500, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 1750, "type_of_impact": 'eval', "round": 0},
     ]
     with open('meta.json', 'w') as file:
         json.dump(params_rounds, file, indent=4)
@@ -44,7 +44,7 @@ def run_experiment(n_rounds):
 
     for i in range(n_rounds):
         selected_params, idx = next(
-            ((params_set, index) for index, params_set in enumerate(params_sets) if params_set["round"] < 5),
+            ((params_set, index) for index, params_set in enumerate(params_sets) if params_set["round"] < 10),
             (None, None))
         if selected_params is None:
             logging.info("All params are exhausted.")
@@ -60,22 +60,27 @@ def run_experiment(n_rounds):
         )
         if selected_params['type_of_impact'] == 'time':
             stop_condition = {'min_evaluation_score': 0.8}
+            eval_count = 25
+            eval_interval = 100
         else:
             stop_condition = {'max_episodes': 1500}
+            eval_count = 100
+            eval_interval = 1500
 
         task1 = LearningTask(env_type=LavaCrossing,
-                             env_args={'difficulty': 1,
+                             env_args={'difficulty': 0,
                                        'append_step_count': True,
                                        'random_state': 1},
                              stop_conditions={'max_episodes': selected_params['episodes_task1']},
                              evaluation_count=25)
 
         task2 = LearningTask(env_type=LavaCrossing,
-                             env_args={'difficulty': 2,
+                             env_args={'difficulty': 1,
                                        'append_step_count': True,
                                        'random_state': 2},
                              stop_conditions=stop_condition,
-                             evaluation_count=25)
+                             evaluation_count=eval_count,
+                             evaluation_interval=eval_interval)
 
         curriculum = Curriculum(tasks=[task1, task2],
                                 output_dir=(
