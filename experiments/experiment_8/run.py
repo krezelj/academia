@@ -52,6 +52,15 @@ def save_meta(meta: dict):
         json.dump(meta, f, indent=4)
 
 
+def get_min_evaluation(
+        reward_density: Literal['sparse', 'dense'], 
+        difficulty: int, 
+        default: float):
+    if reward_density == 'sparse':
+        return default
+    return default + 0.5 * difficulty
+
+
 def get_task(
         reward_density: Literal['dense', 'sparse'],
         difficulty: int = 2,
@@ -70,10 +79,11 @@ def get_task(
             'append_step_count': True,
             'max_steps': 500},
         stop_conditions={
-            'min_evaluation_score': min_evaluation_score,
+            'min_evaluation_score': get_min_evaluation(reward_density, difficulty, min_evaluation_score),
             'max_steps': max_steps,
             'max_episodes': max_episodes
             },
+        greedy_evaluation=False,
         evaluation_count=25,
         stats_save_path=save_path,
         agent_save_path=save_path
