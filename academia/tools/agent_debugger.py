@@ -27,21 +27,24 @@ def _dqnagent_thoughts_handler(agent: DQNAgent, state: Any) -> str:
     qvals = agent.network(torch.tensor(state, dtype=torch.float32)).tolist()
     return f"Agent Thoughts\n"\
         + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-        + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
 
 
 def _qlagent_thoughts_handler(agent: QLAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
         + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-        + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
 
 
 def _sarsa_thoughts_handler(agent: SarsaAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
         + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-        + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
 
 
 class AgentDebugger:
