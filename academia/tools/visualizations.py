@@ -245,7 +245,7 @@ def _add_trace(
         fig: 'go.Figure',
         x: npt.NDArray[Union[np.float32, np.int32]],
         y: npt.NDArray[Union[np.float32, np.int32]],
-        color: Optional[str]=None,
+        color: Optional[str] = None,
         **kwargs):
     """
     Adds a single trace to the figure. 
@@ -261,12 +261,16 @@ def _add_std_region(
         timestamps: npt.NDArray[Union[np.float32, np.int32]], 
         values: npt.NDArray[np.float32],
         std: npt.NDArray[np.float32], 
-        color: Optional[str]=None):
+        color: Optional[str] = None):
     """
     Adds ``std`` values plot to the figure
     """
-    _add_trace(fig, timestamps, values+std, showlegend=False, color=color)
-    _add_trace(fig, timestamps, values-std, showlegend=False, color=color, fill='tonexty')
+    r, g, b = tuple(int(color[1:][i:i+2], 16) for i in (0, 2, 4))
+    rgb_color = f'rgba({r}, {g}, {b}, 0.1)'
+
+    _add_trace(fig, timestamps, values+std, showlegend=False, color=rgb_color)
+    _add_trace(fig, timestamps, values-std, showlegend=False, color=rgb_color,
+               fill='tonexty', fillcolor=rgb_color)
 
 
 def _add_task_trajectory(
@@ -295,7 +299,7 @@ def _add_task_trajectory(
     
     if show_std:
         std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
-        _add_std_region(fig, timestamps, values, std, color='#bbbbbb')
+        _add_std_region(fig, timestamps, values, std, color=color)
     if not show_run_traces:
         return
     
