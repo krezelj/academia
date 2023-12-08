@@ -69,7 +69,7 @@ if __name__ == '__main__':
         level=logging.INFO,
         format='[%(asctime)-19s] [%(levelname)-8s] %(name)s: %(message)s ',
         datefmt='%Y-%m-%d %H:%M:%S',
-        # filename='./outputs/experiment2.log',
+        filename='./outputs/experiment2.log',
     )
     _logger = logging.getLogger('experiments')
 
