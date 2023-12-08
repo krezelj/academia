@@ -120,7 +120,7 @@ def _get_domain_display_name(
     raise ValueError(f"Invalid domain: {domain}")
 
 
-def _get_colors(
+def _get_colors_old(
         n_shades: int = 1, 
         seed: Optional[int] = None,
         query: Optional[int] = None,
@@ -169,6 +169,33 @@ def _get_colors(
         hex_colors.append(hsv_to_hex(h, s, b))
     
     return hex_colors
+
+
+def _get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
+    def hsv_to_hex(h, s, v):
+        rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
+        hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
+        return hex_color
+    def wrap_hue(h: float):
+        if h < 0: return h + 1
+        if h > 1: return h - 1
+        return h
+
+    if query > n_queries:
+        raise ValueError("Invalid query number.")
+
+    base_hue = query/n_queries
+    hue_range = 1/(3*n_queries)
+    hue_start = base_hue - hue_range
+
+    shades = []
+    for i in range(1, n_shades + 1):
+        t = i/(n_shades + 1)
+        h = wrap_hue((t * 2 * hue_range) + hue_start)
+        s = -t * (t - 1) + 0.75 # sample a parabola
+        b = t * (t - 1) + 1 # sample a different parabola
+        shades.append(hsv_to_hex(h, s, b))
+    return shades
 
 
 def _get_task_time_offset(
@@ -511,10 +538,10 @@ def plot_trajectories(
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
-                color = _get_colors(1, i, i, len(runs))[0]
+                color = _get_colors(1, i + 1, len(runs))[0]
                 _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
             if isinstance(trajectory[0], dict):
-                colors = _get_colors(len(trajectory[0]), i, i, len(runs))
+                colors = _get_colors(len(trajectory[0]), i + 1, len(runs))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
             xaxis_title=f"{_get_domain_display_name(time_domain)}",
