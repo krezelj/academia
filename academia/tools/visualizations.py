@@ -58,7 +58,14 @@ def _create_figure(show: bool = False,
     """
     fig = go.Figure()
     fig.update_layout(
-        plot_bgcolor='white'
+        plot_bgcolor='white',
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="left",
+            x=0
+        )
     )
     fig.update_xaxes(
         mirror=True,
