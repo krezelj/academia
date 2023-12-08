@@ -33,7 +33,7 @@ ValueDomain = Literal[
     'episode_rewards_moving_avg',
     'step_counts',
     'step_counts_moving_avg']
-SaveFormat = Literal['png', 'html']
+SaveFormat = Literal['png', 'html', 'svg']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
@@ -65,6 +65,9 @@ def _create_figure(show: bool = False,
             y=-0.2,
             xanchor="left",
             x=0
+        ),
+        font=dict(
+            size=12,
         )
     )
     fig.update_xaxes(
@@ -96,7 +99,7 @@ def _create_figure(show: bool = False,
         else:
             save_path = f"{'.'.join(save_path.split('.')[:-1])}{suffix}.{save_format}"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
+        if save_format == 'png' or save_format == 'svg':
             fig.write_image(save_path)
         else:
             fig.write_html(save_path)
