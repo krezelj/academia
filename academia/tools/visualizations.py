@@ -359,7 +359,7 @@ def plot_trajectories(
         as_separate_figs: bool = False,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> 'go.Figure':
     """
     Plots trajectories of specified task/curriculum runs.
 
@@ -561,6 +561,7 @@ def plot_trajectories(
             xaxis_title=f"{_get_domain_display_name(time_domain)}",
             yaxis_title=f"{_get_domain_display_name(value_domain)}"
         )
+    return fig
     
 
 def plot_evaluation_impact(
@@ -569,7 +570,7 @@ def plot_evaluation_impact(
         show: bool = False,
         save_path: Optional[str] = None, 
         save_format: SaveFormat = 'png',
-        ):
+        )  -> 'go.Figure':
     """
     Plots the impact of learning duration in task with difficulty level = x to evaluation 
 
@@ -629,6 +630,7 @@ def plot_evaluation_impact(
             xaxis_title="Number of episodes in task x",
             yaxis_title="Evaluation score in task y"
         )
+    return fig
 
 
 def plot_evaluation_impact_2d(
@@ -637,7 +639,7 @@ def plot_evaluation_impact_2d(
         task_runs_z: list[LearningTaskRuns], 
         show: bool = False, 
         save_path: str = None,
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> 'go.Figure':
     """
     Plots the impact of learning duration in task x and task y to evaluation of task z.
     See examples for more details
@@ -715,6 +717,7 @@ def plot_evaluation_impact_2d(
             xaxis_title="Number of episodes in task x",
             yaxis_title="Number of episodes in task y"
         )
+    return fig
 
 
 def plot_time_impact(
@@ -724,7 +727,7 @@ def plot_time_impact(
         time_domain_y: Union[TimeDomain, Literal["as_x"]] = "as_x",
         show: bool = False, 
         save_path: str = None, 
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> 'go.Figure':
     """
     Plots the impact of the number of episodes in task x on the total time spent in both tasks.
     See examples for more details
@@ -800,3 +803,5 @@ def plot_time_impact(
             yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
             title="Impact of learning duration in task x on the total time spent in both tasks"
         )
+
+    return fig
