@@ -37,7 +37,7 @@ SaveFormat = Literal['png', 'html', 'svg']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['zero', 'mean', 'q3', 'most', 'outliers', 'max']
+StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
 
 
 @contextmanager
@@ -159,11 +159,20 @@ def _get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
 
 def _get_task_time_offset(
         task_trace_start: StartPoint, 
-        time_offsets: list[Union[float, int]]):
+        time_offsets: list[Union[float, int]],
+        ignore_outliers: bool):
     """
     Returns the offset of the task trace starting point on the X axis
     based on the chosen ``task_trace_start``.
     """
+    if ignore_outliers:
+        q3 = np.quantile(time_offsets, 0.75)
+        q1 = np.quantile(time_offsets, 0.25)
+        iqr = q3 - q1 
+        cutoff = q3 + 1.5 * iqr
+        non_outliers = [time_offset for time_offset in time_offsets if time_offset <= cutoff]
+        time_offsets = non_outliers
+
     if task_trace_start == 'zero':
         return 0
     if task_trace_start == 'mean':
@@ -174,11 +183,6 @@ def _get_task_time_offset(
         return np.quantile(time_offsets, 0.75)
     if task_trace_start == 'most':
         return np.quantile(time_offsets, 0.90)
-    if task_trace_start == 'outliers':
-        q3 = np.quantile(time_offsets, 0.75)
-        q1 = np.quantile(time_offsets, 0.25)
-        iqr = q3 - q1 
-        return np.min([q3 + 1.5 * iqr, np.max(time_offsets)])
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -241,6 +245,7 @@ def _add_task_trajectory(
         show_std: bool,
         show_run_traces: bool,
         common_run_traces_start: bool,
+        ignore_outliers: bool,
         color: Optional[str] = None,
         name: Optional[str] = None,
         time_offsets: Optional[list[Union[float, int]]] = None):
@@ -249,7 +254,7 @@ def _add_task_trajectory(
     """
     if time_offsets is None:
         time_offsets = np.zeros(len(task_runs))
-    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets)
+    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets, ignore_outliers)
 
     agg = LearningStatsAggregator(task_runs)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
@@ -303,6 +308,7 @@ def plot_trajectories(
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
         show_std: Union[bool, list[bool]] = False,
         task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        ignore_outliers: Union[bool, list[bool]] = True,
         show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
@@ -334,13 +340,14 @@ def plot_trajectories(
               trajectories' termination points,
             - ``'most'`` - Each task trajectory will start at 0.9 quantile of previous
               trajectories' termiantion points,
-            - ``'outliers'`` - Each trajectory task will start at the outlier boundry of previous
-              trajectories' termination points (Q3 + 1.5IQR),
             - ``'max'`` - Each task trajectory will start at the max termination point of
               previous trajectories.
 
             Can either be a single value or a list of values, one for each plotted curriculum trajectory.
             Defaults to ``'most'``.
+        ignore_outliers: Whether to ignore outlying trajectories when calculating task trace starts.
+            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
+            Default to ``True``.
         show_run_traces: Whether to show individual run traces (with lower opacity)
             Can either be a single value or a list of values, one for each plotted trajectory.
             Defaults to ``False``.
@@ -468,6 +475,7 @@ def plot_trajectories(
         'show_std': show_std,
         'show_run_traces': show_run_traces,
         'task_trace_start': task_trace_start,
+        'ignore_outliers': ignore_outliers,
         'common_run_traces_start': common_run_traces_start
     }
     def _iterate_trajectories_kwargs():
