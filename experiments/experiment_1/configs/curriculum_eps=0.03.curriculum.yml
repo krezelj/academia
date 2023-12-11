@@ -1,0 +1,45 @@
+order:
+- 0
+- 1
+- 2
+output_dir: outputs/eps=0.03/curriculum_iter=1
+tasks:
+  0:
+    env_args:
+      append_step_count: true
+      difficulty: 0
+      random_state: 0
+    env_type: academia.environments.lava_crossing.LavaCrossing
+    evaluation_count: 25
+    evaluation_interval: 100
+    exploration_reset_value: 0.03
+    greedy_evaluation: true
+    include_init_eval: true
+    stop_conditions:
+      min_evaluation_score: 0.8
+  1:
+    env_args:
+      append_step_count: true
+      difficulty: 1
+      random_state: 1
+    env_type: academia.environments.lava_crossing.LavaCrossing
+    evaluation_count: 25
+    evaluation_interval: 100
+    exploration_reset_value: 0.03
+    greedy_evaluation: true
+    include_init_eval: true
+    stop_conditions:
+      min_evaluation_score: 0.8
+  2:
+    env_args:
+      append_step_count: true
+      difficulty: 2
+      random_state: 2
+    env_type: academia.environments.lava_crossing.LavaCrossing
+    evaluation_count: 25
+    evaluation_interval: 100
+    exploration_reset_value: 0.03
+    greedy_evaluation: true
+    include_init_eval: true
+    stop_conditions:
+      min_evaluation_score: 0.8
