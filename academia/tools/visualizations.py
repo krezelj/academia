@@ -362,6 +362,9 @@ def plot_trajectories(
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
+    Returns:
+        a plotly figure object
+
     Raises:
         ValueError: If ``time_domain`` is invalid
         ValueError: If ``value_domain`` is invalid
@@ -538,6 +541,9 @@ def plot_evaluation_impact(
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
+    Returns:
+        a plotly figure object
+
     Raises:
         ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
             the number of tasks at level x and level y is equal because the experiment involves testing 
@@ -608,6 +614,9 @@ def plot_evaluation_impact_2d(
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+    
+    Returns:
+        a plotly figure object
 
     Raises:
         ValueError: If the number of tasks at level x, level y and level z is not equal. 
@@ -697,6 +706,9 @@ def plot_time_impact(
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        a plotly figure object
 
     Raises:
         ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
