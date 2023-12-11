@@ -371,7 +371,7 @@ def plot_trajectories(
         title: Optional[str] = None,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: SaveFormat = 'png') -> 'go.Figure':
+        save_format: SaveFormat = 'png') -> Union['go.Figure', list['go.Figure']]:
     """
     Plots trajectories of specified task/curriculum runs.
 
@@ -421,7 +421,7 @@ def plot_trajectories(
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Returns:
-        a plotly figure object
+        a plotly figure object or a list of plotly figures is ``as_separate_figs`` is ``True``.
 
     Raises:
         ValueError: If ``time_domain`` is invalid
@@ -554,17 +554,19 @@ def plot_trajectories(
 
     if as_separate_figs:
         # recursively call plot_trajectories for each trajectory
+        figs = []
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             new_save_path = None if save_path is None else save_path + f'_{i}'
-            plot_trajectories(
+            fig = plot_trajectories(
                 [trajectory], 
                 as_separate_figs=False, 
                 show=show, 
                 save_path=new_save_path, 
                 save_format=save_format, 
                 **trajectory_kwargs)
-        return
+            figs.append(fig)
+        return figs
 
     with create_figure(title, show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
