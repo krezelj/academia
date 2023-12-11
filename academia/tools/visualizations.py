@@ -4,6 +4,8 @@ Functions that can visualise statistics gathered from agents training through
 
 Exported functions:
 
+- :func:`create_figure`
+- :func:`get_colors`
 - :func:`plot_trajectories`
 - :func:`plot_evaluation_impact`
 - :func:`plot_evaluation_impact_2d`
@@ -140,7 +142,44 @@ def _get_domain_display_name(
     raise ValueError(f"Invalid domain: {domain}")
 
 
-def _get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
+def get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
+    """
+    Generates a set of colors that makes different trajectories as distinguishable
+    as possible while maintaining color similarity within a single curriculum trajectory.
+
+    Args:
+        n_shades: Number of shades to generate. For a single task it should be ``1``.
+            For curriculum is should be set to the number of tasks inside the curriculum.
+            Defaults to ``1``.
+        query: Number of the query. When generating colors for many trajectories on a single plot it should
+            be a number between ``1`` and ``n_queries`` identyfing the trajectory.
+        n_queries: The number of expected queries to be performed. This information helps
+            the function generate as distinguishable colors as possible.
+
+    Returns:
+        a list of hex colors.
+
+    Raises:
+        ValueError: If ``query`` value is invalid. Must be a positive integer less than ``n_queries``.
+
+    Example:
+
+        Generating colors for two trajectories. One trajectory is a task 
+        and the other is a curriculum consiting of three tasks.
+
+        >>> task_runs: list[LearningStats] = ...
+        >>> curriculum_run: list[dict[str, LearningStats]] = ... # 3 tasks in a curriculum
+        >>>
+        >>> # we have to trajectories so we set n_queries=2
+        >>> # this is the first trajectory so query=1
+        >>> # it is also a trajectory for a single task so we set n_shades=1
+        >>> task_color = get_colors(n_shades=1, query=1, n_queries=2)[0] # take first element
+        >>>
+        >>> # this is the second trajectory so query=2 (n_queries is still 2)
+        >>> # it is also a curriculum with three tasks so we set n_shades=3
+        >>> curriculum_colors = get_colors(n_shades=3, query=2, n_queries=2)
+    
+    """
     def hsv_to_hex(h, s, v):
         rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
         hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
@@ -150,8 +189,8 @@ def _get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
         if h > 1: return h - 1
         return h
 
-    if query > n_queries:
-        raise ValueError("Invalid query number.")
+    if query > n_queries or query < 1 or not isinstance(query, int):
+        raise ValueError("Invalid query number. Must be a positive integer less than ``n_queries``")
 
     base_hue = query/n_queries
     hue_range = 1/(3*n_queries)
@@ -522,10 +561,10 @@ def plot_trajectories(
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
-                color = _get_colors(1, i + 1, len(runs))[0]
+                color = get_colors(1, i + 1, len(runs))[0]
                 _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
             if isinstance(trajectory[0], dict):
-                colors = _get_colors(len(trajectory[0]), i + 1, len(runs))
+                colors = get_colors(len(trajectory[0]), i + 1, len(runs))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
             xaxis_title=f"{_get_domain_display_name(time_domain)}",
