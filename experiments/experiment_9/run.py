@@ -6,6 +6,7 @@ sys.path.append('../..')
 import logging
 import json
 import os
+import argparse
 
 from academia.curriculum import Curriculum
 from academia.environments import DoorKey
@@ -58,6 +59,12 @@ def _run_skip(run_no: int, agent_):
 
 
 if __name__ == '__main__':
+    _argparser = argparse.ArgumentParser()
+    _argparser.add_argument('-r', '--runs', action='store', default=10,
+                            help='Maximum runs')
+    args = _argparser.parse_args()
+    max_runs = int(args.runs)
+
     if not os.path.exists(OUTPUTS_DIR):
         os.makedirs(OUTPUTS_DIR, exist_ok=True)
 
@@ -70,7 +77,6 @@ if __name__ == '__main__':
     _logger = logging.getLogger('experiments')
 
     meta = _get_meta()
-    max_runs = 10
 
     # full curriculum
     runs_done = meta.get('runs_done_full', 0)
@@ -94,7 +100,7 @@ if __name__ == '__main__':
             n_actions=DoorKey.N_ACTIONS,
             actor_architecture=door_key.MLPStepActor,
             critic_architecture=door_key.MLPStepCritic,
-            random_state=runs_done + max_runs + 9000,
+            random_state=runs_done + 90000,
             n_episodes=10,
             n_epochs=10,
         )
