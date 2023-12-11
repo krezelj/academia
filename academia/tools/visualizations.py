@@ -43,15 +43,18 @@ StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
 
 
 @contextmanager
-def create_figure(show: bool = False, 
-                  save_path: Optional[str] = None, 
-                  suffix: Optional[str] = None,
-                  save_format: SaveFormat = 'png'):
+def create_figure(
+    title: Optional[str] = None,
+    show: bool = False, 
+    save_path: Optional[str] = None, 
+    suffix: Optional[str] = None,
+    save_format: SaveFormat = 'png'):
     """
     Context manager that simplifies boilerplate code needed in all ``plot`` functions.
     It should also be used to create figures with a consistent style.
 
     Args:
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         suffix: A suffix appended at the end of the file. Defaults to ``None``.
@@ -62,15 +65,19 @@ def create_figure(show: bool = False,
 
     Example:
 
-    >>> with _create_figure(True, './test', 'curr_comparison', 'png') as fig:
+    >>> with _create_figure("Test" True, './test', 'curr_comparison', 'png') as fig:
     >>>     fig.add_trace(...)
 
-    This snippet will create a fig, add a trace to it, then show it and save it to
+    This snippet will create a fig titled "Test", add a trace to it, then show it and save it to
     a specified file with a ``"_curr_comparison"`` suffix.
     """
     fig = go.Figure()
     fig.update_layout(
         plot_bgcolor='white',
+        title=dict(
+            text=title,
+            x=0.5
+        ),
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -361,6 +368,7 @@ def plot_trajectories(
         show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
+        title: Optional[str] = None,
         show: bool = False,
         save_path: Optional[str] = None, 
         save_format: SaveFormat = 'png') -> 'go.Figure':
@@ -407,6 +415,7 @@ def plot_trajectories(
         as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
             and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
             corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -557,7 +566,7 @@ def plot_trajectories(
                 **trajectory_kwargs)
         return
 
-    with create_figure(show, save_path, save_format=save_format) as fig:
+    with create_figure(title, show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
@@ -576,6 +585,7 @@ def plot_trajectories(
 def plot_evaluation_impact(
         n_episodes_x: list[int], 
         task_runs_y: list[LearningTaskRuns],
+        title: Optional[str] = None,
         show: bool = False,
         save_path: Optional[str] = None, 
         save_format: SaveFormat = 'png',
@@ -586,6 +596,7 @@ def plot_evaluation_impact(
     Args:
         n_episodes_x: Number of episodes in task X.
         task_runs_y: Learning statistics for tasks in level Y.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -635,7 +646,7 @@ def plot_evaluation_impact(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
+    with create_figure(title, show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
             title="Impact of learning duration in task x on the evaluation of task y",
@@ -648,7 +659,8 @@ def plot_evaluation_impact(
 def plot_evaluation_impact_2d(
         n_episodes_x: list[int], 
         n_episodes_y: list[int],
-        task_runs_z: list[LearningTaskRuns], 
+        task_runs_z: list[LearningTaskRuns],
+        title: Optional[str] = None,
         show: bool = False, 
         save_path: str = None,
         save_format: SaveFormat = 'png') -> 'go.Figure':
@@ -660,6 +672,7 @@ def plot_evaluation_impact_2d(
         n_episodes_x: Number of episodes in task X.
         n_episodes_y: Number of episodes in task Y.
         task_runs_z: Learning statistics for tasks in level Z.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -715,7 +728,7 @@ def plot_evaluation_impact_2d(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
+    with create_figure(title, show, save_path, 'evaluation_impact_2d', save_format) as fig:
         fig.add_trace(go.Scatter(
             x=n_episodes_x,
             y=n_episodes_y,
@@ -740,6 +753,7 @@ def plot_time_impact(
         task_runs_y: list[LearningTaskRuns],
         time_domain_x: TimeDomain = "episodes",
         time_domain_y: Union[TimeDomain, Literal["as_x"]] = "as_x",
+        title: Optional[str] = None,
         show: bool = False, 
         save_path: str = None, 
         save_format: SaveFormat = 'png') -> 'go.Figure':
@@ -752,6 +766,7 @@ def plot_time_impact(
         task_runs_y: Learning statistics for tasks in level Y.
         time_domain_x: Time domain which will be used on the X-axis.
         time_domain_y: Time domain which will be used on the Y-axis.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: Path to save the plot. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
@@ -814,7 +829,7 @@ def plot_time_impact(
         y_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[1]])
         xy_times.append(x_time + y_time)
 
-    with create_figure(show, save_path, 'time_impact', save_format) as fig:
+    with create_figure(title, show, save_path, 'time_impact', save_format) as fig:
         _add_trace(fig, x_times, xy_times)
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
