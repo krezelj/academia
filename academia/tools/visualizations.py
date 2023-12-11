@@ -130,57 +130,6 @@ def _get_domain_display_name(
     raise ValueError(f"Invalid domain: {domain}")
 
 
-def _get_colors_old(
-        n_shades: int = 1, 
-        seed: Optional[int] = None,
-        query: Optional[int] = None,
-        n_queries: Optional[int] = None):
-    """
-    Returns a list of ``n_shades`` colours that are similar to each other.
-
-    If you know how many sets of shades you will query (i.e. how many times you will call this function
-    for a single figure) you can specify it with ``n_queries`` and tell the function which ``query``
-    it is in each call. Example
-
-    >>> n_queries: int = 5
-    >>> for i in range(n_queries):
-    >>>     colors = _get_colors(2, None, i, n_queries)
-
-    This way you ensure that all generated sets of shades are uniformly distributed on the Hue axis
-    in the HSV colour encoding.
-    """
-    def hsv_to_hex(h, s, v):
-        rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
-        hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
-        return hex_color
-
-    _rng = np.random.default_rng(seed)
-    if query is None or n_queries == 1:
-        base_hue = _rng.random()
-        hue_range = 0.2
-    else:
-        base_hue = 1/n_queries * (query % n_queries)
-        hue_range = 1/(3*n_queries)
-    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.7, 0.9))
-    shades: list = [base_color]
-
-    for i in range(1, n_shades):
-        h = base_color[0] + _rng.normal(0, hue_range)
-        if h < 0: h = h + 1
-        if h > 1: h = h - 1
-
-        s = np.clip(base_color[1] - 0.1 * i, 0.4, 1.0)
-        b = np.clip(base_color[2] - 0.1 * i, 0.4, 1.0)
-        shades.append((h, s, b))
-
-    hex_colors = []
-    for shade in shades:
-        h, s, b = shade
-        hex_colors.append(hsv_to_hex(h, s, b))
-    
-    return hex_colors
-
-
 def _get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
     def hsv_to_hex(h, s, v):
         rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
