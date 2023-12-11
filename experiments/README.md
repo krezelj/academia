@@ -11,6 +11,7 @@ ID | Who | Environment | Experiment Name | Agent | Runs | Detailed Description |
 7 | - | MsPacman | Curriculum vs No Curriculum | DQN/PPO | 2x2x10 | 0,1,3 vs 3
 8 | Janek | BridgeBuilding | Sparse vs Dense Reward | PPO | 4x10 | 0,1,2
 9 | Maciek | DoorKey | Task Skip Curricula | PPO | 2x10 | 0,1,2 vs 0,2
+10 | Szymon | LunarLander | Curriculum vs No Curriculum | DQN/PPO | 2x2x10 | 0,1,2,3,4 vs 4
 
 - experiments
     - experiment_1
