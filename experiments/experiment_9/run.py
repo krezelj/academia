@@ -70,7 +70,7 @@ if __name__ == '__main__':
     _logger = logging.getLogger('experiments')
 
     meta = _get_meta()
-    max_runs = 1
+    max_runs = 10
 
     # full curriculum
     runs_done = meta.get('runs_done_full', 0)
