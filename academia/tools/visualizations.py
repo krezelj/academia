@@ -41,20 +41,30 @@ StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
 
 
 @contextmanager
-def _create_figure(show: bool = False, 
+def create_figure(show: bool = False, 
                   save_path: Optional[str] = None, 
                   suffix: Optional[str] = None,
                   save_format: SaveFormat = 'png'):
     """
-    Context manager that simplifies boilerplate code needed in all ``plot`` functions
+    Context manager that simplifies boilerplate code needed in all ``plot`` functions.
+    It should also be used to create figures with a consistent style.
+
+    Args:
+        show: Whether to display the plot. Defaults to ``True``.
+        save_path: Path to save the plot. Defaults to ``None``.
+        suffix: A suffix appended at the end of the file. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Yields:
+        the created plotly figure object.
 
     Example:
 
-    >>> with _create_figure(False, './test', 'curr_comparison', 'png') as fig:
+    >>> with _create_figure(True, './test', 'curr_comparison', 'png') as fig:
     >>>     fig.add_trace(...)
 
-    This snippet will create a fig, add a trace to it and then optionally show it and save it to
-    a specified file with a specified suffix.
+    This snippet will create a fig, add a trace to it, then show it and save it to
+    a specified file with a ``"_curr_comparison"`` suffix.
     """
     fig = go.Figure()
     fig.update_layout(
@@ -508,7 +518,7 @@ def plot_trajectories(
                 **trajectory_kwargs)
         return
 
-    with _create_figure(show, save_path, save_format=save_format) as fig:
+    with create_figure(show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
@@ -586,7 +596,7 @@ def plot_evaluation_impact(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
+    with create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
             title="Impact of learning duration in task x on the evaluation of task y",
@@ -666,7 +676,7 @@ def plot_evaluation_impact_2d(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
+    with create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
         fig.add_trace(go.Scatter(
             x=n_episodes_x,
             y=n_episodes_y,
@@ -765,7 +775,7 @@ def plot_time_impact(
         y_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[1]])
         xy_times.append(x_time + y_time)
 
-    with _create_figure(show, save_path, 'time_impact', save_format) as fig:
+    with create_figure(show, save_path, 'time_impact', save_format) as fig:
         _add_trace(fig, x_times, xy_times)
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
