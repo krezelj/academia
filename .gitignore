@@ -9,6 +9,7 @@ venv/
 # some experiment outputs
 *.log
 *.agent.*
+*.stats.json
 meta.json
 
 # Sphinx
