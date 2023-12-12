@@ -28,9 +28,9 @@ _logger = logging.getLogger('experiments')
 
 def load_meta(run_offset):
     if not os.path.exists('meta.json'):
-        max_runs_per_person = 5
+        max_runs_per_machine = 5
         meta = {
-            'n_runs': max_runs_per_person + run_offset,
+            'n_runs': max_runs_per_machine + run_offset,
             'ppo': {
                 'curr_runs': run_offset,
                 'nocurr_runs': run_offset
