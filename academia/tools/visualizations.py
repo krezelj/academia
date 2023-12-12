@@ -65,7 +65,7 @@ def create_figure(
 
     Example:
 
-    >>> with _create_figure("Test" True, './test', 'curr_comparison', 'png') as fig:
+    >>> with create_figure("Test", True, './test', 'curr_comparison', 'png') as fig:
     >>>     fig.add_trace(...)
 
     This snippet will create a fig titled "Test", add a trace to it, then show it and save it to
