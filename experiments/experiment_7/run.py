@@ -55,6 +55,7 @@ def get_task(
         difficulty: int = 3,
         greedy_evaluation: bool = True,
         save_path: Optional[str] = None,
+        max_steps: int = 6_000_000,
         random_state: Optional[int] = None):
     task = LearningTask(
         MsPacman,
@@ -64,7 +65,7 @@ def get_task(
             'append_step_count': True, 
             'obs_type': 'ram'},
         stop_conditions={
-            'max_steps': 2_000_000,
+            'max_steps': max_steps,
             },
         evaluation_count=25,
         greedy_evaluation=greedy_evaluation,
@@ -77,9 +78,9 @@ def get_task(
 
 def get_curriculum(greedy_evaluation: bool, output_dir: str, random_state: int):
     tasks = [
-        get_task(0, greedy_evaluation=greedy_evaluation, random_state=random_state),
-        get_task(1, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
-        get_task(3, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
+        get_task(0, max_steps=2_000_000, greedy_evaluation=greedy_evaluation, random_state=random_state),
+        get_task(1, max_steps=2_000_000, greedy_evaluation=greedy_evaluation, random_state=random_state+1000),
+        get_task(3, max_steps=2_000_000, greedy_evaluation=greedy_evaluation, random_state=random_state+2000),
     ]
     curriculum = Curriculum(
         tasks,
