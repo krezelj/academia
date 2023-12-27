@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["./academia"]
+
+[tool.hatch.build.targets.sdist]
+packages = ["./academia"]
+
+[project]
+name = "academia"
+version = "0.1.0"
+authors = [
+    { name="krezelj", email="jasiekk9@gmail.com" },
+    { name="guts", email="szymon.gut01@gmail.com" },
+    { name="maciejors", email="maciej.orslowski@gmail.con" },
+]
+description = "Easy-to-use tools for Curriculum Learning"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "gymnasium ~=0.29.1",
+    "kaleido ~=0.2.1",
+    "minigrid ~=2.3.1",
+    "numpy ~=1.25.2",
+    "plotly ~=5.18.0",
+    "pytimedinput ~=2.0.1",
+    "PyYAML ~=6.0.1",
+    "torch ~=2.1.0",
+]
+keywords = [
+    "curriculum-learning",
+    "reinforcement-learning",
+]
+
+[project.urls]
+"Source code" = "https://github.com/krezelj/wut-curriculum-learning"
+Documentation = "https://github.com/krezelj/wut-curriculum-learning"  # TODO: temporary url
