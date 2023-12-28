@@ -1,5 +1,5 @@
 """
-Functions that can visualise statistics gathered from agents training through
+Functions that can visualize statistics gathered from agents training through
 :mod:`academia.curriculum` module.
 
 Exported functions:
@@ -55,8 +55,9 @@ def create_figure(
 
     Args:
         title: Figure title. Deafults to ``None``.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         suffix: A suffix appended at the end of the file. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
@@ -65,11 +66,11 @@ def create_figure(
 
     Example:
 
-    >>> with create_figure("Test", True, './test', 'curr_comparison', 'png') as fig:
-    >>>     fig.add_trace(...)
+        >>> with create_figure("Test", True, './test', 'curr_comparison', 'png') as fig:
+        >>>     fig.add_trace(...)
 
-    This snippet will create a fig titled "Test", add a trace to it, then show it and save it to
-    a specified file with a ``"_curr_comparison"`` suffix.
+        This snippet will create a fig titled "Test", add a trace to it, then show it and save it to
+        a specified file with a ``"_curr_comparison"`` suffix.
     """
     fig = go.Figure()
     fig.update_layout(
@@ -172,12 +173,12 @@ def get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
     Example:
 
         Generating colors for two trajectories. One trajectory is a task 
-        and the other is a curriculum consiting of three tasks.
+        and the other is a curriculum consiting of three tasks:
 
         >>> task_runs: list[LearningStats] = ...
         >>> curriculum_run: list[dict[str, LearningStats]] = ... # 3 tasks in a curriculum
         >>>
-        >>> # we have to trajectories so we set n_queries=2
+        >>> # we have two trajectories so we set n_queries=2
         >>> # this is the first trajectory so query=1
         >>> # it is also a trajectory for a single task so we set n_shades=1
         >>> task_color = get_colors(n_shades=1, query=1, n_queries=2)[0] # take first element
@@ -417,7 +418,8 @@ def plot_trajectories(
             corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Returns:
@@ -430,20 +432,21 @@ def plot_trajectories(
     
     Examples:
 
-        The following imports are needed for the following examples
+        The following imports are needed for all the examples:
 
         >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
         >>> import academia.tools.visualizations as vis
 
-        For details on how to configure agents see :mod:`academia.agents`
+        For details on how to configure agents see :mod:`academia.agents`.
 
-        Plotting evaluations from a single task run
+        Plotting evaluations from a single task run:
 
         >>> task: LearningTask = ...
         >>> agent = ...
         >>> task.run(agent)
         >>> stats: LearningStats = task.stats
-        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+        >>> # note that a single stats object has to be passed inside a list
+        >>> vis.plot_trajectories([stats])
 
         Plotting evaluations from a single curriculum run. See :mod:`academia.curriculum`
         for more details on how to configure and run a curriculum.
@@ -452,9 +455,10 @@ def plot_trajectories(
         >>> agent = ...
         >>> curriculum.run(agent)
         >>> stats: dict[str, LearningStats] = curriculum.stats
-        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+        >>> # note that a single stats object has to be passed inside a list
+        >>> vis.plot_trajectories([stats])
 
-        Plotting several runs of a single task with some additonal visuals
+        Plotting several runs of a single task with some additonal visuals:
 
         >>> task: LearningTask = ...
         >>> n_runs =  5
@@ -469,7 +473,7 @@ def plot_trajectories(
         >>>     show_std=True,
         >>> )
 
-        Plotting curriculum vs task comparison
+        Plotting curriculum vs task comparison:
 
         >>> task: LearningTask = ...
         >>> curriculum: Curriculum = ...
@@ -489,7 +493,7 @@ def plot_trajectories(
         >>>     show_run_traces=[True, False] # show individual traces only for the task
         >>> )
 
-        Plotting curriculum vs curriculum as separate figures with different time domains
+        Plotting curriculum vs curriculum as separate figures with different time domains:
 
         >>> curriculum_1: Curriculum = ...
         >>> curriculum_2: Curriculum = ...
@@ -509,7 +513,7 @@ def plot_trajectories(
         >>>     time_domain=["steps", "episodes"]
         >>> )
 
-        Plotting a running average of steps in episodes in several runs of a single task
+        Plotting a running average of steps in episodes in several runs of a single task:
 
         >>> task: LearningTask = ...
         >>> n_runs =  5
@@ -593,14 +597,16 @@ def plot_evaluation_impact(
         save_format: SaveFormat = 'png',
         )  -> 'go.Figure':
     """
-    Plots the impact of learning duration in task with difficulty level = x to evaluation 
+    Plots the impact of learning duration in task with difficulty level = x on evaluation
+    in task with difficulty level = y
 
     Args:
-        n_episodes_x: Number of episodes in task X.
-        task_runs_y: Learning statistics for tasks in level Y.
+        n_episodes_x: Number of episodes in task with level x.
+        task_runs_y: Learning statistics for tasks with level y.
         title: Figure title. Deafults to ``None``.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Returns:
@@ -610,8 +616,8 @@ def plot_evaluation_impact(
         ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
             the number of tasks at level x and level y is equal because the experiment involves testing 
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
-            the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
-            environment.
+            the number of episodes spent in the easier one affects the evaluation of the agent in a more
+            difficult environment.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
@@ -621,9 +627,11 @@ def plot_evaluation_impact(
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
+        >>>
         >>> n_episodes_x = [100, 500, 1000]
         >>> task_runs_y: list[list[LearningStats]] = []
         >>> n_runs = 5
+        >>>
         >>> for nex in n_episodes_x:
         >>>     curriculum = Curriculum([
         >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_episodes': nex})
@@ -671,12 +679,13 @@ def plot_evaluation_impact_2d(
     See examples for more details
 
     Args:
-        n_episodes_x: Number of episodes in task X.
-        n_episodes_y: Number of episodes in task Y.
-        task_runs_z: Learning statistics for tasks in level Z.
+        n_episodes_x: Number of episodes in task x.
+        n_episodes_y: Number of episodes in task y.
+        task_runs_z: Learning statistics for tasks with level z.
         title: Figure title. Deafults to ``None``.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
     
     Returns:
@@ -697,10 +706,12 @@ def plot_evaluation_impact_2d(
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
+        >>>
         >>> n_episodes_x = [100, 500]
         >>> n_episodes_y = [200, 400]
         >>> task_runs_z: list[list[LearningStats]] = []
         >>> n_runs = 5
+        >>>
         >>> for nex in n_episodes_x:
         >>>     for ney in n_episodes_y:
         >>>         curriculum = Curriculum([
@@ -716,7 +727,8 @@ def plot_evaluation_impact_2d(
         >>>         task_runs_z.append(final_task_runs)
         >>>
         >>> import academia.tools.visualizations as vis
-        >>> # the provided lists should over all tested combinations
+        >>> # pairs of elements at the same indexes in the two lists below should
+        >>> # cover all tested combinations, i.e. 100-200, 100-400, 500-200, 500-400
         >>> n_episodes_x = [100, 100, 500, 500]
         >>> n_episodes_y = [200, 400, 200, 400]
         >>> vis.plot_evaluation_impact_2d(n_episodes_x, n_episodes_y, task_runs_z)
@@ -764,13 +776,14 @@ def plot_time_impact(
     See examples for more details
 
     Args:
-        task_runs_x: Learning statistics for tasks in level X.
-        task_runs_y: Learning statistics for tasks in level Y.
+        task_runs_x: Learning statistics for tasks with level x.
+        task_runs_y: Learning statistics for tasks with level y.
         time_domain_x: Time domain which will be used on the X-axis.
         time_domain_y: Time domain which will be used on the Y-axis.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
 
     Returns:
@@ -798,6 +811,7 @@ def plot_time_impact(
         >>> n_runs = 5
         >>> task_runs_x: list[list[LearningStats]] = []
         >>> task_runs_y: list[list[LearningStats]] = []
+        >>>
         >>> for wts in wall_time_stops:
         >>>     curriculum = Curriculum([
         >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_wall_time': wts})
