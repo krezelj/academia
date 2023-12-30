@@ -4,11 +4,8 @@ academia.tools module
 Submodules
 ----------
 
-academia.tools.visualizations module
-------------------------------------
-
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 1
 
    academia.tools.visualizations
 
