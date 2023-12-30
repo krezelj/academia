@@ -73,7 +73,7 @@ class DQNAgent(EpsilonGreedyAgent):
         >>> # Create an environment:
         >>> env = DoorKey(difficulty=0, append_step_count=True)
         >>> # Create an instance of the DQNAgent class with
-        >>> #custom neural network architecture
+        >>> # custom neural network architecture
         >>> dqn_agent = DQNAgent(
         >>>     nn_architecture=door_key.MLPStepDQN,
         >>>     n_actions=DoorKey.N_ACTIONS,
