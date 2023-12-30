@@ -59,14 +59,24 @@ class DQNAgent(EpsilonGreedyAgent):
     Examples:
         >>> from academia.agents import DQNAgent
         >>> from academia.environments import DoorKey
-        >>> from academia.utils.models import door_key  # Import custom neural network architecture
+        >>> # Import custom neural network architecture
+        >>> from academia.utils.models import door_key
         >>>
         >>> # Create an environment:
         >>> env = DoorKey(difficulty=0, append_step_count=True)
-        >>> # Create an instance of the DQNAgent class with custom neural network architecture
-        >>> dqn_agent = DQNAgent(nn_architecture=door_key.MLPStepDQN, n_actions=DoorKey.N_ACTIONS, gamma=0.99,
-        >>>                      epsilon=1.0, epsilon_decay=0.99, min_epsilon=0.01, batch_size=64)
-        >>> # Training loop: Update the agent using experiences (state, action, reward, new_state, done)
+        >>> # Create an instance of the DQNAgent class with
+        >>> #custom neural network architecture
+        >>> dqn_agent = DQNAgent(
+        >>>     nn_architecture=door_key.MLPStepDQN,
+        >>>     n_actions=DoorKey.N_ACTIONS,
+        >>>     gamma=0.99,
+        >>>     epsilon=1.0,
+        >>>     epsilon_decay=0.99,
+        >>>     min_epsilon=0.01,
+        >>>     batch_size=64,
+        >>> )
+        >>> # Training loop: Update the agent using experiences
+        >>> # (state, action, reward, new_state, done)
         >>> num_episodes = 100
         >>> for episode in range(num_episodes):
         >>>    state = env.reset()
@@ -81,7 +91,7 @@ class DQNAgent(EpsilonGreedyAgent):
         >>>
         >>> # Save the agent's state dictionary to a file
         >>> dqn_agent.save('dqn_agent')
-
+        >>>
         >>> # Load the agent's state dictionary from a file
         >>> dqn_agent = DQNAgent.load('dqn_agent')
 
@@ -89,10 +99,11 @@ class DQNAgent(EpsilonGreedyAgent):
         - Ensure that the custom neural network architecture passed to the constructor inherits 
           from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
-        - The __soft_update_target method updates the target network weights from the main network's weights
-          based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
-        - It is recommended to adjust hyperparameters such as gamma, epsilon, epsilon_decay, and batch_size
-          based on the specific task and environment.
+        - The :func:`__soft_update_target` method updates the target network weights from the main network's
+          weights based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights,
+          where TAU << 1.
+        - It is recommended to adjust hyperparameters such as :attr:`gamma`, :attr:`epsilon`,
+          :attr:`epsilon_decay`, and :attr:`batch_size` for each specific task and environment.
     """
 
     REPLAY_MEMORY_SIZE: int = 100000
@@ -274,10 +285,11 @@ class DQNAgent(EpsilonGreedyAgent):
         the specified file path.
 
         Args:
-            path: The file path (including filename and extension) where the model's state dictionary will be saved.
+            path: Path to a file (including filename and extension) where the model's state
+                dictionary will be saved.
 
         Returns:
-            Absolute path to the saved file.
+            An absolute path to the saved file.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
@@ -325,10 +337,13 @@ class DQNAgent(EpsilonGreedyAgent):
     def load(cls, path: str) -> 'DQNAgent':
         """
         Loads the state dictionary of the neural network model, target network model and agent parameters 
-        from the specified file path. 
+        from the specified file.
 
         Args:
-            path: The file path from which to load the model's state dictionary.
+            path: Path to a file from which to load the model's state dictionary.
+
+        Returns:
+            A loaded instance of ``PPOAgent``.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'

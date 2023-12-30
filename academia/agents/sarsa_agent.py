@@ -5,7 +5,7 @@ from .base import TabularAgent
 
 class SarsaAgent(TabularAgent):
     """
-    SarsaAgent class implements a SARSA (State-Action-Reward-State-Action) learning agent
+    SarsaAgent class implements a SARSA (State-Action-Reward-State-Action) learning algorithm
     for tabular environments.
 
     This agent learns to make decisions in an environment with discrete states and actions
@@ -20,7 +20,7 @@ class SarsaAgent(TabularAgent):
         epsilon: Exploration-exploitation trade-off parameter. Defaults to 1.
         epsilon_decay: Decay rate for epsilon. Defaults to 0.999.
         min_epsilon: Minimum value for epsilon during exploration. Defaults to 0.01.
-        random_state: Seed for the random number generator.
+        random_state: Seed for the random number generator. Defaults to ``None``.
 
     Raises:
         ValueError: If the given state is not supported.

@@ -25,7 +25,7 @@ class PPOAgent(Agent):
         actor_architecture: Type of neural network architecture to be used for the actor.
         critic_architecture: Type of neural network architecture to be used. for the critic.
         n_actions: Number of possible actions in the environment.
-        discrete: Whether the agent's action space is discrete. Defaults to ``True``
+        discrete: Whether the agent's action space is discrete. Defaults to ``True``.
         batch_size: The size of the minibatch used during training. Defaults to 64.
         n_epochs: Number of epochs per training. Defaults to 5.
         n_steps: Minimum number of steps to take between training sessions. Note that if the minimum
@@ -37,8 +37,8 @@ class PPOAgent(Agent):
             If set to None :attr:`n_steps` will be used instead. 
             Exactly one of :attr:`n_steps` and :attr:`n_episodes` must be not ``None``. 
             Defaults to 10.
-        clip: Clip rate hyperparameter from the PPO algorithm. Defaults to 0.2,
-        lr: Learning rate used by (Adam) optimisers. The same value is used for both actor and critic.
+        clip: Clip rate hyperparameter from the PPO algorithm. Defaults to 0.2.
+        lr: Learning rate used by (Adam) optimizers. The same value is used for both actor and critic.
             Defaults to ``3e-4``.
         covariance_fill: Value on the diagonal in the covariance matrix used to randomly sample
             continuous actions when :attr:`discrete` is ``False``. Defaults to 0.5.
@@ -46,7 +46,8 @@ class PPOAgent(Agent):
             Defaults to 0.01.
         gamma: Discount factor for future rewards. Defaults to 0.99.
         random_state: Seed for random number generation. Defaults to ``None``.
-        device: Device used for computation. Possible values are ``'cuda'`` and ``'cpu'``. Defaults to ``'cpu'``.
+        device: Device used for computation. Possible values are ``'cuda'`` and ``'cpu'``.
+            Defaults to ``'cpu'``.
         
     
     Attributes:
@@ -54,7 +55,7 @@ class PPOAgent(Agent):
         gamma (float): Discount factor for future rewards.
         discrete (bool): Whether the agent's action space is discrete.
         clip (float): Clip rate hyperparameter from the PPO algorithm.
-        lr (float): Learning rate used by (Adam) optimisers.
+        lr (float): Learning rate used by (Adam) optimizers.
         entropy_coefficient (float): Coefficient used to control the impact of entropy on the loss function.
         batch_size (int): The size of the minibatch used during training.
         n_epochs (int): Number of epochs per training.
@@ -87,9 +88,9 @@ class PPOAgent(Agent):
         >>> task.run(agent)
 
     Note:
-        - PPOAgent currently does not support legal masks
-        - PPOAgent does not use epsilon greedy policy. As such attributes like :attr:`epsilon`
-          do not affect the training process.
+        - PPOAgent currently does not support legal masks.
+        - PPOAgent currently does not provide implementations for :func:`update_exploration` or
+          :func:`reset_exploration` methods.
     """
 
     class PPOBuffer:
@@ -219,7 +220,7 @@ class PPOAgent(Agent):
                 device: Target computation device
 
             Returns:
-                A 4-tuple containing states, actions, actions logits and discounted rewards 
+                A 4-element tuple containing states, actions, actions logits and discounted rewards
                 in that order converted to tensors.
             """
             # converting a list to a tensor is slow; pytorch suggests converting to numpy array first
@@ -283,13 +284,13 @@ class PPOAgent(Agent):
 
     def __init_networks(self) -> None:
         """
-        Initialises the actor and critic networks and optimisers
+        Initializes the actor and critic networks and optimizers
         """
         self.actor = self.actor_architecture()
         self.critic = self.critic_architecture()
 
-        self.actor_optimiser = Adam(self.actor.parameters(), lr=self.lr)
-        self.critic_optimiser = Adam(self.critic.parameters(), lr=self.lr)
+        self.actor_optimizer = Adam(self.actor.parameters(), lr=self.lr)
+        self.critic_optimizer = Adam(self.critic.parameters(), lr=self.lr)
 
     def __evaluate(self, states: torch.FloatTensor, actions: torch.FloatTensor) \
             -> Tuple[torch.FloatTensor, torch.FloatTensor, torch.FloatTensor]:
@@ -360,7 +361,7 @@ class PPOAgent(Agent):
             state: The current state representation used to make the action selection decision.
             legal_mask: A binary mask indicating the legality of actions.
                 If provided, restricts the agent's choices to legal actions.
-                Note that currently PPOAgent does not support legal masks
+                Note that currently PPOAgent does not support legal masks.
             greedy: A boolean flag indicating whether to force a greedy action selection.
 
         Returns:
@@ -441,7 +442,7 @@ class PPOAgent(Agent):
                 actor_loss = (-torch.min(surrogate_1, surrogate_2)).mean()
                 actor_loss -= self.entropy_coefficient * entropy.mean()
 
-                self.actor_optimiser.zero_grad()
+                self.actor_optimizer.zero_grad()
 
                 # why retain_graph=True?
                 # good explanation: https://t.ly/NjM38 (stackoverflow)
@@ -451,29 +452,44 @@ class PPOAgent(Agent):
                 # however this would result in an error being thrown when we perform 
                 # a backward pass on the critic_loss. 
                 actor_loss.backward(retain_graph=True)
-                self.actor_optimiser.step()
+                self.actor_optimizer.step()
 
                 critic_loss = nn.MSELoss()(current_V, batch_rewards_to_go)
-                self.critic_optimiser.zero_grad()    
+                self.critic_optimizer.zero_grad()
                 critic_loss.backward()    
-                self.critic_optimiser.step()
+                self.critic_optimizer.step()
         
         self.actor.to('cpu')
         self.critic.to('cpu')
 
     def update_exploration(self):
+        """
+        Updates the exploration parameter.
+
+        Note:
+            ``PPOAgent`` currently does not provide implementation for this method.
+        """
         pass
 
     def reset_exploration(self, value):
+        """
+        Resets the exploration parameter to the specified value.
+
+        Note:
+            ``PPOAgent`` currently does not provide implementation for this method.
+        """
         pass
 
     @classmethod
     def load(cls, path: str) -> 'PPOAgent':
         """
-        Loads the state the agent from the specified file path. 
+        Loads the state of the agent from the specified file path.
 
         Args:
-            path: The file path from which to load the agent state.
+            path: Path to a file from which to load the agent state.
+
+        Returns:
+            A loaded instance of ``PPOAgent``.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
@@ -525,13 +541,13 @@ class PPOAgent(Agent):
 
     def save(self, path: str) -> str:
         """
-        Saves the state of the agent to the specified file path.
+        Saves the state of the agent to the specified file.
 
         Args:
-            path: The file path to which the agent state will be saved.
+            path: Path to a file to which the agent state will be saved.
 
         Returns:
-            Absolute path to the saved file.
+            An absolute path to the saved file.
         """
         if not path.endswith('.zip'):
             path += '.agent.zip'
