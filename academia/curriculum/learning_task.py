@@ -84,7 +84,7 @@ class LearningTask(SavableLoadable):
 
     Attributes:
         env (ScalableEnvironment): An environment that an agent can interact with.
-            It is of a type ``env_type``, initialised with parameters from ``env_args``.
+            It is of a type ``env_type``, initialized with parameters from ``env_args``.
         stats (LearningStats): Learning statistics. For more detailed description of their contents see
             :class:`LearningStats`.
         name (str, optional): Name of the task. This is unused when running a single task
@@ -98,7 +98,7 @@ class LearningTask(SavableLoadable):
             ``None``, they will not be saved at any point.
 
     Examples:
-        Initialisation using class contructor:
+        Initialization using class contructor:
 
         >>> from academia.curriculum import LearningTask
         >>> from academia.environments import LavaCrossing
@@ -109,7 +109,7 @@ class LearningTask(SavableLoadable):
         >>>     stats_save_path='./my_task_stats.json',
         >>> )
 
-        Initialisaton using a config file:
+        Initializaton using a config file:
 
         >>> from academia.curriculum import LearningTask
         >>> task = LearningTask.load('./my_config.task.yml')
@@ -172,7 +172,7 @@ class LearningTask(SavableLoadable):
 
             LearningTask.stop_predicates = {'predicate': my_stop_predicate}
 
-        and that a task was initialised with::
+        and that a task was initialized with::
 
             stop_conditions={'predicate': 500}
 
@@ -201,7 +201,7 @@ class LearningTask(SavableLoadable):
         self.__stop_conditions = stop_conditions
 
         self.__initialised_stop_predicates = []
-        """Partial functions with stop conditions specified during initialisation"""
+        """Partial functions with stop conditions specified during initialization"""
 
         for predicate_name, predicate_arg in stop_conditions.items():
             predicate = LearningTask.stop_predicates.get(predicate_name)
@@ -232,7 +232,7 @@ class LearningTask(SavableLoadable):
     def run(self, agent: Agent, verbose=0) -> None:
         """
         Runs the training loop for the given agent on an environment specified during this task's
-        initialisation. Training statistics will be saved to a JSON file if
+        initialization. Training statistics will be saved to a JSON file if
         :attr:`stats_save_path` is not ``None``.
 
         Args:
@@ -340,7 +340,7 @@ class LearningTask(SavableLoadable):
     def __handle_task_terminated(self, agent: Agent, verbose: int, interrupted=False) -> None:
         """
         Saves most recent agent's state and training statistics (if relevant paths were specified during
-        :class:`LearningTask` initialisation.
+        :class:`LearningTask` initialization.
 
         Args:
             interrupted: Whether or not the task has been interrupted or has finished normally
