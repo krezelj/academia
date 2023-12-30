@@ -307,7 +307,8 @@ class LearningTask(SavableLoadable):
             state = new_state
             episode_reward += reward
             steps_count += 1
-        agent.update_exploration()
+        if not evaluation_mode:
+            agent.update_exploration()
         return episode_reward, steps_count
 
     def __handle_evaluation(self, agent: Agent, verbose: int, episode_no: int) -> None:
