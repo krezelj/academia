@@ -6,30 +6,38 @@ import os
 
 class SavableLoadable(ABC):
     """
-    Interface for classes which objects can be saved or loaded
+    An interface for classes which instances can be saved or loaded.
     """
 
     @classmethod
     @abstractmethod
     def load(cls, path: str):
         """
-        Loads an object and returns its instance
+        Loads an object.
+
+        Returns:
+            A loaded object.
         """
         pass
 
     @abstractmethod
     def save(self, path: str) -> str:
         """
+        Saves an object.
+
         Returns:
-             an absolute path where the object was saved
+             An absolute path where the object was saved.
         """
         pass
 
     @staticmethod
     def get_type(type_name_full: str) -> Type:
         """
+        Args:
+            type_name_full: type's import name (e.g. "academia.agents.SarsaAgent")
+
         Returns:
-             a type based on its full name (e.g. academia.agents.Sarsa)
+             A type based on its full name (e.g. ``academia.agents.SarsaAgent``).
         """
         module_name, _, qualname = type_name_full.rpartition('.')
         module = importlib.import_module(module_name)
@@ -40,7 +48,7 @@ class SavableLoadable(ABC):
     def get_type_name_full(type_: Type) -> str:
         """
         Returns:
-             the full type name (e.g. academia.agents.Sarsa)
+             A full type name (e.g. "academia.agents.SarsaAgent").
         """
         module_name = type_.__module__
         qualname = type_.__qualname__
@@ -49,11 +57,12 @@ class SavableLoadable(ABC):
     @staticmethod
     def _prep_save_file(specified_path: str, interrupted: bool) -> str:
         """
-        Creates parent directories if they're missing and, if ``interrupted=True``, prepends 'backup_' to the
+        Creates parent directories if they're missing and, if
+        ``interrupted=True``, prepends 'backup_' to the
         file name in the specified path.
 
         Returns:
-            Final path
+            Final path.
         """
         dirname, filename = os.path.split(specified_path)
         if interrupted:

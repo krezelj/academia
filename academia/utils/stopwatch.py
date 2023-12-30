@@ -5,20 +5,21 @@ import numpy as np
 
 
 class Stopwatch:
-    """A utility class for measuring and storing consecutive CPU/wall times.
-    All times are stored in seconds."""
+    """
+    A utility class for measuring and storing consecutive CPU/wall times.
+    All times are stored in seconds.
+
+    Args:
+        start: whether or not to start a stopwatch immidiately after initializing it.
+    """
 
     def __init__(self, start=True):
-        """
-        Args:
-            start: whether or not to start a stopwatch immidiately after initialising it.
-        """
         self.__wall_stopwatch = _GenericStopwatch(timestamp_func=time.perf_counter, start=start)
         self.__cpu_stopwatch = _GenericStopwatch(timestamp_func=time.process_time, start=start)
 
     @property
     def is_running(self) -> bool:
-        """Whether or not the stopwatch is running"""
+        """Whether or not the stopwatch is currently running"""
         return self.__wall_stopwatch.is_running
 
     def start(self) -> None:
@@ -28,8 +29,10 @@ class Stopwatch:
 
     def peek_time(self) -> tuple[float, float]:
         """
+        Check the current total time without stopping the stopwatch.
+
         Returns:
-            Current time since the start.
+            Current wall and CPU times since the start.
 
         Raises:
             RuntimeError: if stopwatch is not running
@@ -38,8 +41,10 @@ class Stopwatch:
 
     def lap(self) -> tuple[float, float]:
         """
+        Ends the current lap and starts a new one.
+
         Returns:
-             Wall and CPU lap times.
+             Wall and CPU times of the lap that was ended.
 
         Raises:
             RuntimeError: if stopwatch is not running
@@ -48,8 +53,10 @@ class Stopwatch:
 
     def peek_lap_time(self) -> tuple[float, float]:
         """
+        Checks the current lap time without ending the lap.
+
         Returns:
-            Current lap time.
+            Current wall and CPU lap times.
 
         Raises:
             RuntimeError: if stopwatch is not running
@@ -58,11 +65,13 @@ class Stopwatch:
 
     def stop(self, lap=False) -> tuple[float, float]:
         """
+        Stops the stopwatch.
+
         Args:
             lap: whether or not end and save the final lap.
 
         Returns:
-             Wall and CPU total times.
+             Wall and CPU total times since the stopwatch was started.
 
         Raises:
             RuntimeError: if stopwatch is not running
@@ -73,20 +82,32 @@ class Stopwatch:
 
     @property
     def wall_lap_times(self) -> list[float]:
+        """A list of all stored wall lap times (excluding the current lap)"""
         return self.__wall_stopwatch.lap_times
 
     @property
     def cpu_lap_times(self) -> list[float]:
+        """A list of all stored CPU lap times (excluding the current lap)"""
         return self.__cpu_stopwatch.lap_times
 
 
 class _GenericStopwatch:
+    """
+    A utility class for measuring and storing consecutive times measured by
+    subtracting timestamps obtained in a way specified by the user.
+
+    Args:
+        timestamp_func: a function that returns a current timestamp every time
+            it is called
+        start: whether or not to start a stopwatch immidiately after
+            initializing it.
+
+    Attributes:
+        lap_times (list[float]): a list of all stored lap times (excluding the
+            current lap)
+    """
 
     def __init__(self, timestamp_func: Callable[[], float], start=True):
-        """
-        Args:
-            start: whether or not to start a stopwatch immidiately after initialising it.
-        """
         self.__timestamp_func = timestamp_func
         self.lap_times: list[float] = []
         self.__lap_start: Optional[float] = None
@@ -95,6 +116,7 @@ class _GenericStopwatch:
 
     @property
     def is_running(self) -> bool:
+        """Whether or not the stopwatch is running"""
         return self.__lap_start is not None
 
     def start(self) -> None:
@@ -106,6 +128,8 @@ class _GenericStopwatch:
 
     def peek_time(self) -> float:
         """
+        Check the current total time without stopping the stopwatch.
+
         Returns:
             Current time since the start.
 
@@ -118,8 +142,10 @@ class _GenericStopwatch:
 
     def lap(self) -> float:
         """
+        Ends the current lap and starts a new one.
+
         Returns:
-             Lap time.
+             Time of the lap that was ended.
 
         Raises:
             RuntimeError: if stopwatch is not running
@@ -134,6 +160,8 @@ class _GenericStopwatch:
 
     def peek_lap_time(self) -> float:
         """
+        Checks the current lap time without ending the lap.
+
         Returns:
             Current lap time.
 
@@ -147,11 +175,13 @@ class _GenericStopwatch:
 
     def stop(self, lap=False) -> float:
         """
+        Stops the stopwatch.
+
         Args:
             lap: whether or not end and save the final lap.
 
         Returns:
-             Total time.
+             Total time since the stopwatch was started.
 
         Raises:
             RuntimeError: if stopwatch is not running
