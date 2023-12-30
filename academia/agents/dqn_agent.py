@@ -117,15 +117,15 @@ class DQNAgent(EpsilonGreedyAgent):
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
                                        n_actions=n_actions, gamma=gamma, random_state=random_state)
+        self.replay_memory_size = replay_memory_size
+        self.lr = lr
+        self.tau = tau
+        self.update_every = update_every
         self.memory = deque(maxlen=self.replay_memory_size)
         self.batch_size = batch_size
         self.nn_architecture = nn_architecture
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
                                                                 "new_state", "done"])
-        self.replay_memory_size = replay_memory_size
-        self.lr = lr
-        self.tau = tau
-        self.update_every = update_every
         self.train_step = 0
 
         if device == 'cuda' and not torch.cuda.is_available():
