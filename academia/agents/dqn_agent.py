@@ -37,6 +37,10 @@ class DQNAgent(EpsilonGreedyAgent):
         min_epsilon: Minimum epsilon value to ensure exploration. Defaults to 0.01.
         batch_size: Size of the mini-batch used for training. Defaults to 64.
         random_state: Seed for random number generation. Defaults to ``None``.
+        replay_memory_size: Maximum size of the replay memory. Defaults to 100000.
+        lr: Learning rate for the optimizer. Defaults to 0.0005.
+        tau: Interpolation parameter for target network soft updates. Defaults to 0.001.
+        update_every: Frequency of network updates. Defaults to 3.
         device: Device to use for training. Defaults to ``cpu``.
     
     Attributes:
@@ -54,6 +58,10 @@ class DQNAgent(EpsilonGreedyAgent):
         experience (namedtuple): Named tuple representing an experience tuple which stores state, action, 
             reward, new_state, and done.
         train_step (int): Counter for the number of training steps performed.
+        replay_memory_size (int): Maximum size of the replay memory.
+        lr (float): Learning rate for the optimizer.
+        tau (float): Interpolation parameter for target network soft updates.
+        update_every (int): Frequency of network updates.
         device (Literal['cpu', 'cuda']): Device used for training.
 
     Examples:
@@ -99,37 +107,32 @@ class DQNAgent(EpsilonGreedyAgent):
         - Ensure that the custom neural network architecture passed to the constructor inherits 
           from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
-        - The :func:`__soft_update_target` method updates the target network weights from the main network's
-          weights based on strategy target_weights = TAU * main_weights + (1 - TAU) * target_weights,
-          where TAU << 1.
-        - It is recommended to adjust hyperparameters such as :attr:`gamma`, :attr:`epsilon`,
-          :attr:`epsilon_decay`, and :attr:`batch_size` for each specific task and environment.
+        - The __soft_update_target method updates the target network weights from the main network's weights
+          based on strategy target_weights = :attr:`tau` * main_weights + (1 - :attr:`tau`) * target_weights,
+          where :attr:`tau` << 1.
+        - It is recommended to adjust hyperparameters such as gamma, epsilon, epsilon_decay, and batch_size
+          based on the specific task and environment.
     """
-
-    REPLAY_MEMORY_SIZE: int = 100000
-    """Maximum size of the replay memory."""
-
-    LR: float = 0.0005
-    """Learning rate for the optimizer."""
-
-    TAU: float = 0.001
-    """Interpolation parameter for target network soft updates."""
-
-    UPDATE_EVERY: int = 3
-    """Frequency of network updates."""
-
     def __init__(self, nn_architecture: Type[nn.Module],
                  n_actions: int,
                  gamma: float = 0.99, epsilon: float = 1.,
                  epsilon_decay: float = 0.995,
                  min_epsilon: float = 0.01,
                  batch_size: int = 64, random_state: Optional[int] = None,
+                 replay_memory_size: int = 100000,
+                 lr: float = 0.0005,
+                 tau: float = 0.001,
+                 update_every: int = 3,
                  device: Literal['cpu', 'cuda'] = 'cpu'
                  ):
         super(DQNAgent, self).__init__(epsilon=epsilon, min_epsilon=min_epsilon,
                                        epsilon_decay=epsilon_decay,
                                        n_actions=n_actions, gamma=gamma, random_state=random_state)
-        self.memory = deque(maxlen=self.REPLAY_MEMORY_SIZE)
+        self.replay_memory_size = replay_memory_size
+        self.lr = lr
+        self.tau = tau
+        self.update_every = update_every
+        self.memory = deque(maxlen=self.replay_memory_size)
         self.batch_size = batch_size
         self.nn_architecture = nn_architecture
         self.experience = namedtuple("Experience", field_names=["state", "action", "reward",
@@ -169,7 +172,7 @@ class DQNAgent(EpsilonGreedyAgent):
         self.target_network = self.nn_architecture()
         self.target_network.to(self.device)
 
-        self.optimizer = optim.Adam(self.network.parameters(), lr=self.LR)
+        self.optimizer = optim.Adam(self.network.parameters(), lr=self.lr)
 
     def __remember(self, state: Any, action: int, reward: float, new_state: Any, done: bool):
         """
@@ -226,13 +229,13 @@ class DQNAgent(EpsilonGreedyAgent):
         """
         Updates the target network's weights with the main network's weights.
 
-        It uses soft max strategy so target_weights = TAU * main_weights + (1 - TAU) * target_weights, where TAU << 1.
-        Small value of Tau still covers the statement that target values supposed to be fixed to prevent moving target problem
+        It uses soft max strategy so target_weights = :attr:`tau` * main_weights + (1 - :attr:`tau`) * target_weights, where :attr:`tau` << 1.
+        Small value of :attr:`tau` still covers the statement that target values supposed to be fixed to prevent moving target problem
         """
         for network_params, target_params in zip(self.network.parameters(), 
                                                  self.target_network.parameters()):
-            target_params.data.copy_(self.TAU * network_params.data \
-                                     + (1.0 - self.TAU) * target_params.data)
+            target_params.data.copy_(self.tau * network_params.data \
+                                     + (1.0 - self.tau) * target_params.data)
 
     def update(self, state: Any, action: int, reward: float, new_state: Any, is_terminal: bool):
         """
@@ -247,7 +250,7 @@ class DQNAgent(EpsilonGreedyAgent):
         """
         self.__remember(state=state, action=action, reward=reward, new_state=new_state,
                       done=is_terminal)
-        self.train_step = (self.train_step + 1) % self.UPDATE_EVERY
+        self.train_step = (self.train_step + 1) % self.update_every
         if self.train_step == 0:
             if len(self.memory) >= self.batch_size:
                 states, actions, rewards, new_states, dones = self.__replay()
@@ -364,7 +367,7 @@ class DQNAgent(EpsilonGreedyAgent):
         train_step = params.pop('train_step')
         experience = namedtuple("Experience", field_names=["state", "action", "reward",
                                                                 "new_state", "done"])
-        restored_memory = deque(maxlen=cls.REPLAY_MEMORY_SIZE)
+        restored_memory = deque(maxlen=cls.replay_memory_size)
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
         for exp_dict in memory:
