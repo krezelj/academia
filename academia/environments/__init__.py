@@ -15,8 +15,7 @@ Exported classes:
 - :class:`MsPacman`
 
 Note:
-    If you wish to use your own environment please refer to :ref:`custom-envs`
-    section in ``academia.environments.base``'s documentation.
+    If you wish to use your own environment please refer to :ref:`custom-envs`.
 """
 from .bridge_building import BridgeBuilding
 from .lava_crossing import LavaCrossing

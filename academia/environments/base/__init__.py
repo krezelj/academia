@@ -1,6 +1,6 @@
 """
 Base classes for all environments available in this package. All user-defined environments
-should inherit from one of these classes.
+should inherit from one of these classes (see :ref:`custom-envs` for more information on that)
 
 Exported classes:
 
