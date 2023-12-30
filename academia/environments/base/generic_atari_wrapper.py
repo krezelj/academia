@@ -17,7 +17,7 @@ class GenericAtariWrapper(GenericGymnasiumWrapper):
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
         flatten_state: Wheter ot not to flatten the state if represented by and RGB or grayscale image.
             If ``obs_type`` is set to ``"ram"`` this parameter does nothing. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:

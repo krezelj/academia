@@ -15,7 +15,7 @@ class BridgeBuilding(ScalableEnvironment):
     At lower difficulties the bridge is partly (or even fully) built and the 
     agent only has to learn how to finish it and/or navigate it.
 
-    The rewards is 0 if the agent runs out of time or drowns in the river.
+    A reward is 0 if the agent runs out of time or drowns in the river.
     Otherwise if the agent reaches the goal (the right bank) it's 
     ``1-step_count/max_steps + bridge_length/river_width``.
     This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
@@ -63,7 +63,7 @@ class BridgeBuilding(ScalableEnvironment):
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
 
     Raises:
         ValueError: If the specified river width level is invalid.

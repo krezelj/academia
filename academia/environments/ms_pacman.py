@@ -8,7 +8,9 @@ from .base import GenericAtariWrapper
 
 class MsPacman(GenericAtariWrapper):
     """
-    An Atari 2600 environment where the agent has to navigate a maze, eat pellets
+    This class is a wrapper for *Gymnasium*'s Ms Pacman environment.
+
+    MsPacman is an Atari 2600 environment where the agent has to navigate a maze, eat pellets
     and avoid ghosts. The higher the difficulty, the more ghosts to avoid.
 
     Possible actions:
@@ -49,6 +51,14 @@ class MsPacman(GenericAtariWrapper):
     | 3          | 4 ghosts are chasing the player              |
     +------------+----------------------------------------------+
 
+    Note:
+        For this environment the keyword argument ``mode`` is not used. This is because Ms Pacman did not
+        use the difficulty settings available in Atari but did use mode settings to control the number of
+        ghosts on the map. Because of this the :attr:`difficulty` parameter is mapped to ``mode``.
+
+    See Also:
+        *Gymnasium*'s Ms Pacman environment: https://www.gymlibrary.dev/environments/atari/ms_pacman/
+
     Args:
         difficulty: Difficulty level from 0 to 3, where 0 is the easiest and 3 is the hardest.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
@@ -59,7 +69,7 @@ class MsPacman(GenericAtariWrapper):
         skip_game_start: Whether or not skip the game start. After every reset the game is an "noop" state
             for 65 frames which can hinder the training process. If true the game skips this stage
             by applying 65 NOOP actions before returning the first observed state. Defaults to ``True``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
@@ -73,11 +83,6 @@ class MsPacman(GenericAtariWrapper):
         append_step_count (bool): Whether or not append the current step count to each state.
         flatten_state (bool): Wheter ot not to flatten the state if represented by and RGB or grayscale image.
         skip_game_start (bool): Whether or not skip the game start.
-
-    Notes:
-        For this environment the keyword argument ``mode`` is not used. This is because Ms Pacman did not
-        use the difficulty settings available in Atari but did use mode settings to control the number of
-        ghosts on the map. Because of this the :attr:`difficulty` parameter is mapped to ``mode``.
     """
     
     N_ACTIONS = 9
@@ -110,7 +115,7 @@ class MsPacman(GenericAtariWrapper):
         Returns:
             The new state after resetting the environment.
 
-        Notes:
+        Note:
             if :attr:`skip_game_start` is set to ``True`` this method also performs 65 NOOP
             actions before returning the first observed state.
         """

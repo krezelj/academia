@@ -8,8 +8,9 @@ from .base import GenericGymnasiumWrapper
 
 class LunarLander(GenericGymnasiumWrapper):
     """
-    A class representing the Lunar Lander environment, a variant of the classic Lunar Lander game.
-    
+    This class is a wrapper for *Gymnasium*'s Lunar Lander environment, which itself is
+    a variant of the classic Lunar Lander game.
+
     The goal is to land a spacecraft on the moon's surface by controlling its thrusters.
     The environment has a state size of 8 and 4 possible actions.
     The difficulty ranges from 0 to 5, with higher values indicating more challenging conditions.
@@ -47,12 +48,15 @@ class LunarLander(GenericGymnasiumWrapper):
     | 5          | Very strong wind, strong turbulence           |
     +------------+-----------------------------------------------+
 
+    See Also:
+        *Gymnasium*'s Lunar Lander environment: https://gymnasium.farama.org/environments/box2d/lunar_lander/
+
     Args:
         difficulty: The difficulty level of the environment (0 to 5).
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:
