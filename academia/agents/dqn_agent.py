@@ -107,9 +107,9 @@ class DQNAgent(EpsilonGreedyAgent):
         - Ensure that the custom neural network architecture passed to the constructor inherits 
           from ``torch.nn.Module`` and is appropriate for the task.
         - The agent's exploration-exploitation strategy is based on epsilon-greedy method.
-        - The __soft_update_target method updates the target network weights from the main network's weights
-          based on strategy target_weights = :attr:`tau` * main_weights + (1 - :attr:`tau`) * target_weights,
-          where :attr:`tau` << 1.
+        - The :func:`__soft_update_target` method updates the target network weights from the main network's
+          weights based on strategy target_weights = :attr:`tau` * main_weights + (1 - :attr:`tau`) *
+          target_weights, where :attr:`tau` << 1.
         - It is recommended to adjust hyperparameters such as gamma, epsilon, epsilon_decay, and batch_size
           based on the specific task and environment.
     """
