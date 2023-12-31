@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-# script should be run at the experiments/experiment_1 directory level
+# script should be run at the experiments/experiment_4 directory level
 sys.path.append('..\\..')
 
 from academia.curriculum import Curriculum, LearningTask
@@ -56,8 +56,9 @@ def run_experiment(n_rounds):
             actor_architecture=lava_crossing.MLPStepActor,
             critic_architecture=lava_crossing.MLPStepCritic,
             random_state=selected_params['round'] + idx * 10000,
-            n_episodes=10,
+            n_episodes=5,
             n_epochs=10,
+            lr=0.0001,
         )
         if selected_params['type_of_impact'] == 'time':
             stop_condition = {'min_evaluation_score': 0.8}
@@ -88,10 +89,6 @@ def run_experiment(n_rounds):
                                     f"outputs/{selected_params['type_of_impact']}/episodes_{selected_params['episodes_task1']}"
                                     f"/curriculum_iter_{selected_params['round'] + 1}")
                                 )
-
-        curriculum.save(
-            f"configs/{selected_params['type_of_impact']}/episodes_{selected_params['episodes_task1']}"
-            f"/curriculum_iter_{selected_params['round'] + 1}")
         curriculum.run(agent, verbose=2)
 
         params_sets[idx]['round'] += 1
@@ -100,4 +97,4 @@ def run_experiment(n_rounds):
 
 
 if __name__ == '__main__':
-    run_experiment(1)
+    run_experiment(1_000_000_000)
