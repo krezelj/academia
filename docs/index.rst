@@ -6,11 +6,11 @@
 Welcome to academia's documentation!
 ====================================
 
-.. automodule:: academia
+This package's purpose is to provide easy-to-use tools for `Curriculum Learning`.
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
+   :caption: Modules
 
    source/academia.agents
    source/academia.environments
@@ -18,9 +18,15 @@ Welcome to academia's documentation!
    source/academia.tools
    source/academia.utils
 
-Indices and tables
-==================
+.. toctree::
+   :maxdepth: 1
+   :caption: Guides
+
+   guides/custom-environments
+
+=======
+Indices
+=======
 
 * :ref:`genindex`
 * :ref:`modindex`
-* :ref:`search`

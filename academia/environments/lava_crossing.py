@@ -8,6 +8,8 @@ from .base import GenericMiniGridWrapper
 
 class LavaCrossing(GenericMiniGridWrapper):
     """
+    This class is a wrapper for *MiniGrid*'s Lava Crossing environments.
+
     A grid environment where an agent has to avoid patches of lava in order to
     reach the destination. The higher the difficulty, the more lava patches are
     generated on the grid.
@@ -38,13 +40,16 @@ class LavaCrossing(GenericMiniGridWrapper):
     | 3          | 11x11 grid size with 5 lava patches          |
     +------------+----------------------------------------------+
 
+    See Also:
+        *MiniGrid*'s Lava Crossing environments: https://minigrid.farama.org/environments/minigrid/CrossingEnv/
+
     Args:
         difficulty: Difficulty level from 0 to 3, where 0 is the easiest
             and 3 is the hardest.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:

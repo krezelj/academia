@@ -10,7 +10,7 @@ Exported classes:
 - :class:`PPOAgent`
 
 Note:
-    :class:`DQNAgent` and :class:`PPOAgent` need to be provided network architectures when initialising.
+    :class:`DQNAgent` and :class:`PPOAgent` need to be provided network architectures when initializing.
     These network architectures should be subclasses of ``torch.nn.Module``. Example architectures
     can be found in :mod:`academia.utils.models`.
 """
