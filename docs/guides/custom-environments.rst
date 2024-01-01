@@ -14,7 +14,7 @@ The most basic class for environments is
 *academia* package. However there are also some generic wrappers which can
 speed up the process of creating wrappers for custom environments.
 
-If your environment is compliant with *gymnasium*'s API, check out
+If your environment is compliant with *Gymnasium*'s API, check out
 :class:`GenericGymnasiumWrapper`. It contains implementations for all methods
 exposed by *academia*'s environment API. You only need to take care of a few
 things:
