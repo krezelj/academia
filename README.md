@@ -1,8 +1,14 @@
-# wut-curriculum-learning
-Repository for an engineering thesis at Warsaw University of Technology that touches on the topic of curriculum learning.
+# academia
 
+This package’s purpose is to provide easy-to-use tools for Curriculum Learning.
+It is a part of an engineering thesis at Warsaw University of Technology that 
+touches on the topic of curriculum learning.
 
-# Sources
+## Documentation
+
+https://academia.readthedocs.io/
+
+## Sources
 An unordered list of interesting books and papers
 
 ### Books
