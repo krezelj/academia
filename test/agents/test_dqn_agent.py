@@ -67,24 +67,23 @@ class TestDQNAgent(unittest.TestCase):
                     msg=f"Attribute '{attribute_name}' not equal")
 
     def test_memory(self):
-        with mock.patch('academia.agents.DQNAgent.REPLAY_MEMORY_SIZE', 10):
-            # arrange
-            sut = DQNAgent(lava_crossing.MLPStepDQN, 3)
-            memory_size = DQNAgent.REPLAY_MEMORY_SIZE
+        # arrange
+        sut = DQNAgent(lava_crossing.MLPStepDQN, 3, replay_memory_size=10)
+        memory_size = sut.replay_memory_size
 
-            # act/assert
-            self.assertEqual(0, len(sut.memory))
+        # act/assert
+        self.assertEqual(0, len(sut.memory))
 
-            self.__simulate_updates(sut, memory_size)
-            self.assertEqual(memory_size, len(sut.memory))
+        self.__simulate_updates(sut, memory_size)
+        self.assertEqual(memory_size, len(sut.memory))
 
-            self.__simulate_updates(sut, 1)
-            self.assertEqual(memory_size, len(sut.memory))
+        self.__simulate_updates(sut, 1)
+        self.assertEqual(memory_size, len(sut.memory))
 
     def test_train_step(self):
         # arrange
         sut = DQNAgent(lava_crossing.MLPStepDQN, 3)
-        update_every = DQNAgent.UPDATE_EVERY
+        update_every = sut.update_every
 
         # act/assert
         self.assertEqual(0, sut.train_step)

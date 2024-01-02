@@ -322,6 +322,10 @@ class DQNAgent(EpsilonGreedyAgent):
                 'memory': memory_save_format,
                 'device': str(self.device),
                 'train_step': self.train_step,
+                'replay_memory_size': self.replay_memory_size,
+                'tau': self.tau,
+                'update_every': self.update_every,
+                'lr': self.lr,
             }
             json.dump(dict(learner_state_dict), agent_temp)
             agent_temp.flush()
@@ -366,8 +370,9 @@ class DQNAgent(EpsilonGreedyAgent):
         memory = params.pop('memory')
         train_step = params.pop('train_step')
         experience = namedtuple("Experience", field_names=["state", "action", "reward",
-                                                                "new_state", "done"])
-        restored_memory = deque(maxlen=cls.replay_memory_size)
+                                                                    "new_state", "done"])
+        replay_memory_size = params.pop('replay_memory_size')
+        restored_memory = deque(maxlen=replay_memory_size)
         agent = cls(nn_architecture=nn_architecture, **params)
         agent._rng.bit_generator.state = rng_state
         for exp_dict in memory:
