@@ -1,0 +1,9 @@
+sphinx
+sphinx-rtd-theme
+gymnasium
+minigrid
+numpy
+plotly
+pytimedinput
+PyYAML
+torch
