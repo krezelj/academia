@@ -3,13 +3,16 @@ import tempfile
 import os
 
 import numpy as np
+import plotly.graph_objects as go
 
 from academia.curriculum import LearningStats
 from academia.tools.visualizations import (
     plot_trajectories,
     plot_evaluation_impact,
     plot_time_impact,
-    plot_evaluation_impact_2d
+    plot_evaluation_impact_2d,
+    create_figure,
+    get_colors
 )
 
 
@@ -96,6 +99,14 @@ class TestVisualizations(unittest.TestCase):
             tmpf.close()
 
         try:
+            tmpf = tempfile.NamedTemporaryFile(delete=False, suffix='.svg')
+            self.assertEqual(0, os.stat(tmpf.name).st_size) # file empty
+            plot_trajectories(self.dummy_task_runs, save_path=tmpf.name, save_format='svg')
+            self.assertNotEqual(0, os.stat(tmpf.name).st_size) # file not empty
+        finally:
+            tmpf.close()
+
+        try:
             tmpf = tempfile.NamedTemporaryFile(delete=False)
             self.assertFalse(os.path.exists(tmpf.name + '_0.png'))
             self.assertFalse(os.path.exists(tmpf.name + '_1.png'))
@@ -143,6 +154,15 @@ class TestVisualizations(unittest.TestCase):
             tmpf.close()
             os.remove(tmpf.name + '_evaluation_impact.html')
 
+        try:
+            tmpf = tempfile.NamedTemporaryFile(delete=False)
+            self.assertFalse(os.path.exists(tmpf.name + '_evaluation_impact.svg'))
+            plot_evaluation_impact(n_episodes_x, task_runs_y, save_path=tmpf.name, save_format='svg')
+            self.assertNotEqual(0, os.stat(tmpf.name + '_evaluation_impact.svg').st_size) # file not empty
+        finally:
+            tmpf.close()
+            os.remove(tmpf.name + '_evaluation_impact.svg')
+
     def test_plot_evaluation_impact_2d(self):
         n_episodes_x = [10, 20, 30]
         n_episodes_y = [10, 20, 30]
@@ -183,6 +203,16 @@ class TestVisualizations(unittest.TestCase):
             tmpf.close()
             os.remove(tmpf.name + '_evaluation_impact_2d.html')
 
+        try:
+            tmpf = tempfile.NamedTemporaryFile(delete=False)
+            self.assertFalse(os.path.exists(tmpf.name + '_evaluation_impact_2d.svg'))
+            plot_evaluation_impact_2d(
+                n_episodes_x, n_episodes_y, task_runs_z, save_path=tmpf.name + '.svg', save_format='svg')
+            self.assertNotEqual(0, os.stat(tmpf.name + '_evaluation_impact_2d.svg').st_size) # file not empty
+        finally:
+            tmpf.close()
+            os.remove(tmpf.name + '_evaluation_impact_2d.svg')
+
     def test_plot_time_impact(self):
         task_runs_x = [self.dummy_task_runs] * 5
         task_runs_y = [self.dummy_task_runs] * 5
@@ -216,6 +246,33 @@ class TestVisualizations(unittest.TestCase):
         finally:
             tmpf.close()
             os.remove(tmpf.name + '_time_impact.html')
+
+        try:
+            tmpf = tempfile.NamedTemporaryFile(delete=False)
+            self.assertFalse(os.path.exists(tmpf.name + '_time_impact.svg'))
+            plot_time_impact(task_runs_x, task_runs_y, save_path=tmpf.name + '.svg', save_format='svg')
+            self.assertNotEqual(0, os.stat(tmpf.name + '_time_impact.svg').st_size) # file not empty
+        finally:
+            tmpf.close()
+            os.remove(tmpf.name + '_time_impact.svg')
+
+    def test_create_figure(self):
+        with create_figure('test') as fig:
+            self.assertIsInstance(fig, go.Figure)
+
+    def test_get_colors(self):
+        shades_1 = get_colors(1, 1, 2)
+        shades_2 = get_colors(3, 2, 2)
+
+        self.assertEqual(1, len(shades_1))
+        self.assertEqual(3, len(shades_2))
+
+        all_shades = []
+        all_shades.extend(shades_1)
+        all_shades.extend(shades_2)
+        for i in range(len(all_shades)):
+            for j in range(i + 1, len(all_shades)):
+                self.assertNotEqual(all_shades[i], all_shades[j])
 
 
 if __name__ == '__main__':

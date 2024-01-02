@@ -1,0 +1,11 @@
+order:
+  - 0
+  - 1
+  - 2
+tasks:
+  0:
+    path: ./tasks/doorkey0.task.yml
+  1:
+    path: ./tasks/doorkey1.task.yml
+  2:
+    path: ./tasks/doorkey2.task.yml

@@ -8,9 +8,11 @@ from .base import GenericMiniGridWrapper
 
 class DoorKey(GenericMiniGridWrapper):
     """
-    A grid environment where an agent has to find a key and then open a door to reach the destination.
-    The higher the difficulty, the bigger the grid so it is more complicated to find the key, next the door 
-    and next the destination.
+    This class is a wrapper for *MiniGrid*'s Door Key environments.
+
+    DoorKey is a grid environment where an agent has to find a key and then open a door to reach the
+    destination. The higher the difficulty, the bigger the grid so it is more complicated to find the key,
+    then the door and then the destination.
 
     Possible actions:
 
@@ -42,13 +44,16 @@ class DoorKey(GenericMiniGridWrapper):
     | 3          | 16x16 grid size with 1 key and 1 door         |
     +------------+-----------------------------------------------+
 
+    See Also:
+        *MiniGrid*'s Door Key environments: https://minigrid.farama.org/environments/minigrid/DoorKeyEnv/
+
     Args:
         difficulty: Difficulty level from 0 to 3, where 0 is the easiest
             and 3 is the hardest.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``.
 
     Raises:

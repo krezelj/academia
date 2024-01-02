@@ -1,5 +1,5 @@
-academia.utils.models package
-=============================
+academia.utils.models module
+============================
 
 .. automodule:: academia.utils.models
    :members:

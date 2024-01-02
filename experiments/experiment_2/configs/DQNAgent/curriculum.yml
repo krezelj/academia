@@ -1,0 +1,41 @@
+order:
+  - 0
+  - 1
+  - 2
+tasks:
+  0:
+    env_type: academia.environments.DoorKey
+    env_args:
+      difficulty: 0
+      append_step_count: True
+      random_state: 210
+    stop_conditions:
+      min_evaluation_score: 0.9
+    evaluation_interval: 100
+    evaluation_count: 25
+    include_init_eval: True
+    exploration_reset_value: 0.3
+  1:
+    env_type: academia.environments.DoorKey
+    env_args:
+      difficulty: 1
+      append_step_count: True
+      random_state: 211
+    stop_conditions:
+      min_evaluation_score: 0.9
+    evaluation_interval: 100
+    evaluation_count: 25
+    include_init_eval: True
+    exploration_reset_value: 0.3
+  2:
+    env_type: academia.environments.DoorKey
+    env_args:
+      difficulty: 2
+      append_step_count: True
+      random_state: 212
+    stop_conditions:
+      min_evaluation_score: 0.9
+      max_episodes: 6000
+    evaluation_interval: 100
+    evaluation_count: 25
+    include_init_eval: True

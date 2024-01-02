@@ -12,7 +12,8 @@ from . import EpsilonGreedyAgent
 
 class TabularAgent(EpsilonGreedyAgent):
     """
-    TabularAgent class implements a reinforcement learning agent for tabular environments.
+    TabularAgent class implements a reinforcement learning agent for simple environments
+    where a Q-table can be effectively used.
 
     This class serves as the base class for tabular agents such as :class:`academia.agents.QLAgent` 
     and :class:`academia.agents.SarsaAgent`. This agent learns to make decisions in an 
@@ -78,7 +79,7 @@ class TabularAgent(EpsilonGreedyAgent):
             path: Path to save the JSON file.
 
         Returns:
-            Absolute path to the saved file.
+            An absolute path to the saved file.
         """
         q_table_keys = list(self.q_table.keys())
         if len(q_table_keys) > 0 and not self._validate_state(q_table_keys[0]):
@@ -99,7 +100,7 @@ class TabularAgent(EpsilonGreedyAgent):
             path += '.agent.json'
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, 'w') as file:
-            json.dump(learner_state_dict, file, indent=4)
+            json.dump(learner_state_dict, file)
         return os.path.abspath(path)
 
     @classmethod
@@ -111,7 +112,7 @@ class TabularAgent(EpsilonGreedyAgent):
             path: Path to the JSON file.
 
         Returns:
-            Loaded agent with the saved state.
+            A loaded agent with the saved state.
         """
         if not path.endswith('.json'):
             path += '.agent.json'

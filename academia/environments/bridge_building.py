@@ -15,7 +15,7 @@ class BridgeBuilding(ScalableEnvironment):
     At lower difficulties the bridge is partly (or even fully) built and the 
     agent only has to learn how to finish it and/or navigate it.
 
-    The rewards is 0 if the agent runs out of time or drowns in the river.
+    A reward is 0 if the agent runs out of time or drowns in the river.
     Otherwise if the agent reaches the goal (the right bank) it's 
     ``1-step_count/max_steps + bridge_length/river_width``.
     This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
@@ -63,7 +63,7 @@ class BridgeBuilding(ScalableEnvironment):
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
 
     Raises:
         ValueError: If the specified river width level is invalid.
@@ -226,7 +226,7 @@ class BridgeBuilding(ScalableEnvironment):
         """
         stacked_state = np.concatenate(list(self._past_n_states))
         if self.append_step_count:
-            stacked_state = np.append(stacked_state, self.step_count)
+            stacked_state = np.append(stacked_state, self.step_count / self.max_steps)
         if self.obs_type == "string":
             str_state = ""
             for element in stacked_state: 
@@ -397,10 +397,16 @@ class BridgeBuilding(ScalableEnvironment):
         Generates the initial state of the environment by creating a bridge (if necessary)
         and scattering the boulders and the player randomly on the left bank of the river.
         """
+
+        # temporarily shuffle boulder indices to preventt the agent learning
+        # to build the bridge in a particular boulder order when using curriculum
+        idx_shuffle = np.arange(self.__N_BOULDERS)
+        self.__init_state_rng.shuffle(idx_shuffle)
+
         # generate initial bridge
         bridge_y = self.__init_state_rng.integers(0, self.__RIVER_HEIGHT - 1)
         for i in range(self.__init_bridge_length):
-            self.__boulder_positions[i, :] = self.__LEFT_BANK_WIDTH + i, bridge_y
+            self.__boulder_positions[idx_shuffle[i], :] = self.__LEFT_BANK_WIDTH + i, bridge_y
 
         # generate boulders and player positions
         positions = self.__init_state_rng.choice(np.arange(self.__RIVER_HEIGHT * self.__LEFT_BANK_WIDTH),
@@ -411,7 +417,7 @@ class BridgeBuilding(ScalableEnvironment):
 
         for position_idx, boulder_idx in enumerate(range(self.__init_bridge_length, self.__N_BOULDERS)):
             x, y = np.unravel_index(positions[position_idx + 1], (self.__RIVER_HEIGHT, self.__LEFT_BANK_WIDTH))
-            self.__boulder_positions[boulder_idx, :] = x, y
+            self.__boulder_positions[idx_shuffle[boulder_idx], :] = x, y
 
         self.__compose_state()
 

@@ -11,18 +11,18 @@ from . import ScalableEnvironment
 
 class GenericGymnasiumWrapper(ScalableEnvironment):
     """
-    A wrapper for Gymnasium environments. The purpose of it is to contain common Gymnasium syntax so that
+    A wrapper for *Gymnasium* environments. The purpose of it is to contain common *Gymnasium* syntax so that
     it does not have to be copied and pasted in every wrapper. At the same time, it aims to deliver
-    flexibility that is required to handle generalised nature of Gymnasium API such as varying state
+    flexibility that is required to handle generalized nature of *Gymnasium*'s API such as varying state
     representations.
 
     Args:
         difficulty: The difficulty level of the environment.
-        environment_id: Gymnasium environment ID.
+        environment_id: *Gymnasium* environment ID.
         n_frames_stacked: How many most recent states should be stacked together to form a final state
             representation. Defaults to 1.
         append_step_count: Whether or not append the current step count to each state. Defaults to ``False``.
-        random_state: Optional seed that controls randomness of the environment.
+        random_state: Optional seed that controls the randomness of the environment. Defaults to ``None``.
         kwargs: Arguments passed down to ``gymnasium.make``
 
     Attributes:
@@ -87,13 +87,14 @@ class GenericGymnasiumWrapper(ScalableEnvironment):
 
     def get_legal_mask(self) -> npt.NDArray[np.int32]:
         """
-        Notes:
-            For all gymnasium-based environments in this package (and probably most in general) it is hard
-            to cheaply obtain a legal mask, so this default implementation always returns an array of ones
-
         Returns:
             A binary mask with 0s in place for illegal actions (actions that
             have no effect) and 1s for legal actions.
+
+        Note:
+            For all *Gymnasium*-based environments in this package it is hard
+            to cheaply obtain a legal mask, so this default implementation
+            always returns an array of ones.
         """
         return np.array([1 for _ in range(self.N_ACTIONS)])
 

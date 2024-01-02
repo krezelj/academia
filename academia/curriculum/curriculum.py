@@ -30,7 +30,7 @@ class Curriculum(SavableLoadable):
             will not be saved at any point, unless relevant paths are specified for any of the tasks directly.
 
     Examples:
-        Initialisation using class contructor:
+        Initialization using class contructor:
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
@@ -49,7 +49,7 @@ class Curriculum(SavableLoadable):
         >>>     output_dir='./my_curriculum/',
         >>> )
 
-        Initialisaton using a config file:
+        Initializaton using a config file:
 
         >>> from academia.curriculum import Curriculum
         >>> curriculum = Curriculum.load('./my_config.curriculum.yml')
@@ -159,9 +159,9 @@ class Curriculum(SavableLoadable):
         Loads a task configuration from the specified file.
 
         A configuration file should be in YAML format. Tasks list should be stored using two properties:
-        ``tasks`` and ``order`` - the former mapping task ids to their configuration and the latter being a
-        list of task ids in the order of their execution. Individual task's configurations can be either
-        directly specified or a path to task's configuration file can be provided.
+        ``tasks`` and ``order`` - the former mapping task identifiers to their configuration and the latter
+        being a list of task identifiers in the order of their execution. Individual task's configurations
+        can be either directly specified or a path to task's configuration file can be provided.
         Other properties names should be identical to the arguments of the :class:`Curriculum`'s constructor.
 
         An example curriculum configuration file::

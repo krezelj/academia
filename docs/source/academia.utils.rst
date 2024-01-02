@@ -1,8 +1,8 @@
 academia.utils module
 =====================
 
-Subpackages
------------
+Submodules
+----------
 
 .. toctree::
    :maxdepth: 1

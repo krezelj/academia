@@ -1,9 +1,24 @@
+# Python
 __pycache__
-my_notebooks
 venv/
+dist/
+
+# IDE
+.vscode/
 .idea/
+
+# some experiment outputs
 *.log
 *.agent.*
+*.stats.json
+meta.json
 
 # Sphinx
 docs/_build/
+
+# coverage
+htmlcov/
+.coverage
+
+# private notebooks
+my_notebooks

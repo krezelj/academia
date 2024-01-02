@@ -6,43 +6,53 @@ import torch
 import numpy as np
 
 from academia.agents.base import Agent
+from academia.agents import *
 from academia.environments.base import ScalableEnvironment
 
 _logger = logging.getLogger('academia.curriculum')
 
-def _ppoagent_thoughts_handler(agent : Agent, state : Any) -> str:
-    state = torch.unsqueeze(torch.tensor(state), dim=0)
+
+def _ppoagent_thoughts_handler(agent: PPOAgent, state: Any) -> str:
+    state = torch.unsqueeze(torch.tensor(state), dim=0).float()
     probs = agent.actor(state).tolist()[0]
     state_value = agent.critic(state).tolist()[0]
+    state = state[0]
     return f"Agent Thoughts\n"\
-            + f"\tAction probs.: {[np.round(p, 2) for p in probs]}\n"\
-            + f"\tState value:   {np.round(state_value, 3)}\n"\
-            + f"\tBest action:   {agent.get_action(state, greedy=True)}"
+        + f"\tAction probs.: {[np.round(p, 2) for p in probs]}\n"\
+        + f"\tState value:   {np.round(state_value, 3)}\n"\
+        + f"\tBest action:   {agent.get_action(state, greedy=True)}"
 
-def _dqnagent_thoughts_handler(agent : Agent, state : Any) -> str:
-    qvals = agent.network(state).tolist()
+
+def _dqnagent_thoughts_handler(agent: DQNAgent, state: Any) -> str:
+    qvals = agent.network(torch.tensor(state, dtype=torch.float32)).tolist()
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
 
-def _qlagent_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _qlagent_thoughts_handler(agent: QLAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
 
-def _sarsa_thoughts_handler(agent : Agent, state : Any) -> str:
+
+def _sarsa_thoughts_handler(agent: SarsaAgent, state: Any) -> str:
     qvals = agent.q_table[state]
     return f"Agent Thoughts\n"\
-            + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
-            + f"\tBest action: {agent.get_action(state, greedy=True)}"
+        + f"\tQ-values: {[np.round(q, 2) for q in qvals]}\n"\
+        + f"\tBest action: {agent.get_action(state, greedy=True)}\n"\
+        + f"\tExploration parameter value: {agent.epsilon}"
+
 
 class AgentDebugger:
     """
     Class allowing for easy agent debugging. Using this class the user can
-    investigate agent's behaviour step-by-step with ability to check what the agent
-    think about the current state. The user can also toggle between greedy and non-greedy
-    behaviour mid-episode.
+    investigate agent's behavior step-by-step with ability to check what the agent
+    thinks about the current state. The user can also toggle between greedy and non-greedy
+    behavior mid-episode.
     
     Additionally the user can take over the agent
     at any moment by overriding the actions taken by the agent. This allows
@@ -52,7 +62,7 @@ class AgentDebugger:
     The user can interact with the debugger using the following keys:\n
     \t- 't' - terminate the current episode (and start a new one)\n
     \t- 'p' - pause the environment\n
-    \t- 'g' - toggle between greedy and non-greedy behaviour\n
+    \t- 'g' - toggle between greedy and non-greedy behavior\n
     \t- ' ' (space) - perform one step (only works when :attr:`paused` is set to ``True``)\n
     \t- esc ('\\x1b') - quit the debugger\n
     The user can also interact with the environment using a custom :attr:`key_action_map`.
@@ -61,7 +71,7 @@ class AgentDebugger:
         agent: Agent object to be debugged.
         env: Environment object with which the agent will interact. The environment should be
             instantiated with ``render_mode`` set to ``"human"`` for the user to see it.
-        start_greedy: Whether the agent should start with greedy behavioru. Defaults to ``False``.
+        start_greedy: Whether the agent should start with greedy behavior. Defaults to ``False``.
         start_paused: Whether the environment should start in a paused state. Defaults to ``False``.
         key_action_map: Dictionary between keyboard keys and environment actions. 
             It accepts one character per action. If a digit character is not present 
@@ -69,7 +79,7 @@ class AgentDebugger:
             If any other character is not present in the dictionary it will be converted to 
             ``None`` and ignored. The dictionary does not accept :attr:`reserved_keys` as its keys.
             Defaults to an empty dictionary.
-        run: Whether to run the debugger after initialisation. Defaults to ``False``.
+        run: Whether to run the debugger after initialization. Defaults to ``False``.
         run_verbose: Verbosity level with which to automatically run the debugger if ``run`` is ``True``.
             Defaults to 1.
 
@@ -86,7 +96,7 @@ class AgentDebugger:
         running (bool): Whether the debugger is currently running.
         
     Examples:
-        Initialisation:
+        Initialization:
 
         >>> from academia.tools import AgentDebugger
         >>> from academia.environments import LavaCrossing
@@ -155,7 +165,7 @@ class AgentDebugger:
         >>> class MyAgent(Agent):
         >>>     pass
         >>>
-        >>> def my_agent_handler(agent : Agent, state : Any):
+        >>> def my_agent_handler(agent: Agent, state: Any):
         >>>     pass
         >>> # adds a new handler to the dicitonary
         >>> # the key should be a string containing the name of the class

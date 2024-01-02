@@ -1,9 +1,11 @@
 """
-Functions that can visualise statistics gathered from agents training through
+Functions that can visualize statistics gathered from agents training through
 :mod:`academia.curriculum` module.
 
 Exported functions:
 
+- :func:`create_figure`
+- :func:`get_colors`
 - :func:`plot_trajectories`
 - :func:`plot_evaluation_impact`
 - :func:`plot_evaluation_impact_2d`
@@ -33,32 +35,60 @@ ValueDomain = Literal[
     'episode_rewards_moving_avg',
     'step_counts',
     'step_counts_moving_avg']
-SaveFormat = Literal['png', 'html']
+SaveFormat = Literal['png', 'html', 'svg']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['zero', 'mean', 'q3', 'most', 'outliers', 'max']
+StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
 
 
 @contextmanager
-def _create_figure(show: bool = False, 
-                  save_path: Optional[str] = None, 
-                  suffix: Optional[str] = None,
-                  save_format: SaveFormat = 'png'):
+def create_figure(
+    title: Optional[str] = None,
+    show: bool = False, 
+    save_path: Optional[str] = None, 
+    suffix: Optional[str] = None,
+    save_format: SaveFormat = 'png'):
     """
-    Context manager that simplifies boilerplate code needed in all ``plot`` functions
+    Context manager that simplifies boilerplate code needed in all ``plot`` functions.
+    It should also be used to create figures with a consistent style.
+
+    Args:
+        title: Figure title. Deafults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
+        suffix: A suffix appended at the end of the file. Defaults to ``None``.
+        save_format: File format for saving the plot. Defaults to 'png'.
+
+    Yields:
+        the created plotly figure object.
 
     Example:
 
-    >>> with _create_figure(False, './test', 'curr_comparison', 'png') as fig:
-    >>>     fig.add_trace(...)
+        >>> with create_figure("Test", True, './test', 'curr_comparison', 'png') as fig:
+        >>>     fig.add_trace(...)
 
-    This snippet will create a fig, add a trace to it and then optionally show it and save it to
-    a specified file with a specified suffix.
+        This snippet will create a fig titled "Test", add a trace to it, then show it and save it to
+        a specified file with a ``"_curr_comparison"`` suffix.
     """
     fig = go.Figure()
     fig.update_layout(
-        plot_bgcolor='white'
+        plot_bgcolor='white',
+        title=dict(
+            text=title,
+            x=0.5
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.2,
+            xanchor="left",
+            x=0
+        ),
+        font=dict(
+            size=12,
+        )
     )
     fig.update_xaxes(
         mirror=True,
@@ -89,7 +119,7 @@ def _create_figure(show: bool = False,
         else:
             save_path = f"{'.'.join(save_path.split('.')[:-1])}{suffix}.{save_format}"
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
-        if save_format == 'png':
+        if save_format == 'png' or save_format == 'svg':
             fig.write_image(save_path)
         else:
             fig.write_html(save_path)
@@ -120,64 +150,86 @@ def _get_domain_display_name(
     raise ValueError(f"Invalid domain: {domain}")
 
 
-def _get_colors(
-        n_shades: int = 1, 
-        seed: Optional[int] = None,
-        query: Optional[int] = None,
-        n_queries: Optional[int] = None):
+def get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
     """
-    Returns a list of ``n_shades`` colours that are similar to each other.
+    Generates a set of colors that makes different trajectories as distinguishable
+    as possible while maintaining color similarity within a single curriculum trajectory.
 
-    If you know how many sets of shades you will query (i.e. how many times you will call this function
-    for a single figure) you can specify it with ``n_queries`` and tell the function which ``query``
-    it is in each call. Example
+    Args:
+        n_shades: Number of shades to generate. For a single task it should be ``1``.
+            For curriculum is should be set to the number of tasks inside the curriculum.
+            Defaults to ``1``.
+        query: Number of the query. When generating colors for many trajectories on a single plot it should
+            be a number between ``1`` and ``n_queries`` identyfing the trajectory.
+        n_queries: The number of expected queries to be performed. This information helps
+            the function generate as distinguishable colors as possible.
 
-    >>> n_queries: int = 5
-    >>> for i in range(n_queries):
-    >>>     colors = _get_colors(2, None, i, n_queries)
+    Returns:
+        a list of hex colors.
 
-    This way you ensure that all generated sets of shades are uniformly distributed on the Hue axis
-    in the HSV colour encoding.
+    Raises:
+        ValueError: If ``query`` value is invalid. Must be a positive integer less than ``n_queries``.
+
+    Example:
+
+        Generating colors for two trajectories. One trajectory is a task 
+        and the other is a curriculum consiting of three tasks:
+
+        >>> task_runs: list[LearningStats] = ...
+        >>> curriculum_run: list[dict[str, LearningStats]] = ... # 3 tasks in a curriculum
+        >>>
+        >>> # we have two trajectories so we set n_queries=2
+        >>> # this is the first trajectory so query=1
+        >>> # it is also a trajectory for a single task so we set n_shades=1
+        >>> task_color = get_colors(n_shades=1, query=1, n_queries=2)[0] # take first element
+        >>>
+        >>> # this is the second trajectory so query=2 (n_queries is still 2)
+        >>> # it is also a curriculum with three tasks so we set n_shades=3
+        >>> curriculum_colors = get_colors(n_shades=3, query=2, n_queries=2)
+    
     """
     def hsv_to_hex(h, s, v):
         rgb = tuple(int(i * 255) for i in colorsys.hsv_to_rgb(h, s, v))
         hex_color = "#{:02x}{:02x}{:02x}".format(rgb[0], rgb[1], rgb[2])
         return hex_color
+    def wrap_hue(h: float):
+        if h < 0: return h + 1
+        if h > 1: return h - 1
+        return h
 
-    _rng = np.random.default_rng(seed)
-    if query is None or n_queries == 1:
-        base_hue = _rng.random()
-        hue_range = 0.2
-    else:
-        base_hue = 1/n_queries * (query % n_queries)
-        hue_range = 1/(3*n_queries)
-    base_color = (base_hue, _rng.uniform(0.8, 1.0), _rng.uniform(0.7, 0.9))
-    shades: list = [base_color]
+    if query > n_queries or query < 1 or not isinstance(query, int):
+        raise ValueError("Invalid query number. Must be a positive integer less than ``n_queries``")
 
-    for i in range(1, n_shades):
-        h = base_color[0] + _rng.normal(0, hue_range)
-        if h < 0: h = h + 1
-        if h > 1: h = h - 1
+    base_hue = query/n_queries
+    hue_range = 1/(3*n_queries)
+    hue_start = base_hue - hue_range
 
-        s = np.clip(base_color[1] - 0.1 * i, 0.4, 1.0)
-        b = np.clip(base_color[2] - 0.1 * i, 0.4, 1.0)
-        shades.append((h, s, b))
-
-    hex_colors = []
-    for shade in shades:
-        h, s, b = shade
-        hex_colors.append(hsv_to_hex(h, s, b))
-    
-    return hex_colors
+    shades = []
+    for i in range(1, n_shades + 1):
+        t = i/(n_shades + 1)
+        h = wrap_hue((t * 2 * hue_range) + hue_start)
+        s = -t * (t - 1) + 0.75 # sample a parabola
+        b = t * (t - 1) + 1 # sample a different parabola
+        shades.append(hsv_to_hex(h, s, b))
+    return shades
 
 
 def _get_task_time_offset(
         task_trace_start: StartPoint, 
-        time_offsets: list[Union[float, int]]):
+        time_offsets: list[Union[float, int]],
+        ignore_outliers: bool):
     """
     Returns the offset of the task trace starting point on the X axis
     based on the chosen ``task_trace_start``.
     """
+    if ignore_outliers:
+        q3 = np.quantile(time_offsets, 0.75)
+        q1 = np.quantile(time_offsets, 0.25)
+        iqr = q3 - q1 
+        cutoff = q3 + 1.5 * iqr
+        non_outliers = [time_offset for time_offset in time_offsets if time_offset <= cutoff]
+        time_offsets = non_outliers
+
     if task_trace_start == 'zero':
         return 0
     if task_trace_start == 'mean':
@@ -188,11 +240,6 @@ def _get_task_time_offset(
         return np.quantile(time_offsets, 0.75)
     if task_trace_start == 'most':
         return np.quantile(time_offsets, 0.90)
-    if task_trace_start == 'outliers':
-        q3 = np.quantile(time_offsets, 0.75)
-        q1 = np.quantile(time_offsets, 0.25)
-        iqr = q3 - q1 
-        return np.min([q3 + 1.5 * iqr, np.max(time_offsets)])
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -218,7 +265,7 @@ def _add_trace(
         fig: 'go.Figure',
         x: npt.NDArray[Union[np.float32, np.int32]],
         y: npt.NDArray[Union[np.float32, np.int32]],
-        color: Optional[str]=None,
+        color: Optional[str] = None,
         **kwargs):
     """
     Adds a single trace to the figure. 
@@ -234,12 +281,16 @@ def _add_std_region(
         timestamps: npt.NDArray[Union[np.float32, np.int32]], 
         values: npt.NDArray[np.float32],
         std: npt.NDArray[np.float32], 
-        color: Optional[str]=None):
+        color: Optional[str] = None):
     """
     Adds ``std`` values plot to the figure
     """
-    _add_trace(fig, timestamps, values+std, showlegend=False, color=color)
-    _add_trace(fig, timestamps, values-std, showlegend=False, color=color, fill='tonexty')
+    r, g, b = tuple(int(color[1:][i:i+2], 16) for i in (0, 2, 4))
+    rgb_color = f'rgba({r}, {g}, {b}, 0.1)'
+
+    _add_trace(fig, timestamps, values+std, showlegend=False, color=rgb_color)
+    _add_trace(fig, timestamps, values-std, showlegend=False, color=rgb_color,
+               fill='tonexty', fillcolor=rgb_color)
 
 
 def _add_task_trajectory(
@@ -251,6 +302,7 @@ def _add_task_trajectory(
         show_std: bool,
         show_run_traces: bool,
         common_run_traces_start: bool,
+        ignore_outliers: bool,
         color: Optional[str] = None,
         name: Optional[str] = None,
         time_offsets: Optional[list[Union[float, int]]] = None):
@@ -259,7 +311,7 @@ def _add_task_trajectory(
     """
     if time_offsets is None:
         time_offsets = np.zeros(len(task_runs))
-    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets)
+    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets, ignore_outliers)
 
     agg = LearningStatsAggregator(task_runs)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
@@ -268,7 +320,7 @@ def _add_task_trajectory(
     
     if show_std:
         std, _ = agg.get_aggregate(time_domain, value_domain, 'std')
-        _add_std_region(fig, timestamps, values, std, color='#bbbbbb')
+        _add_std_region(fig, timestamps, values, std, color=color)
     if not show_run_traces:
         return
     
@@ -313,12 +365,14 @@ def plot_trajectories(
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
         show_std: Union[bool, list[bool]] = False,
         task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        ignore_outliers: Union[bool, list[bool]] = True,
         show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
         as_separate_figs: bool = False,
+        title: Optional[str] = None,
         show: bool = False,
         save_path: Optional[str] = None, 
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> Union['go.Figure', list['go.Figure']]:
     """
     Plots trajectories of specified task/curriculum runs.
 
@@ -344,13 +398,14 @@ def plot_trajectories(
               trajectories' termination points,
             - ``'most'`` - Each task trajectory will start at 0.9 quantile of previous
               trajectories' termiantion points,
-            - ``'outliers'`` - Each trajectory task will start at the outlier boundry of previous
-              trajectories' termination points (Q3 + 1.5IQR),
             - ``'max'`` - Each task trajectory will start at the max termination point of
               previous trajectories.
 
             Can either be a single value or a list of values, one for each plotted curriculum trajectory.
             Defaults to ``'most'``.
+        ignore_outliers: Whether to ignore outlying trajectories when calculating task trace starts.
+            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
+            Default to ``True``.
         show_run_traces: Whether to show individual run traces (with lower opacity)
             Can either be a single value or a list of values, one for each plotted trajectory.
             Defaults to ``False``.
@@ -361,9 +416,14 @@ def plot_trajectories(
         as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
             and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
             corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        a plotly figure object or a list of plotly figures is ``as_separate_figs`` is ``True``.
 
     Raises:
         ValueError: If ``time_domain`` is invalid
@@ -372,20 +432,21 @@ def plot_trajectories(
     
     Examples:
 
-        The following imports are needed for the following examples
+        The following imports are needed for all the examples:
 
         >>> from academia.curriculum import LearningTask, Curriculum, LearningStats
         >>> import academia.tools.visualizations as vis
 
-        For details on how to configure agents see :mod:`academia.agents`
+        For details on how to configure agents see :mod:`academia.agents`.
 
-        Plotting evaluations from a single task run
+        Plotting evaluations from a single task run:
 
         >>> task: LearningTask = ...
         >>> agent = ...
         >>> task.run(agent)
         >>> stats: LearningStats = task.stats
-        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+        >>> # note that a single stats object has to be passed inside a list
+        >>> vis.plot_trajectories([stats])
 
         Plotting evaluations from a single curriculum run. See :mod:`academia.curriculum`
         for more details on how to configure and run a curriculum.
@@ -394,9 +455,10 @@ def plot_trajectories(
         >>> agent = ...
         >>> curriculum.run(agent)
         >>> stats: dict[str, LearningStats] = curriculum.stats
-        >>> vis.plot_trajectories([stats]) # note that a single stats object has to be passed inside a list
+        >>> # note that a single stats object has to be passed inside a list
+        >>> vis.plot_trajectories([stats])
 
-        Plotting several runs of a single task with some additonal visuals
+        Plotting several runs of a single task with some additonal visuals:
 
         >>> task: LearningTask = ...
         >>> n_runs =  5
@@ -411,7 +473,7 @@ def plot_trajectories(
         >>>     show_std=True,
         >>> )
 
-        Plotting curriculum vs task comparison
+        Plotting curriculum vs task comparison:
 
         >>> task: LearningTask = ...
         >>> curriculum: Curriculum = ...
@@ -431,7 +493,7 @@ def plot_trajectories(
         >>>     show_run_traces=[True, False] # show individual traces only for the task
         >>> )
 
-        Plotting curriculum vs curriculum as separate figures with different time domains
+        Plotting curriculum vs curriculum as separate figures with different time domains:
 
         >>> curriculum_1: Curriculum = ...
         >>> curriculum_2: Curriculum = ...
@@ -451,7 +513,7 @@ def plot_trajectories(
         >>>     time_domain=["steps", "episodes"]
         >>> )
 
-        Plotting a running average of steps in episodes in several runs of a single task
+        Plotting a running average of steps in episodes in several runs of a single task:
 
         >>> task: LearningTask = ...
         >>> n_runs =  5
@@ -478,6 +540,7 @@ def plot_trajectories(
         'show_std': show_std,
         'show_run_traces': show_run_traces,
         'task_trace_start': task_trace_start,
+        'ignore_outliers': ignore_outliers,
         'common_run_traces_start': common_run_traces_start
     }
     def _iterate_trajectories_kwargs():
@@ -495,56 +558,66 @@ def plot_trajectories(
 
     if as_separate_figs:
         # recursively call plot_trajectories for each trajectory
+        figs = []
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             new_save_path = None if save_path is None else save_path + f'_{i}'
-            plot_trajectories(
+            fig = plot_trajectories(
                 [trajectory], 
                 as_separate_figs=False, 
                 show=show, 
                 save_path=new_save_path, 
                 save_format=save_format, 
                 **trajectory_kwargs)
-        return
+            figs.append(fig)
+        return figs
 
-    with _create_figure(show, save_path, save_format=save_format) as fig:
+    with create_figure(title, show, save_path, save_format=save_format) as fig:
         for i, trajectory_kwargs in enumerate(_iterate_trajectories_kwargs()):
             trajectory = runs[i]
             if isinstance(trajectory[0], LearningStats):
-                color = _get_colors(1, i, i, len(runs))[0]
+                color = get_colors(1, i + 1, len(runs))[0]
                 _add_task_trajectory(fig, trajectory, color=color, **trajectory_kwargs)
             if isinstance(trajectory[0], dict):
-                colors = _get_colors(len(trajectory[0]), i, i, len(runs))
+                colors = get_colors(len(trajectory[0]), i + 1, len(runs))
                 _add_curriculum_trajectory(fig, trajectory, colors=colors, **trajectory_kwargs)
         fig.update_layout(
             xaxis_title=f"{_get_domain_display_name(time_domain)}",
             yaxis_title=f"{_get_domain_display_name(value_domain)}"
         )
+    return fig
     
 
 def plot_evaluation_impact(
         n_episodes_x: list[int], 
         task_runs_y: list[LearningTaskRuns],
+        title: Optional[str] = None,
         show: bool = False,
         save_path: Optional[str] = None, 
         save_format: SaveFormat = 'png',
-        ):
+        )  -> 'go.Figure':
     """
-    Plots the impact of learning duration in task with difficulty level = x to evaluation 
+    Plots the impact of learning duration in task with difficulty level = x on evaluation
+    in task with difficulty level = y
 
     Args:
-        n_episodes_x: Number of episodes in task X.
-        task_runs_y: Learning statistics for tasks in level Y.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        n_episodes_x: Number of episodes in task with level x.
+        task_runs_y: Learning statistics for tasks with level y.
+        title: Figure title. Deafults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        a plotly figure object
 
     Raises:
         ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
             the number of tasks at level x and level y is equal because the experiment involves testing 
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
-            the number of episodes spent in the easier one affects the evaluation of the agent in a more difficult 
-            environment.
+            the number of episodes spent in the easier one affects the evaluation of the agent in a more
+            difficult environment.
     
     Note:
         If save path is provided, the plot will be saved to the specified path. To increase the clarity of 
@@ -554,9 +627,11 @@ def plot_evaluation_impact(
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
+        >>>
         >>> n_episodes_x = [100, 500, 1000]
         >>> task_runs_y: list[list[LearningStats]] = []
         >>> n_runs = 5
+        >>>
         >>> for nex in n_episodes_x:
         >>>     curriculum = Curriculum([
         >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_episodes': nex})
@@ -581,33 +656,40 @@ def plot_evaluation_impact(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, 'evaluation_impact', save_format) as fig:
+    with create_figure(title, show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
             title="Impact of learning duration in task x on the evaluation of task y",
             xaxis_title="Number of episodes in task x",
             yaxis_title="Evaluation score in task y"
         )
+    return fig
 
 
 def plot_evaluation_impact_2d(
         n_episodes_x: list[int], 
         n_episodes_y: list[int],
-        task_runs_z: list[LearningTaskRuns], 
+        task_runs_z: list[LearningTaskRuns],
+        title: Optional[str] = None,
         show: bool = False, 
         save_path: str = None,
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> 'go.Figure':
     """
     Plots the impact of learning duration in task x and task y to evaluation of task z.
     See examples for more details
 
     Args:
-        n_episodes_x: Number of episodes in task X.
-        n_episodes_y: Number of episodes in task Y.
-        task_runs_z: Learning statistics for tasks in level Z.
-        show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        n_episodes_x: Number of episodes in task x.
+        n_episodes_y: Number of episodes in task y.
+        task_runs_z: Learning statistics for tasks with level z.
+        title: Figure title. Deafults to ``None``.
+        show: Whether to display the plot. Defaults to ``False``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+    
+    Returns:
+        a plotly figure object
 
     Raises:
         ValueError: If the number of tasks at level x, level y and level z is not equal. 
@@ -624,10 +706,12 @@ def plot_evaluation_impact_2d(
 
         >>> from academia.curriculum import LearningTask, Curriculum
         >>> from academia.environments import LavaCrossing
+        >>>
         >>> n_episodes_x = [100, 500]
         >>> n_episodes_y = [200, 400]
         >>> task_runs_z: list[list[LearningStats]] = []
         >>> n_runs = 5
+        >>>
         >>> for nex in n_episodes_x:
         >>>     for ney in n_episodes_y:
         >>>         curriculum = Curriculum([
@@ -643,7 +727,8 @@ def plot_evaluation_impact_2d(
         >>>         task_runs_z.append(final_task_runs)
         >>>
         >>> import academia.tools.visualizations as vis
-        >>> # the provided lists should over all tested combinations
+        >>> # pairs of elements at the same indexes in the two lists below should
+        >>> # cover all tested combinations, i.e. 100-200, 100-400, 500-200, 500-400
         >>> n_episodes_x = [100, 100, 500, 500]
         >>> n_episodes_y = [200, 400, 200, 400]
         >>> vis.plot_evaluation_impact_2d(n_episodes_x, n_episodes_y, task_runs_z)
@@ -657,7 +742,7 @@ def plot_evaluation_impact_2d(
         mean_eval = np.mean([run.agent_evaluations[-1] for run in task_runs])
         agent_evaluations.append(mean_eval)
 
-    with _create_figure(show, save_path, 'evaluation_impact_2d', save_format) as fig:
+    with create_figure(title, show, save_path, 'evaluation_impact_2d', save_format) as fig:
         fig.add_trace(go.Scatter(
             x=n_episodes_x,
             y=n_episodes_y,
@@ -674,6 +759,7 @@ def plot_evaluation_impact_2d(
             xaxis_title="Number of episodes in task x",
             yaxis_title="Number of episodes in task y"
         )
+    return fig
 
 
 def plot_time_impact(
@@ -681,21 +767,27 @@ def plot_time_impact(
         task_runs_y: list[LearningTaskRuns],
         time_domain_x: TimeDomain = "episodes",
         time_domain_y: Union[TimeDomain, Literal["as_x"]] = "as_x",
+        title: Optional[str] = None,
         show: bool = False, 
         save_path: str = None, 
-        save_format: SaveFormat = 'png'):
+        save_format: SaveFormat = 'png') -> 'go.Figure':
     """
     Plots the impact of the number of episodes in task x on the total time spent in both tasks.
     See examples for more details
 
     Args:
-        task_runs_x: Learning statistics for tasks in level X.
-        task_runs_y: Learning statistics for tasks in level Y.
+        task_runs_x: Learning statistics for tasks with level x.
+        task_runs_y: Learning statistics for tasks with level y.
         time_domain_x: Time domain which will be used on the X-axis.
         time_domain_y: Time domain which will be used on the Y-axis.
+        title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
-        save_path: Path to save the plot. Defaults to ``None``.
+        save_path: A path where the plot will be saved. The plot will not be
+            saved if this is set to ``None``. Defaults to ``None``.
         save_format: File format for saving the plot. Defaults to 'png'.
+
+    Returns:
+        a plotly figure object
 
     Raises:
         ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
@@ -719,6 +811,7 @@ def plot_time_impact(
         >>> n_runs = 5
         >>> task_runs_x: list[list[LearningStats]] = []
         >>> task_runs_y: list[list[LearningStats]] = []
+        >>>
         >>> for wts in wall_time_stops:
         >>>     curriculum = Curriculum([
         >>>         LearningTask(LavaCrossing, {'difficulty': 0}, {'max_wall_time': wts})
@@ -752,10 +845,12 @@ def plot_time_impact(
         y_time = np.mean([_get_total_time(task_stats, time_domain_y) for task_stats in task_runs[1]])
         xy_times.append(x_time + y_time)
 
-    with _create_figure(show, save_path, 'time_impact', save_format) as fig:
+    with create_figure(title, show, save_path, 'time_impact', save_format) as fig:
         _add_trace(fig, x_times, xy_times)
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
             yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
             title="Impact of learning duration in task x on the total time spent in both tasks"
         )
+
+    return fig

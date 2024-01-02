@@ -61,14 +61,14 @@ class Agent(SavableLoadable):
     @abstractmethod
     def update_exploration(self):
         """
-        Updates an exploration parameter.
+        Updates the exploration parameter.
         """
         pass
 
     @abstractmethod
     def reset_exploration(self, value):
         """
-        Resets exploration parameter to the specified value.
+        Resets the exploration parameter to the specified value.
 
         Args:
             value: Value to reset the parameter to.
