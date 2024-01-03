@@ -29,7 +29,7 @@ things:
   method to make sure that there are no unused states (see
   :class:`academia.environments.DoorKey`'s source code for an example use case).
 
-The two other generic wrappers, :class:`GenericMinigridWrapper` and
+The two other generic wrappers, :class:`GenericMiniGridWrapper` and
 :class:`GenericAtariWrapper` work similarly but have some extra functionalities
 which can help to set up some more specific environments.
 The former makes it easier to handle the ``difficulty`` parameter for
