@@ -587,11 +587,11 @@ class PPOAgent(Agent):
                 'steps_counter': n_valid_steps,
                 'episode_length_counter': 0,
                 'episode_counter': self.buffer.episode_counter,
-                'states': [state.tolist() for state in self.buffer.states[:n_valid_steps+1]],
-                'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps+1])],
-                'actions_logits': self.buffer.actions_logits[:n_valid_steps+1],
-                'rewards': [r.item() for r in np.array(self.buffer.rewards[:n_valid_steps+1])],
-                'rewards_to_go': self.buffer.rewards_to_go[:n_valid_steps+1],
+                'states': [state.tolist() for state in self.buffer.states[:n_valid_steps]],
+                'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps])],
+                'actions_logits': self.buffer.actions_logits[:n_valid_steps],
+                'rewards': [r.item() for r in np.array(self.buffer.rewards[:n_valid_steps])],
+                'rewards_to_go': self.buffer.rewards_to_go[:n_valid_steps],
                 'episode_lengths': self.buffer.episode_lengths
             }
 

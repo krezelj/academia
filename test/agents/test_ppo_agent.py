@@ -76,7 +76,7 @@ class TestPPOAgent(unittest.TestCase):
         self.assertTrue(torch.all(agent_cm == loaded_agent_cm))
 
         ignored_attributes = [\
-            'actor', 'critic', 'buffer', '_rng', 'actor_optimiser', 'critic_optimiser',\
+            'actor', 'critic', 'buffer', '_rng', 'actor_optimizer', 'critic_optimizer',\
             '_PPOAgent__covariance_matrix']
         for attribute_name in expected.__dict__.keys():
             if attribute_name not in ignored_attributes:
