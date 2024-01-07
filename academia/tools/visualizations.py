@@ -659,7 +659,6 @@ def plot_evaluation_impact(
     with create_figure(title, show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
-            title="Impact of learning duration in task X on the evaluation of task Y",
             xaxis_title="Number of episodes in task X",
             yaxis_title="Evaluation score in task Y"
         )
@@ -755,7 +754,6 @@ def plot_evaluation_impact_2d(
             )
         ))
         fig.update_layout(
-            title="Impact of learning duration in task X and task Y on the evaluation of task Z",
             xaxis_title="Number of episodes in task X",
             yaxis_title="Number of episodes in task Y"
         )
@@ -850,7 +848,6 @@ def plot_time_impact(
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
             yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
-            title="Impact of learning duration in task X on the total time spent in both tasks"
         )
 
     return fig
