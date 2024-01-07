@@ -24,16 +24,16 @@ is_empty = os.stat('meta.json').st_size == 0
 
 if is_empty:
     params_rounds = [
-        {"episodes_task1": 750, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 1000, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 1250, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 1500, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 1750, "type_of_impact": 'time', "round": 0},
-        {"episodes_task1": 750, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 1000, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 1250, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 1500, "type_of_impact": 'eval', "round": 0},
-        {"episodes_task1": 1750, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 3000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 4000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 5000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 6000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 7000, "type_of_impact": 'time', "round": 0},
+        {"episodes_task1": 3000, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 4000, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 5000, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 6000, "type_of_impact": 'eval', "round": 0},
+        {"episodes_task1": 7000, "type_of_impact": 'eval', "round": 0},
     ]
     with open('meta.json', 'w') as file:
         json.dump(params_rounds, file, indent=4)
@@ -65,9 +65,10 @@ def run_experiment(n_rounds):
             eval_count = 25
             eval_interval = 100
         else:
-            stop_condition = {'max_episodes': 1500}
+            max_episodes_task2 = 3000
+            stop_condition = {'max_episodes': max_episodes_task2}
             eval_count = 100
-            eval_interval = 1500
+            eval_interval = max_episodes_task2
 
         task1 = LearningTask(env_type=LavaCrossing,
                              env_args={'difficulty': 0,
@@ -86,7 +87,8 @@ def run_experiment(n_rounds):
 
         curriculum = Curriculum(tasks=[task1, task2],
                                 output_dir=(
-                                    f"outputs/{selected_params['type_of_impact']}/episodes_{selected_params['episodes_task1']}"
+                                    f"outputs/{selected_params['type_of_impact']}"
+                                    f"/episodes_{selected_params['episodes_task1']}"
                                     f"/curriculum_iter_{selected_params['round'] + 1}")
                                 )
         curriculum.run(agent, verbose=2)
