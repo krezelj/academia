@@ -5,7 +5,7 @@ env_args:
   random_state: 200
 stop_conditions:
   min_evaluation_score: 0.9
-  max_steps: 0  # TBD
+  max_steps: 3500000
 evaluation_interval: 100
-evaluation_count: 5
+evaluation_count: 25
 include_init_eval: True
