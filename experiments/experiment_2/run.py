@@ -97,17 +97,26 @@ if __name__ == '__main__':
         sys.exit(0)
 
     meta = _get_meta()
-    max_runs = 10
+    # Max runs were split between algorithms. This is because more runs were needed for DQN due
+    # to unconclusive results
+    max_runs_dqn = 20
+    max_runs_ppo = 10
 
     # DQN curriculum
     if args.curriculum and args.dqn:
         runs_done = meta.get('runs_done_dqn_curr', 0)
-        while runs_done < max_runs:
+        while runs_done < max_runs_dqn:
+            # Seed offset is needed because as of creating this script only 10 runs were assumed for DQN.
+            # Since eventually we did 20 we need this to avoid seed overlapping between different runs
+            seed_offset = 0
+            if runs_done >= 10:
+                seed_offset = 100
+
             agent = DQNAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 nn_architecture=door_key.MLPStepDQN,
                 batch_size=128,
-                random_state=runs_done,
+                random_state=runs_done + seed_offset,
                 epsilon_decay=0.9995,
             )
             _run_curr(runs_done + 1, agent)
@@ -117,12 +126,18 @@ if __name__ == '__main__':
     # DQN no_curriculum
     if args.nocurriculum and args.dqn:
         runs_done = meta.get('runs_done_dqn_nocurr', 0)
-        while runs_done < max_runs:
+        while runs_done < max_runs_dqn:
+            # Seed offset is needed because as of creating this script only 10 runs were assumed for DQN.
+            # Since eventually we did 20 we need this to avoid seed overlapping between different runs
+            seed_offset = 0
+            if runs_done >= 10:
+                seed_offset = 100
+
             agent = DQNAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 nn_architecture=door_key.MLPStepDQN,
                 batch_size=128,
-                random_state=runs_done + max_runs,
+                random_state=runs_done + 10 + seed_offset,
                 epsilon_decay=0.9995,
             )
             _run_no_curr(runs_done + 1, agent)
@@ -132,12 +147,12 @@ if __name__ == '__main__':
     # PPO curriculum
     if args.curriculum and args.ppo:
         runs_done = meta.get('runs_done_ppo_curr', 0)
-        while runs_done < max_runs:
+        while runs_done < max_runs_ppo:
             agent = PPOAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 actor_architecture=door_key.MLPStepActor,
                 critic_architecture=door_key.MLPStepCritic,
-                random_state=runs_done + 2*max_runs,
+                random_state=runs_done + 2*max_runs_ppo,
                 n_episodes=10,
                 n_epochs=10,
             )
@@ -148,12 +163,12 @@ if __name__ == '__main__':
     # PPO no_curriculum
     if args.nocurriculum and args.ppo:
         runs_done = meta.get('runs_done_ppo_nocurr', 0)
-        while runs_done < max_runs:
+        while runs_done < max_runs_ppo:
             agent = PPOAgent(
                 n_actions=DoorKey.N_ACTIONS,
                 actor_architecture=door_key.MLPStepActor,
                 critic_architecture=door_key.MLPStepCritic,
-                random_state=runs_done + 3*max_runs,
+                random_state=runs_done + 3*max_runs_ppo,
                 n_episodes=10,
                 n_epochs=10,
             )
