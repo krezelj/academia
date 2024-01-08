@@ -378,10 +378,10 @@ def plot_trajectories(
 
     Args:
         runs: A list of task/curriculum stats or a list which elements are lists of task/curriculum stats
-        time_domain: Time domain which will be used on the X-axis.
+        time_domain: Time domain which will be used on the x-axis.
             Can be either one of ``'steps'``, ``'episodes'``, ``'wall_time'``, ``'cpu_time'``
             or a list of these values, one for each plotted trajectory. Defaults to ``'steps'``.
-        value_domain: Value domain which will be used on the Y-axis.
+        value_domain: Value domain which will be used on the y-axis.
             Can be either one of ``'agent_evaluations'``, ``'episode_rewards'``, 
             ``'episode_rewards_moving_avg'``, ``'step_counts'``, ``'step_counts_moving_avg'``
             or a list of these values, one for each plotted trajectory. Defaults to ``'agent_evaluations'``.
@@ -598,11 +598,11 @@ def plot_evaluation_impact(
         )  -> 'go.Figure':
     """
     Plots the impact of learning duration in task with difficulty level = x on evaluation
-    in task with difficulty level = y
+    in task with difficulty level = Y
 
     Args:
-        n_episodes_x: Number of episodes in task with level x.
-        task_runs_y: Learning statistics for tasks with level y.
+        n_episodes_x: Number of episodes in task with level X.
+        task_runs_y: Learning statistics for tasks with level Y.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``False``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -613,8 +613,8 @@ def plot_evaluation_impact(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
-            the number of tasks at level x and level y is equal because the experiment involves testing 
+        ValueError: If the number of tasks at level X and level Y is not equal. It is assumed that
+            the number of tasks at level X and level Y is equal because the experiment involves testing
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the evaluation of the agent in a more
             difficult environment.
@@ -649,7 +649,7 @@ def plot_evaluation_impact(
     """
     
     if len(n_episodes_x) != len(task_runs_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
+        raise ValueError("The number of tasks at level X and level Y should be equal.")
 
     agent_evaluations = []
     for task_runs in task_runs_y:
@@ -659,9 +659,8 @@ def plot_evaluation_impact(
     with create_figure(title, show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
-            title="Impact of learning duration in task x on the evaluation of task y",
-            xaxis_title="Number of episodes in task x",
-            yaxis_title="Evaluation score in task y"
+            xaxis_title="Number of episodes in task X",
+            yaxis_title="Evaluation score in task Y"
         )
     return fig
 
@@ -675,13 +674,13 @@ def plot_evaluation_impact_2d(
         save_path: str = None,
         save_format: SaveFormat = 'png') -> 'go.Figure':
     """
-    Plots the impact of learning duration in task x and task y to evaluation of task z.
+    Plots the impact of learning duration in task X and task Y to evaluation of task Z.
     See examples for more details
 
     Args:
-        n_episodes_x: Number of episodes in task x.
-        n_episodes_y: Number of episodes in task y.
-        task_runs_z: Learning statistics for tasks with level z.
+        n_episodes_x: Number of episodes in task X.
+        n_episodes_y: Number of episodes in task Y.
+        task_runs_z: Learning statistics for tasks with level Z.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``False``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -692,8 +691,8 @@ def plot_evaluation_impact_2d(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x, level y and level z is not equal. 
-            It is assumed that the number of tasks at level x, level y and level z is equal 
+        ValueError: If the number of tasks at level X, level Y and level Z is not equal.
+            It is assumed that the number of tasks at level X, level Y and level Z is equal
             because the experiment involves testing the curriculum on group of three tasks with 
             three specific levels of difficulty in order to examine how the number of episodes spent 
             in the easier ones affects the evaluation of the agent in the more difficult environment.
@@ -735,7 +734,7 @@ def plot_evaluation_impact_2d(
     """
 
     if len(n_episodes_x) != len(n_episodes_y) or len(n_episodes_x) != len(task_runs_z):
-        raise ValueError("The number of tasks at level x, level y and level z should be equal.")
+        raise ValueError("The number of tasks at level X, level Y and level Z should be equal.")
     
     agent_evaluations = []
     for task_runs in task_runs_z:
@@ -755,9 +754,8 @@ def plot_evaluation_impact_2d(
             )
         ))
         fig.update_layout(
-            title="Impact of learning duration in task x and task y on the evaluation of task z",
-            xaxis_title="Number of episodes in task x",
-            yaxis_title="Number of episodes in task y"
+            xaxis_title="Number of episodes in task X",
+            yaxis_title="Number of episodes in task Y"
         )
     return fig
 
@@ -772,14 +770,14 @@ def plot_time_impact(
         save_path: str = None, 
         save_format: SaveFormat = 'png') -> 'go.Figure':
     """
-    Plots the impact of the number of episodes in task x on the total time spent in both tasks.
+    Plots the impact of the number of episodes in task X on the total time spent in both tasks.
     See examples for more details
 
     Args:
-        task_runs_x: Learning statistics for tasks with level x.
-        task_runs_y: Learning statistics for tasks with level y.
-        time_domain_x: Time domain which will be used on the X-axis.
-        time_domain_y: Time domain which will be used on the Y-axis.
+        task_runs_x: Learning statistics for tasks with level X.
+        task_runs_y: Learning statistics for tasks with level Y.
+        time_domain_x: Time domain which will be used on the x-axis.
+        time_domain_y: Time domain which will be used on the y-axis.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -790,8 +788,8 @@ def plot_time_impact(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
-            the number of tasks at level x and level y is equal because the experiment involves testing 
+        ValueError: If the number of tasks at level X and level Y is not equal. It is assumed that
+            the number of tasks at level X and level Y is equal because the experiment involves testing
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the total time spent in both tasks.
         ValueError: If ``time_domain`` is invalid
@@ -832,7 +830,7 @@ def plot_time_impact(
     """
     
     if len(task_runs_x) != len(task_runs_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
+        raise ValueError("The number of tasks at level X and level Y should be equal.")
     if time_domain_y == "as_x":
         time_domain_y = time_domain_x
 
@@ -850,7 +848,6 @@ def plot_time_impact(
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
             yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
-            title="Impact of learning duration in task x on the total time spent in both tasks"
         )
 
     return fig
