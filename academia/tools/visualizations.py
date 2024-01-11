@@ -39,7 +39,7 @@ SaveFormat = Literal['png', 'html', 'svg']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
+TimeAggFunc = Literal['zero', 'mean', 'q3', 'most', 'max', 'std']
 
 
 @contextmanager
@@ -214,13 +214,12 @@ def get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
     return shades
 
 
-def _get_task_time_offset(
-        task_trace_start: StartPoint, 
+def _get_time_offset_aggregate(
+        time_agg_func: TimeAggFunc, 
         time_offsets: list[Union[float, int]],
         ignore_outliers: bool):
     """
-    Returns the offset of the task trace starting point on the X axis
-    based on the chosen ``task_trace_start``.
+    Returns the aggregate of time offsets based on the chosen ``time_agg_func``.
     """
     if ignore_outliers:
         q3 = np.quantile(time_offsets, 0.75)
@@ -230,16 +229,18 @@ def _get_task_time_offset(
         non_outliers = [time_offset for time_offset in time_offsets if time_offset <= cutoff]
         time_offsets = non_outliers
 
-    if task_trace_start == 'zero':
+    if time_agg_func == 'zero':
         return 0
-    if task_trace_start == 'mean':
+    if time_agg_func == 'mean':
         return np.mean(time_offsets)
-    if task_trace_start == 'max':
+    if time_agg_func == 'max':
         return np.max(time_offsets)
-    if task_trace_start == 'q3':
+    if time_agg_func == 'q3':
         return np.quantile(time_offsets, 0.75)
-    if task_trace_start == 'most':
+    if time_agg_func == 'most':
         return np.quantile(time_offsets, 0.90)
+    if time_agg_func == 'std':
+        return np.std(time_offsets)
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -293,10 +294,27 @@ def _add_std_region(
                fill='tonexty', fillcolor=rgb_color)
 
 
+def _add_stop_time(fig: 'go.Figure',
+                   time_offsets: list[Union[float, int]],
+                   task_trace_start,
+                   show_stop_time_std: bool,
+                   ignore_outliers: bool,
+                   color: Optional[str] = None,
+                   **kwargs):
+    """
+    
+    """
+    stop_time = _get_time_offset_aggregate(task_trace_start, time_offsets, ignore_outliers)
+    fig.add_vline(x=stop_time, line_width=1, line_dash="dash", line_color=color)
+    if show_stop_time_std:
+        std = _get_time_offset_aggregate('std', time_offsets, ignore_outliers)
+        fig.add_vrect(x0=stop_time - std, x1=stop_time + std, line_width=0, fillcolor=color, opacity=0.1)
+
+
 def _add_task_trajectory(
         fig: 'go.Figure', 
         task_runs: list[LearningStats],
-        task_trace_start: StartPoint,
+        task_trace_start: TimeAggFunc,
         time_domain: TimeDomain,
         value_domain: ValueDomain,
         show_std: bool,
@@ -305,13 +323,14 @@ def _add_task_trajectory(
         ignore_outliers: bool,
         color: Optional[str] = None,
         name: Optional[str] = None,
-        time_offsets: Optional[list[Union[float, int]]] = None):
+        time_offsets: Optional[list[Union[float, int]]] = None,
+        **kwargs):
     """
     Adds a single task trajectory to the figure
     """
     if time_offsets is None:
         time_offsets = np.zeros(len(task_runs))
-    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets, ignore_outliers)
+    task_time_offset = _get_time_offset_aggregate(task_trace_start, time_offsets, ignore_outliers)
 
     agg = LearningStatsAggregator(task_runs)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
@@ -339,6 +358,8 @@ def _add_curriculum_trajectory(
         fig: 'go.Figure', 
         curriculum_runs: list[dict[str, LearningStats]],
         time_domain: TimeDomain,
+        show_stop_time: bool,
+        show_stop_time_std: bool,
         colors: Optional[list[str]] = None,
         **kwargs):
     """
@@ -357,6 +378,8 @@ def _add_curriculum_trajectory(
 
         for j, run in enumerate(curriculum_runs):
             time_offsets[j] += _get_total_time(run[task_name], time_domain)
+    if show_stop_time:
+        _add_stop_time(fig, time_offsets, show_stop_time_std=show_stop_time_std, color=colors[-1], **kwargs)
 
 
 def plot_trajectories(
@@ -364,10 +387,12 @@ def plot_trajectories(
         time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
         show_std: Union[bool, list[bool]] = False,
-        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        task_trace_start: Union[TimeAggFunc, list[TimeAggFunc]] = 'most',
         ignore_outliers: Union[bool, list[bool]] = True,
         show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
+        show_stop_time: Union[bool, list[bool]] = False,
+        show_stop_time_std: Union[bool, list[bool]] = False,
         as_separate_figs: bool = False,
         title: Optional[str] = None,
         show: bool = False,
@@ -403,9 +428,9 @@ def plot_trajectories(
 
             Can either be a single value or a list of values, one for each plotted curriculum trajectory.
             Defaults to ``'most'``.
-        ignore_outliers: Whether to ignore outlying trajectories when calculating task trace starts.
-            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
-            Default to ``True``.
+        ignore_outliers: Whether to ignore outlying trajectories when calculating time aggregations
+            (e.g. task trace starts or trajectory stop times) Can either be a single value or a list
+            of values, one for each plotted curriculum trajectory. Default to ``True``.
         show_run_traces: Whether to show individual run traces (with lower opacity)
             Can either be a single value or a list of values, one for each plotted trajectory.
             Defaults to ``False``.
@@ -413,6 +438,11 @@ def plot_trajectories(
             as their parent trajectory) or as continuations of their predecessors (when plotting
             curriculum trajectory). Can either be a single value or a list of values, 
             one for each plotted curriculum trajectory. Defaults to ``False``.
+        show_stop_time: Whether to show a vertical line indicating when a specific trajectory has stopped.
+            It uses ``task_trace_start`` parameter and is placed in the same place a next task would start
+            if it existed. Defaults to ``False``.
+        show_stop_time_std: Whether to show standard deviation region for trajectory stop time.
+            Defaults to ``False``.
         as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
             and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
             corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
@@ -541,7 +571,9 @@ def plot_trajectories(
         'show_run_traces': show_run_traces,
         'task_trace_start': task_trace_start,
         'ignore_outliers': ignore_outliers,
-        'common_run_traces_start': common_run_traces_start
+        'common_run_traces_start': common_run_traces_start,
+        'show_stop_time': show_stop_time,
+        'show_stop_time_std': show_stop_time_std,
     }
     def _iterate_trajectories_kwargs():
         for i in range(len(runs)):
