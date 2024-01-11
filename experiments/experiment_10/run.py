@@ -67,9 +67,9 @@ def get_task(
             'max_steps': max_steps,
             'max_episodes': max_episodes
         },
+        exploration_reset_value=0.3,
         evaluation_count=50,
         greedy_evaluation=greedy_evaluation,
-        exploration_reset_value=0.3,
         stats_save_path=save_path,
         agent_save_path=save_path
     )
@@ -118,7 +118,7 @@ def get_agent(agent_type: Literal['dqn', 'ppo'], random_state: int):
             lunar_lander.MLPDQN,
             n_actions=4,
             epsilon_decay=0.9995,
-            device='cpu',
+            device='cuda',
             random_state=random_state
         )
     if agent_type == 'ppo':
