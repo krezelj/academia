@@ -337,6 +337,21 @@ class DQNAgent(EpsilonGreedyAgent):
             network_temp.close()
             target_network_temp.close()
             agent_temp.close()
+            try:
+                if os.path.isfile(network_temp.name):
+                    os.remove(network_temp.name)
+            except:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(target_network_temp.name):
+                    os.remove(target_network_temp.name)
+            except:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(agent_temp.name):
+                    os.remove(agent_temp.name)
+            except:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
 
         return os.path.abspath(path)
 
