@@ -611,17 +611,17 @@ class PPOAgent(Agent):
             try:
                 if os.path.isfile(actor_temp.name):
                     os.remove(actor_temp.name)
-            except:
+            except OSError:
                 _logger.warn("Failed to delete a temporary file while saving agents.")
             try:
                 if os.path.isfile(critic_temp.name):
                     os.remove(critic_temp.name)
-            except:
+            except OSError:
                 _logger.warn("Failed to delete a temporary file while saving agents.")
             try:
                 if os.path.isfile(agent_temp.name):
                     os.remove(agent_temp.name)
-            except:
+            except OSError:
                 _logger.warn("Failed to delete a temporary file while saving agents.")
 
         return os.path.abspath(path)
