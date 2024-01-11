@@ -110,9 +110,9 @@ def run_second_task(n_rounds):
         agent.epsilon_decay = 0.9995
 
         if selected_params['type_of_impact'] == 'time':
-                stop_condition = {'min_evaluation_score': 0.8}
-                eval_count = 25
-                eval_interval = 100
+            stop_condition = {'min_evaluation_score': 0.8}
+            eval_count = 25
+            eval_interval = 100
         else:
             max_episodes_task2 = 2000
             stop_condition = {'max_episodes': max_episodes_task2}
