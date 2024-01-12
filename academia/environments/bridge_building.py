@@ -15,13 +15,25 @@ class BridgeBuilding(ScalableEnvironment):
     At lower difficulties the bridge is partly (or even fully) built and the 
     agent only has to learn how to finish it and/or navigate it.
 
-    A reward is 0 if the agent runs out of time or drowns in the river.
-    Otherwise if the agent reaches the goal (the right bank) it's 
-    ``1-step_count/max_steps + bridge_length/river_width``.
-    This reward function is meant to mimic ``Minigrid``'s reward function but it also forces
-    the agent to fully build the bridge. Additionaly, if :attr:`reward_density` is set to ``"dense"``
-    the agent will obtain rewards and penalties for constructing and deconstructing the bridge
-    respectively.
+    The reward system is presented in the table below. Note that the last two rewards
+    can only be obtained if :attr:`reward_density` is set to ``"dense"``:
+
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | Event                             | Reward                                                                       |
+    +===================================+==============================================================================+
+    | Running out of time               | 0                                                                            |
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | Drowning in the river             | 0                                                                            |
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | Reaching the goal                 | 1 - ``step_count``/:attr:`max_steps` + ``bridge_length``/:attr:`river_width` |
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | (Dense) Constructing the bridge   | 0.5 * (``length_after_step`` - ``length_before_step``)                       |
+    +-----------------------------------+------------------------------------------------------------------------------+
+    | (Dense) Deconstructing the bridge | 0.5 * (``length_after_step`` - ``length_before_step``)                       |
+    +-----------------------------------+------------------------------------------------------------------------------+
+
+    The main reward function (reaching the goal) is meant to mimic *Minigrid*'s reward
+    function but it also forces the agent to fully build the bridge (its last component).
 
     Possible actions:
 
