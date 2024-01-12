@@ -33,7 +33,7 @@ class BridgeBuilding(ScalableEnvironment):
     +-----------------------------------+------------------------------------------------------------------------------+
 
     The main reward function (reaching the goal) is meant to mimic *Minigrid*'s reward
-    function but it also forces the agent to fully build the bridge (its last component).
+    function but its last component also forces the agent to fully build the bridge.
 
     Possible actions:
 
