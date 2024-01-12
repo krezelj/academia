@@ -14,7 +14,7 @@ from torch.distributions import MultivariateNormal, Categorical
 
 from .base import Agent
 
-_logger = logging.getLogger('academia.curriculum')
+_logger = logging.getLogger('academia.agents')
 
 class PPOAgent(Agent):
     """
@@ -608,6 +608,21 @@ class PPOAgent(Agent):
             actor_temp.close()
             critic_temp.close()
             agent_temp.close()
+            try:
+                if os.path.isfile(actor_temp.name):
+                    os.remove(actor_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(critic_temp.name):
+                    os.remove(critic_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(agent_temp.name):
+                    os.remove(agent_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
 
         return os.path.abspath(path)
             
