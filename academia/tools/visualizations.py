@@ -39,7 +39,7 @@ SaveFormat = Literal['png', 'html', 'svg']
 LearningTaskRuns = list[LearningStats]
 CurriculumRuns = list[dict[str, LearningStats]]
 Runs = Union[LearningTaskRuns, CurriculumRuns]
-StartPoint = Literal['zero', 'mean', 'q3', 'most', 'max']
+TimeAggFunc = Literal['zero', 'mean', 'q3', 'most', 'max', 'std']
 
 
 @contextmanager
@@ -214,13 +214,12 @@ def get_colors(n_shades: int = 1, query: int = 1, n_queries: int = 1):
     return shades
 
 
-def _get_task_time_offset(
-        task_trace_start: StartPoint, 
+def _get_time_offset_aggregate(
+        time_agg_func: TimeAggFunc, 
         time_offsets: list[Union[float, int]],
         ignore_outliers: bool):
     """
-    Returns the offset of the task trace starting point on the X axis
-    based on the chosen ``task_trace_start``.
+    Returns the aggregate of time offsets based on the chosen ``time_agg_func``.
     """
     if ignore_outliers:
         q3 = np.quantile(time_offsets, 0.75)
@@ -230,16 +229,18 @@ def _get_task_time_offset(
         non_outliers = [time_offset for time_offset in time_offsets if time_offset <= cutoff]
         time_offsets = non_outliers
 
-    if task_trace_start == 'zero':
+    if time_agg_func == 'zero':
         return 0
-    if task_trace_start == 'mean':
+    if time_agg_func == 'mean':
         return np.mean(time_offsets)
-    if task_trace_start == 'max':
+    if time_agg_func == 'max':
         return np.max(time_offsets)
-    if task_trace_start == 'q3':
+    if time_agg_func == 'q3':
         return np.quantile(time_offsets, 0.75)
-    if task_trace_start == 'most':
+    if time_agg_func == 'most':
         return np.quantile(time_offsets, 0.90)
+    if time_agg_func == 'std':
+        return np.std(time_offsets)
     raise ValueError(f"Invalid time_offsets value: {time_offsets}")
 
 
@@ -293,10 +294,27 @@ def _add_std_region(
                fill='tonexty', fillcolor=rgb_color)
 
 
+def _add_stop_time(fig: 'go.Figure',
+                   time_offsets: list[Union[float, int]],
+                   task_trace_start,
+                   show_stop_time_std: bool,
+                   ignore_outliers: bool,
+                   color: Optional[str] = None,
+                   **kwargs):
+    """
+    Adds a trajectory stop time indicator (and optionally an std region around it).
+    """
+    stop_time = _get_time_offset_aggregate(task_trace_start, time_offsets, ignore_outliers)
+    fig.add_vline(x=stop_time, line_width=2, line_dash="dash", line_color=color)
+    if show_stop_time_std:
+        std = _get_time_offset_aggregate('std', time_offsets, ignore_outliers)
+        fig.add_vrect(x0=stop_time - std, x1=stop_time + std, line_width=0, fillcolor=color, opacity=0.1)
+
+
 def _add_task_trajectory(
         fig: 'go.Figure', 
         task_runs: list[LearningStats],
-        task_trace_start: StartPoint,
+        task_trace_start: TimeAggFunc,
         time_domain: TimeDomain,
         value_domain: ValueDomain,
         show_std: bool,
@@ -305,13 +323,14 @@ def _add_task_trajectory(
         ignore_outliers: bool,
         color: Optional[str] = None,
         name: Optional[str] = None,
-        time_offsets: Optional[list[Union[float, int]]] = None):
+        time_offsets: Optional[list[Union[float, int]]] = None,
+        **kwargs):
     """
     Adds a single task trajectory to the figure
     """
     if time_offsets is None:
         time_offsets = np.zeros(len(task_runs))
-    task_time_offset = _get_task_time_offset(task_trace_start, time_offsets, ignore_outliers)
+    task_time_offset = _get_time_offset_aggregate(task_trace_start, time_offsets, ignore_outliers)
 
     agg = LearningStatsAggregator(task_runs)
     values, timestamps = agg.get_aggregate(time_domain, value_domain)
@@ -339,6 +358,8 @@ def _add_curriculum_trajectory(
         fig: 'go.Figure', 
         curriculum_runs: list[dict[str, LearningStats]],
         time_domain: TimeDomain,
+        show_stop_time: bool,
+        show_stop_time_std: bool,
         colors: Optional[list[str]] = None,
         **kwargs):
     """
@@ -357,6 +378,8 @@ def _add_curriculum_trajectory(
 
         for j, run in enumerate(curriculum_runs):
             time_offsets[j] += _get_total_time(run[task_name], time_domain)
+    if show_stop_time:
+        _add_stop_time(fig, time_offsets, show_stop_time_std=show_stop_time_std, color=colors[-1], **kwargs)
 
 
 def plot_trajectories(
@@ -364,10 +387,12 @@ def plot_trajectories(
         time_domain: Union[TimeDomain, list[TimeDomain]] = 'steps',
         value_domain: Union[ValueDomain, list[ValueDomain]] = 'agent_evaluations',
         show_std: Union[bool, list[bool]] = False,
-        task_trace_start: Union[StartPoint, list[StartPoint]] = 'most',
+        task_trace_start: Union[TimeAggFunc, list[TimeAggFunc]] = 'most',
         ignore_outliers: Union[bool, list[bool]] = True,
         show_run_traces: Union[bool, list[bool]] = False,
         common_run_traces_start: Union[bool, list[bool]] = True,
+        show_stop_time: Union[bool, list[bool]] = False,
+        show_stop_time_std: Union[bool, list[bool]] = False,
         as_separate_figs: bool = False,
         title: Optional[str] = None,
         show: bool = False,
@@ -378,10 +403,10 @@ def plot_trajectories(
 
     Args:
         runs: A list of task/curriculum stats or a list which elements are lists of task/curriculum stats
-        time_domain: Time domain which will be used on the X-axis.
+        time_domain: Time domain which will be used on the x-axis.
             Can be either one of ``'steps'``, ``'episodes'``, ``'wall_time'``, ``'cpu_time'``
             or a list of these values, one for each plotted trajectory. Defaults to ``'steps'``.
-        value_domain: Value domain which will be used on the Y-axis.
+        value_domain: Value domain which will be used on the y-axis.
             Can be either one of ``'agent_evaluations'``, ``'episode_rewards'``, 
             ``'episode_rewards_moving_avg'``, ``'step_counts'``, ``'step_counts_moving_avg'``
             or a list of these values, one for each plotted trajectory. Defaults to ``'agent_evaluations'``.
@@ -403,9 +428,9 @@ def plot_trajectories(
 
             Can either be a single value or a list of values, one for each plotted curriculum trajectory.
             Defaults to ``'most'``.
-        ignore_outliers: Whether to ignore outlying trajectories when calculating task trace starts.
-            Can either be a single value or a list of values, one for each plotted curriculum trajectory.
-            Default to ``True``.
+        ignore_outliers: Whether to ignore outlying trajectories when calculating time aggregations
+            (e.g. task trace starts or trajectory stop times) Can either be a single value or a list
+            of values, one for each plotted curriculum trajectory. Default to ``True``.
         show_run_traces: Whether to show individual run traces (with lower opacity)
             Can either be a single value or a list of values, one for each plotted trajectory.
             Defaults to ``False``.
@@ -413,6 +438,11 @@ def plot_trajectories(
             as their parent trajectory) or as continuations of their predecessors (when plotting
             curriculum trajectory). Can either be a single value or a list of values, 
             one for each plotted curriculum trajectory. Defaults to ``False``.
+        show_stop_time: Whether to show a vertical line indicating when a specific trajectory has stopped.
+            It uses ``task_trace_start`` parameter and is placed in the same place a next task would start
+            if it existed. Defaults to ``False``.
+        show_stop_time_std: Whether to show standard deviation region for trajectory stop time.
+            Defaults to ``False``.
         as_separate_figs: Whether each trajectory should be plotted on a separate figure. If set to ``True``
             and ``save_path`` is not ``None`` each figure will be saved in a file with a ``_i`` suffix
             corresponding to the position of the runs stats object in ``runs`` list. Defaults to ``False``.
@@ -541,7 +571,9 @@ def plot_trajectories(
         'show_run_traces': show_run_traces,
         'task_trace_start': task_trace_start,
         'ignore_outliers': ignore_outliers,
-        'common_run_traces_start': common_run_traces_start
+        'common_run_traces_start': common_run_traces_start,
+        'show_stop_time': show_stop_time,
+        'show_stop_time_std': show_stop_time_std,
     }
     def _iterate_trajectories_kwargs():
         for i in range(len(runs)):
@@ -567,7 +599,8 @@ def plot_trajectories(
                 as_separate_figs=False, 
                 show=show, 
                 save_path=new_save_path, 
-                save_format=save_format, 
+                save_format=save_format,
+                title=title,
                 **trajectory_kwargs)
             figs.append(fig)
         return figs
@@ -598,11 +631,11 @@ def plot_evaluation_impact(
         )  -> 'go.Figure':
     """
     Plots the impact of learning duration in task with difficulty level = x on evaluation
-    in task with difficulty level = y
+    in task with difficulty level = Y
 
     Args:
-        n_episodes_x: Number of episodes in task with level x.
-        task_runs_y: Learning statistics for tasks with level y.
+        n_episodes_x: Number of episodes in task with level X.
+        task_runs_y: Learning statistics for tasks with level Y.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``False``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -613,8 +646,8 @@ def plot_evaluation_impact(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
-            the number of tasks at level x and level y is equal because the experiment involves testing 
+        ValueError: If the number of tasks at level X and level Y is not equal. It is assumed that
+            the number of tasks at level X and level Y is equal because the experiment involves testing
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the evaluation of the agent in a more
             difficult environment.
@@ -649,7 +682,7 @@ def plot_evaluation_impact(
     """
     
     if len(n_episodes_x) != len(task_runs_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
+        raise ValueError("The number of tasks at level X and level Y should be equal.")
 
     agent_evaluations = []
     for task_runs in task_runs_y:
@@ -659,9 +692,8 @@ def plot_evaluation_impact(
     with create_figure(title, show, save_path, 'evaluation_impact', save_format) as fig:
         _add_trace(fig, n_episodes_x, agent_evaluations)
         fig.update_layout(
-            title="Impact of learning duration in task x on the evaluation of task y",
-            xaxis_title="Number of episodes in task x",
-            yaxis_title="Evaluation score in task y"
+            xaxis_title="Number of episodes in task X",
+            yaxis_title="Evaluation score in task Y"
         )
     return fig
 
@@ -675,13 +707,13 @@ def plot_evaluation_impact_2d(
         save_path: str = None,
         save_format: SaveFormat = 'png') -> 'go.Figure':
     """
-    Plots the impact of learning duration in task x and task y to evaluation of task z.
+    Plots the impact of learning duration in task X and task Y to evaluation of task Z.
     See examples for more details
 
     Args:
-        n_episodes_x: Number of episodes in task x.
-        n_episodes_y: Number of episodes in task y.
-        task_runs_z: Learning statistics for tasks with level z.
+        n_episodes_x: Number of episodes in task X.
+        n_episodes_y: Number of episodes in task Y.
+        task_runs_z: Learning statistics for tasks with level Z.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``False``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -692,8 +724,8 @@ def plot_evaluation_impact_2d(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x, level y and level z is not equal. 
-            It is assumed that the number of tasks at level x, level y and level z is equal 
+        ValueError: If the number of tasks at level X, level Y and level Z is not equal.
+            It is assumed that the number of tasks at level X, level Y and level Z is equal
             because the experiment involves testing the curriculum on group of three tasks with 
             three specific levels of difficulty in order to examine how the number of episodes spent 
             in the easier ones affects the evaluation of the agent in the more difficult environment.
@@ -735,7 +767,7 @@ def plot_evaluation_impact_2d(
     """
 
     if len(n_episodes_x) != len(n_episodes_y) or len(n_episodes_x) != len(task_runs_z):
-        raise ValueError("The number of tasks at level x, level y and level z should be equal.")
+        raise ValueError("The number of tasks at level X, level Y and level Z should be equal.")
     
     agent_evaluations = []
     for task_runs in task_runs_z:
@@ -755,9 +787,8 @@ def plot_evaluation_impact_2d(
             )
         ))
         fig.update_layout(
-            title="Impact of learning duration in task x and task y on the evaluation of task z",
-            xaxis_title="Number of episodes in task x",
-            yaxis_title="Number of episodes in task y"
+            xaxis_title="Number of episodes in task X",
+            yaxis_title="Number of episodes in task Y"
         )
     return fig
 
@@ -772,14 +803,14 @@ def plot_time_impact(
         save_path: str = None, 
         save_format: SaveFormat = 'png') -> 'go.Figure':
     """
-    Plots the impact of the number of episodes in task x on the total time spent in both tasks.
+    Plots the impact of the number of episodes in task X on the total time spent in both tasks.
     See examples for more details
 
     Args:
-        task_runs_x: Learning statistics for tasks with level x.
-        task_runs_y: Learning statistics for tasks with level y.
-        time_domain_x: Time domain which will be used on the X-axis.
-        time_domain_y: Time domain which will be used on the Y-axis.
+        task_runs_x: Learning statistics for tasks with level X.
+        task_runs_y: Learning statistics for tasks with level Y.
+        time_domain_x: Time domain which will be used on the x-axis.
+        time_domain_y: Time domain which will be used on the y-axis.
         title: Figure title. Deafults to ``None``.
         show: Whether to display the plot. Defaults to ``True``.
         save_path: A path where the plot will be saved. The plot will not be
@@ -790,8 +821,8 @@ def plot_time_impact(
         a plotly figure object
 
     Raises:
-        ValueError: If the number of tasks at level x and level y is not equal. It is assumed that 
-            the number of tasks at level x and level y is equal because the experiment involves testing 
+        ValueError: If the number of tasks at level X and level Y is not equal. It is assumed that
+            the number of tasks at level X and level Y is equal because the experiment involves testing
             the curriculum on pairs of tasks with two specific levels of difficulty in order to examine how 
             the number of episodes spent in the easier one affects the total time spent in both tasks.
         ValueError: If ``time_domain`` is invalid
@@ -832,7 +863,7 @@ def plot_time_impact(
     """
     
     if len(task_runs_x) != len(task_runs_y):
-        raise ValueError("The number of tasks at level x and level y should be equal.")
+        raise ValueError("The number of tasks at level X and level Y should be equal.")
     if time_domain_y == "as_x":
         time_domain_y = time_domain_x
 
@@ -850,7 +881,6 @@ def plot_time_impact(
         fig.update_layout(
             xaxis_title=f"Learning duration in task X ({_get_domain_display_name(time_domain_x)})",
             yaxis_title=f"Total time spent in both tasks ({_get_domain_display_name(time_domain_y)})",
-            title="Impact of learning duration in task x on the total time spent in both tasks"
         )
 
     return fig

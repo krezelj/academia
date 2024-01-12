@@ -46,4 +46,4 @@ keywords = [
 
 [project.urls]
 "Source code" = "https://github.com/krezelj/wut-curriculum-learning"
-Documentation = "https://github.com/krezelj/wut-curriculum-learning"  # TODO: temporary url
+Documentation = "https://academia.readthedocs.io/"

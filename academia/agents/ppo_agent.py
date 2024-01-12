@@ -14,7 +14,7 @@ from torch.distributions import MultivariateNormal, Categorical
 
 from .base import Agent
 
-_logger = logging.getLogger('academia.curriculum')
+_logger = logging.getLogger('academia.agents')
 
 class PPOAgent(Agent):
     """
@@ -587,11 +587,11 @@ class PPOAgent(Agent):
                 'steps_counter': n_valid_steps,
                 'episode_length_counter': 0,
                 'episode_counter': self.buffer.episode_counter,
-                'states': [state.tolist() for state in self.buffer.states[:n_valid_steps+1]],
-                'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps+1])],
-                'actions_logits': self.buffer.actions_logits[:n_valid_steps+1],
-                'rewards': [r.item() for r in np.array(self.buffer.rewards[:n_valid_steps+1])],
-                'rewards_to_go': self.buffer.rewards_to_go[:n_valid_steps+1],
+                'states': [state.tolist() for state in self.buffer.states[:n_valid_steps]],
+                'actions': [a.item() for a in np.array(self.buffer.actions[:n_valid_steps])],
+                'actions_logits': self.buffer.actions_logits[:n_valid_steps],
+                'rewards': [r.item() for r in np.array(self.buffer.rewards[:n_valid_steps])],
+                'rewards_to_go': self.buffer.rewards_to_go[:n_valid_steps],
                 'episode_lengths': self.buffer.episode_lengths
             }
 
@@ -608,6 +608,21 @@ class PPOAgent(Agent):
             actor_temp.close()
             critic_temp.close()
             agent_temp.close()
+            try:
+                if os.path.isfile(actor_temp.name):
+                    os.remove(actor_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(critic_temp.name):
+                    os.remove(critic_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
+            try:
+                if os.path.isfile(agent_temp.name):
+                    os.remove(agent_temp.name)
+            except OSError:
+                _logger.warn("Failed to delete a temporary file while saving agents.")
 
         return os.path.abspath(path)
             
