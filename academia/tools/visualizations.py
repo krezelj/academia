@@ -302,10 +302,10 @@ def _add_stop_time(fig: 'go.Figure',
                    color: Optional[str] = None,
                    **kwargs):
     """
-    
+    Adds a trajectory stop time indicator (and optionally an std region around it).
     """
     stop_time = _get_time_offset_aggregate(task_trace_start, time_offsets, ignore_outliers)
-    fig.add_vline(x=stop_time, line_width=1, line_dash="dash", line_color=color)
+    fig.add_vline(x=stop_time, line_width=2, line_dash="dash", line_color=color)
     if show_stop_time_std:
         std = _get_time_offset_aggregate('std', time_offsets, ignore_outliers)
         fig.add_vrect(x0=stop_time - std, x1=stop_time + std, line_width=0, fillcolor=color, opacity=0.1)
@@ -599,7 +599,8 @@ def plot_trajectories(
                 as_separate_figs=False, 
                 show=show, 
                 save_path=new_save_path, 
-                save_format=save_format, 
+                save_format=save_format,
+                title=title,
                 **trajectory_kwargs)
             figs.append(fig)
         return figs
