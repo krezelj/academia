@@ -9,7 +9,7 @@ packages = ["./academia"]
 packages = ["./academia"]
 
 [project]
-name = "academia"
+name = "academia-rl"
 version = "0.1.0"
 authors = [
     { name="krezelj", email="jasiekk9@gmail.com" },
