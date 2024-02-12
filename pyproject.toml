@@ -9,7 +9,7 @@ packages = ["./academia"]
 packages = ["./academia"]
 
 [project]
-name = "academia"
+name = "academia-rl"
 version = "0.1.0"
 authors = [
     { name="krezelj", email="jasiekk9@gmail.com" },
@@ -45,5 +45,5 @@ keywords = [
 ]
 
 [project.urls]
-"Source code" = "https://github.com/krezelj/wut-curriculum-learning"
+"Source code" = "https://github.com/krezelj/academia"
 Documentation = "https://academia.readthedocs.io/"

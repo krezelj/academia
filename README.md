@@ -8,6 +8,12 @@ touches on the topic of curriculum learning.
 
 https://academia.readthedocs.io/
 
+## Experiments
+
+As a part of our engineering thesis, numerous experiments on Curriculum Learning 
+have been conducted using this package. Their code and results can be found in 
+a [separate repo](https://github.com/krezelj/thesis-experiments).
+
 ## Sources
 An unordered list of interesting books and papers
 
