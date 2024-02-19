@@ -55,7 +55,7 @@ class SavableLoadable(ABC):
         return module_name + '.' + qualname
 
     @staticmethod
-    def _prep_save_file(specified_path: str, interrupted: bool) -> str:
+    def prep_save_file(specified_path: str, interrupted: bool) -> str:
         """
         Creates parent directories if they're missing and, if
         ``interrupted=True``, prepends 'backup_' to the

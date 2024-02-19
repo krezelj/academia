@@ -9,6 +9,11 @@ Exported classes:
 - :class:`LearningStats`
 - :class:`LearningStatsAggregator`
 
+Exported functions:
+
+- :func:`load_task_config`
+- :func:`load_curriculum_config`
+
 In this module logging is used, which is handled using built-in ``logging`` library. Besides standard logging
 configuration, in certain methods such as :func:`LearningTask.run` and :func:`Curriculum.run` a user can
 specify verbosity level which can be used to filter out some of the logs. These verbosity levels are common
@@ -30,10 +35,13 @@ throughout the entire module and are as follows:
 """
 from .learning_task import LearningTask, LearningStats, LearningStatsAggregator
 from .curriculum import Curriculum
+from .config_loaders import load_task_config, load_curriculum_config
 
 __all__ = [
     'LearningTask',
     'Curriculum',
     'LearningStats',
     'LearningStatsAggregator',
+    'load_task_config',
+    'load_curriculum_config',
 ]
