@@ -13,7 +13,6 @@ def _get_mock_learning_tasks(task_names: list[Optional[str]]):
         mock_task = mock.MagicMock()
         mock_task.name = name
         mock_task.run = lambda *args, **kwargs: None
-        mock_task.to_dict.return_value = {'name': name}
         result.append(mock_task)
     return tuple(result)
 
