@@ -7,7 +7,6 @@ from functools import partial
 
 import numpy as np
 import numpy.typing as npt
-import yaml
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
@@ -50,7 +49,7 @@ def _max_wall_time_predicate(value: float, stats: 'LearningStats') -> bool:
     return np.sum(stats.episode_wall_times) >= value
 
 
-class LearningTask(SavableLoadable):
+class LearningTask:
     """
     Controls agent's training.
 
@@ -111,8 +110,8 @@ class LearningTask(SavableLoadable):
 
         Initializaton using a config file:
 
-        >>> from academia.curriculum import LearningTask
-        >>> task = LearningTask.load('./my_config.task.yml')
+        >>> from academia.curriculum import LearningTask, load_task_config
+        >>> task = load_task_config('./my_config.task.yml')
 
         ``./my_config.task.yml``::
 
@@ -348,7 +347,7 @@ class LearningTask(SavableLoadable):
         """
         # preserve agent's state
         if self.agent_save_path is not None:
-            agent_save_path = self._prep_save_file(self.agent_save_path, interrupted)
+            agent_save_path = SavableLoadable.prep_save_file(self.agent_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving agent's state...")
             final_save_path = agent.save(agent_save_path)
@@ -357,7 +356,7 @@ class LearningTask(SavableLoadable):
 
         # save task statistics
         if self.stats_save_path is not None:
-            stats_save_path = self._prep_save_file(self.stats_save_path, interrupted)
+            stats_save_path = SavableLoadable.prep_save_file(self.stats_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
             final_save_path = self.stats.save(stats_save_path)
@@ -374,105 +373,6 @@ class LearningTask(SavableLoadable):
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
-
-    @classmethod
-    def load(cls, path: str) -> 'LearningTask':
-        """
-        Loads a task configuration from the specified file.
-
-        A configuration file should be in YAML format. Properties names should be identical to the arguments
-        of the :class:`LearningTask`'s constructor.
-
-        An example task configuration file::
-
-            # my_config.task.yml
-            env_type: academia.environments.LavaCrossing
-            env_args:
-                difficulty: 2
-                render_mode: human
-            stop_conditions:
-                max_episodes: 1000
-            stats_save_path: ./my_task_stats.json
-
-        Args:
-            path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.task.yml' will be appended to the specified path (for consistency with :func:`save()`
-                method).
-
-        Returns:
-            A :class:`LearningTask` instance based on the configuration in the specified file.
-        """
-        # add file extension (consistency with save() method)
-        if not path.endswith('.yml'):
-            path += '.task.yml'
-        with open(path, 'r') as file:
-            task_data: dict = yaml.safe_load(file)
-        return cls.from_dict(task_data)
-
-    def save(self, path: str) -> str:
-        """
-        Saves this task's configuration to a file.
-        Configuration is stored in a YAML format.
-
-        Args:
-            path: Path where a configuration file will be created. If the extension is not provided, it will
-                 will be automatically appended ('.task.yml') to the specified path.
-
-        Returns:
-            A final (i.e. with an extension), absolute path where the configuration was saved.
-        """
-        task_data = self.to_dict()
-        # add file extension
-        if not path.endswith('.yml'):
-            path += '.task.yml'
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
-            yaml.dump(task_data, file)
-        return os.path.abspath(path)
-
-    @classmethod
-    def from_dict(cls, task_data: dict) -> 'LearningTask':
-        """
-        Creates a task based on a configuration stored in a dictionary.
-        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
-
-        Args:
-            task_data: dictionary that contains raw contents from the configuration file
-
-        Returns:
-            A :class:`LearningTask` instance based on the provided configuration.
-        """
-        env_type = cls.get_type(task_data['env_type'])
-        # delete env_type because it will be passed to contructor separately
-        del task_data['env_type']
-        return cls(env_type=env_type, **task_data)
-
-    def to_dict(self) -> dict:
-        """
-        Puts this :class:`LearningTask`'s configuration to a dictionary.
-        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
-
-        Returns:
-            A dictionary with the task configuration, ready to be written to a text file.
-        """
-        task_data = {
-            'env_type': self.get_type_name_full(self.__env_type),
-            'env_args': self.__env_args,
-            'stop_conditions': self.__stop_conditions,
-            'evaluation_interval': self.__evaluation_interval,
-            'evaluation_count': self.__evaluation_count,
-            'include_init_eval': self.__include_init_eval,
-            'greedy_evaluation': self.__greedy_evaluation,
-        }
-        if self.__exploration_reset_value is not None:
-            task_data['exploration_reset_value'] = self.__exploration_reset_value
-        if self.name is not None:
-            task_data['name'] = self.name
-        if self.agent_save_path is not None:
-            task_data['agent_save_path'] = self.agent_save_path
-        if self.stats_save_path is not None:
-            task_data['stats_save_path'] = self.stats_save_path
-        return task_data
 
 
 class LearningStats(SavableLoadable):

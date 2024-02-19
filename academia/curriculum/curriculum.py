@@ -2,18 +2,16 @@ import os
 import logging
 from typing import Optional
 
-import yaml
 import numpy as np
 
 from . import LearningTask, LearningStats
 from academia.agents.base import Agent
-from academia.utils import SavableLoadable
 
 
 _logger = logging.getLogger('academia.curriculum')
 
 
-class Curriculum(SavableLoadable):
+class Curriculum:
     """
     Groups and executes instances of :class:`LearningTask` in the specified order.
 
@@ -152,95 +150,3 @@ class Curriculum(SavableLoadable):
         task = self.tasks[task_idx]
         task_id = str(task_idx + 1) if task.name is None else task.name
         return task_id
-
-    @classmethod
-    def load(cls, path: str) -> 'Curriculum':
-        """
-        Loads a task configuration from the specified file.
-
-        A configuration file should be in YAML format. Tasks list should be stored using two properties:
-        ``tasks`` and ``order`` - the former mapping task identifiers to their configuration and the latter
-        being a list of task identifiers in the order of their execution. Individual task's configurations
-        can be either directly specified or a path to task's configuration file can be provided.
-        Other properties names should be identical to the arguments of the :class:`Curriculum`'s constructor.
-
-        An example curriculum configuration file::
-
-            # my_config.curriculum.yml
-            output_dir: './my_curriculum/'
-            order:
-            - 0
-            - 1
-            tasks:
-              0:
-                # this task's config is specified here directly:
-                env_args:
-                  difficulty: 0
-                  render_mode: human
-                env_type: academia.environments.LavaCrossing
-                evaluation_interval: 100
-                stop_conditions:
-                  max_episodes: 500
-              1:
-                # this task's config lies in a separate file
-                # path is relative to the location of my_config.curriculum.yml
-                path: ./lava_crossing_hard.task.yml
-
-        Args:
-            path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.curriculum.yml' will be appended to the specified path (for consistency with :func:`save()`
-                method).
-
-        Returns:
-            A :class:`Curriculum` instance based on the configuration in the specified file.
-        """
-        # add file extension (consistency with save() method)
-        if not path.endswith('.yml'):
-            path += '.curriculum.yml'
-        with open(path, 'r') as file:
-            curriculum_data: dict = yaml.safe_load(file)
-        directory = os.path.dirname(path)
-        tasks = []
-        for task_id in curriculum_data['order']:
-            task_data: dict = curriculum_data['tasks'][task_id]
-            # tasks can be stored in two ways:
-            # 1. full task data (as stored in Curriculum.save)
-            # 2. path to a task config file (relative from curriculum file)
-            if 'path' not in task_data.keys():
-                task = LearningTask.from_dict(task_data)
-            else:
-                task_path_abs = os.path.abspath(
-                    os.path.join(directory, task_data['path'])
-                )
-                task = LearningTask.load(task_path_abs)
-            tasks.append(task)
-        del curriculum_data['order']
-        del curriculum_data['tasks']
-        return Curriculum(tasks, **curriculum_data)
-
-    def save(self, path: str) -> str:
-        """
-        Saves this curriculum's configuration to the file.
-        Configuration is stored in a YAML format.
-
-        Args:
-            path: Path where a configuration file will be created. If the extension is not provided, it will
-                 will be automatically appended ('.curriculum.yml') to the specified path.
-
-        Returns:
-            A final (i.e. with an extension), absolute path where the configuration was saved.
-        """
-        curr_data = {
-            'order': list(range(len(self.tasks))),
-            # dict preserves insertion order
-            'tasks': {i: task.to_dict() for i, task in enumerate(self.tasks)},
-        }
-        if self.output_dir is not None:
-            curr_data['output_dir'] = self.output_dir
-        # add file extension
-        if not path.endswith('.yml'):
-            path += '.curriculum.yml'
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
-            yaml.dump(curr_data, file)
-        return os.path.abspath(path)
