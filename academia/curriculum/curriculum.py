@@ -93,6 +93,19 @@ class Curriculum:
     def __init__(self, tasks: list[LearningTask], output_dir: Optional[str] = None) -> None:
         self.tasks = tasks
         self.output_dir = output_dir
+        if output_dir is not None:
+            self.__ensure_tasks_savable()
+
+    def __ensure_tasks_savable(self) -> None:
+        """
+        Makes sure that each task can be saved (as long as :attr:`output_dir`
+        is specified for this curriculum).
+        """
+        for i, task in enumerate(self.tasks):
+            if task.output_dir is None:
+                task.output_dir = self.output_dir
+            if task.name is None:
+                task.name = self.__get_task_id(i)
 
     def run(self, agent: Agent, verbose=0):
         """
@@ -112,11 +125,6 @@ class Curriculum:
             task_id = self.__get_task_id(i)
             if verbose >= 1:
                 _logger.info(f'Running Task {task_id}... ')
-
-            if task.agent_save_path is None and self.output_dir is not None:
-                task.agent_save_path = os.path.join(self.output_dir, task_id)
-            if task.stats_save_path is None and self.output_dir is not None:
-                task.stats_save_path = os.path.join(self.output_dir, task_id)
 
             task.run(agent, verbose=verbose)
             total_episodes += len(task.stats.episode_rewards)

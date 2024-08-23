@@ -43,7 +43,18 @@ def _get_learning_stats() -> LearningStats:
     return stats
 
 
-def _mock_save(path: str):
+def _mock_save_agent(path: str):
+    if not path.endswith('agent.zip'):
+        path = f'{path}.agent.zip'
+    # create an empty file
+    with open(path, 'w'):
+        pass
+    return path
+
+
+def _mock_save_stats(path: str):
+    if not path.endswith('stats.json'):
+        path = f'{path}.stats.json'
     # create an empty file
     with open(path, 'w'):
         pass
@@ -55,7 +66,7 @@ def _mock_save(path: str):
     **{
         'get_action.return_value': 0,
         'update.return_value': None,
-        'save': _mock_save,
+        'save': _mock_save_agent,
     }
 )
 @mock.patch(
@@ -68,7 +79,7 @@ def _mock_save(path: str):
         'get_legal_mask.return_value': np.array([1]),
     }
 )
-@mock.patch.object(LearningStats, 'save', lambda self, path: _mock_save(path))
+@mock.patch.object(LearningStats, 'save', lambda self, path: _mock_save_stats(path))
 class TestLearningTask(unittest.TestCase):
 
     def test_max_episodes_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -212,12 +223,14 @@ class TestLearningTask(unittest.TestCase):
         """
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             sut.run(mock_agent)
             # assert
-            expected_save_path = os.path.join(temp_dir, 'test')
+            expected_save_path = os.path.join(temp_dir, 'test', 'test_task.agent.zip')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_agent_state_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -226,15 +239,17 @@ class TestLearningTask(unittest.TestCase):
         """
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
-            agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             try:
                 sut.run(mock_agent)
             except SystemExit:
                 pass
             # assert
-            expected_save_path = os.path.join(temp_dir, 'backup_test')
+            expected_save_path = os.path.join(temp_dir, 'test', 'backup_test_task.agent.zip')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_stats_saving_normal(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -242,12 +257,14 @@ class TestLearningTask(unittest.TestCase):
         Save path should not have 'backup' prepended when saving normally
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             sut.run(mock_agent)
             # assert
-            expected_save_path = os.path.join(temp_dir, 'test.stats.json')
+            expected_save_path = os.path.join(temp_dir, 'test', 'test_task.stats.json')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_stats_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -256,15 +273,17 @@ class TestLearningTask(unittest.TestCase):
         """
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
-            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             try:
                 sut.run(mock_agent)
             except SystemExit:
                 pass
             # assert
-            expected_save_path = os.path.join(temp_dir, 'backup_test.stats.json')
+            expected_save_path = os.path.join(temp_dir, 'test', 'backup_test_task.stats.json')
             self.assertTrue(os.path.isfile(expected_save_path))
 
 

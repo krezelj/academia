@@ -128,8 +128,7 @@ class TestLoadTaskConfig(unittest.TestCase):
                            "  max_episodes: 2\n"
                            "evaluation_interval: 24\n"
                            "name: Reece James\n"
-                           f"agent_save_path: {temp_dir}/secret_agent_123\n"
-                           f"stats_save_path: {temp_dir}/super_stats_321")
+                           f"output_dir: {temp_dir}/out\n")
             config_file_path = os.path.join(temp_dir, 'config.task.yml')
             with open(config_file_path, 'w') as f:
                 f.write(task_config)
@@ -144,8 +143,7 @@ class TestLoadTaskConfig(unittest.TestCase):
 
         self.assertEqual('Reece James', sut.name)
         self.assertEqual(24, sut.stats.evaluation_interval)
-        self.assertEqual(f'{temp_dir}/secret_agent_123', sut.agent_save_path)
-        self.assertEqual(f'{temp_dir}/super_stats_321', sut.stats_save_path)
+        self.assertEqual(f'{temp_dir}/out', sut.output_dir)
         # stop condition
         self.assertEqual(2, len(sut.stats.episode_rewards))
 
