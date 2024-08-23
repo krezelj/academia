@@ -9,7 +9,7 @@ from academia.utils import SavableLoadable
 def _load_task_from_dict(task_data: dict) -> 'LearningTask':
     """
     Creates a task based on a configuration stored in a dictionary.
-    This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
+    This is a helper method used by config loaders and it is not useful for the end user.
 
     Args:
         task_data: dictionary that contains raw contents from the configuration file
