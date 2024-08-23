@@ -384,6 +384,7 @@ class LearningTask:
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
+        return False
 
 
 class LearningStats(SavableLoadable):
