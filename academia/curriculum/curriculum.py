@@ -49,8 +49,8 @@ class Curriculum:
 
         Initializaton using a config file:
 
-        >>> from academia.curriculum import Curriculum
-        >>> curriculum = Curriculum.load('./my_config.curriculum.yml')
+        >>> from academia.curriculum import load_curriculum_config
+        >>> curriculum = load_curriculum_config('./my_config.curriculum.yml')
 
         ``./my_config.curriculum.yml``::
 

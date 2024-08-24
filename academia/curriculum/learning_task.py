@@ -106,7 +106,7 @@ class LearningTask:
 
         Initializaton using a config file:
 
-        >>> from academia.curriculum import LearningTask, load_task_config
+        >>> from academia.curriculum import load_task_config
         >>> task = load_task_config('./my_config.task.yml')
 
         ``./my_config.task.yml``::
