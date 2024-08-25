@@ -236,17 +236,13 @@ class LearningTask:
         """
         try:
             self.__train_agent(agent, verbose)
-        except KeyboardInterrupt:
-            if verbose >= 1:
-                _logger.info('Training interrupted.')
-            self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(130)
         except Exception as e:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
             _logger.exception(e)
             self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(1)
+            exit_code = 130 if isinstance(e, KeyboardInterrupt) else 1
+            sys.exit(exit_code)
         else:
             if verbose >= 1:
                 _logger.info('Training finished.')
