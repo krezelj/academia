@@ -69,6 +69,17 @@ class LearningTask:
             Defaults to ``True``.
         exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
             after the task is finished. Unspecified by default.
+        episode_callback: A function to be called after each episode is finished. It should have the
+            following signature::
+
+                >>> def my_callback(agent: Agent,
+                >>>                 stats: LearningStats,
+                >>>                 episode_no: int,
+                >>>                 ) -> Optional[Agent]:
+                >>>     pass
+
+            The callback may or may not return an agent. If it does, the returned agent will be used for
+            subsequent episodes.
         name: Name of the task. This is used in combination with :attr:`output_dir` to
             generate save paths for an agent and training statistics. It will also appear in the logs
             if the task is run through the :class:`Curriculum` object.
@@ -131,6 +142,10 @@ class LearningTask:
         >>>     random_state=123,
         >>> )
         >>> task.run(agent, verbose=4)
+
+        Using callbacks:
+
+
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -186,6 +201,7 @@ class LearningTask:
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
                  exploration_reset_value: Optional[float] = None,
+                 episode_callback: Optional[Callable] = None,
                  name: Optional[str] = None,
                  output_dir: Optional[str] = None,
                  ) -> None:
@@ -217,6 +233,7 @@ class LearningTask:
         self.__include_init_eval = include_init_eval
         self.__greedy_evaluation = greedy_evaluation
         self.__exploration_reset_value = exploration_reset_value
+        self.__episode_callback = episode_callback
 
         self.stats = LearningStats(self.__evaluation_interval)
 
@@ -283,6 +300,13 @@ class LearningTask:
 
             if episode % self.__evaluation_interval == 0:
                 self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
+
+            # trigger callback now - after all stats are updated
+            if self.__episode_callback is not None:
+                new_agent = self.__episode_callback(agent, self.stats, episode)
+                if new_agent is not None:
+                    agent = new_agent
+
         if self.__exploration_reset_value is not None:
             agent.reset_exploration(self.__exploration_reset_value)
 

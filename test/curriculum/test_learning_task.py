@@ -10,7 +10,6 @@ from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.curriculum import LearningTask, LearningStats, LearningStatsAggregator
 
-
 # otherwise errors are logged when testing task interruption behaviour
 logging.disable(logging.ERROR)
 
@@ -286,6 +285,53 @@ class TestLearningTask(unittest.TestCase):
             expected_save_path = os.path.join(temp_dir, 'test', 'backup_test_task.stats.json')
             self.assertTrue(os.path.isfile(expected_save_path))
 
+    def test_episode_callback_triggering(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Episode callback should trigger after every episode.
+        """
+        tracking_list = []
+
+        def episode_callback(agent, stats, episode_no):
+            tracking_list.append(episode_no)
+
+        sut = _get_learning_task(
+            mock_env,
+            stop_conditions={'max_episodes': 3},
+            other_task_args={
+                'episode_callback': episode_callback,
+            },
+        )
+        sut.run(mock_agent)
+        self.assertEqual(3, len(tracking_list),
+                         msg='Episode callback triggered an incorrect number of times')
+
+    def test_episode_callback_agent_overwrite(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Episode callback should be able to overwrite the currently used agent
+        """
+        was_new_agent_used = False
+
+        def episode_callback(agent, stats, episode_no):
+            def update(*args, **kwargs):
+                nonlocal was_new_agent_used
+                was_new_agent_used = True
+                return 0
+
+            new_agent = mock.MagicMock()
+            new_agent.get_action.return_value = 0
+            new_agent.update = update
+            return new_agent
+
+        sut = _get_learning_task(
+            mock_env,
+            stop_conditions={'max_episodes': 2},
+            other_task_args={
+                'episode_callback': episode_callback,
+            },
+        )
+        sut.run(mock_agent)
+        self.assertTrue(was_new_agent_used, msg='New agent was not used')
+
 
 class TestLearningStats(unittest.TestCase):
 
@@ -352,7 +398,7 @@ class TestLearningStats(unittest.TestCase):
 
 
 class TestLearningStatsAggregator(unittest.TestCase):
-        
+
     def test_timestamp_count(self):
         # arrange
         stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 3})
@@ -396,7 +442,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
             stats_1.step_counts = np.ones(shape=200)
             stats_1.episode_rewards = np.ones(shape=200)
             setattr(stats_1, time_domain, np.random.random(size=200))
-            stats_2 = mock.MagicMock(spec=LearningStats,**{"__len__.return_value": 250})
+            stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 250})
             stats_2.step_counts = np.ones(shape=250)
             stats_2.episode_rewards = np.ones(shape=250) * 2
             setattr(stats_2, time_domain, np.random.random(size=250))
@@ -409,7 +455,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
             # assert
             expected_timestamps = np.union1d(
-                np.cumsum(getattr(stats_1, time_domain)), 
+                np.cumsum(getattr(stats_1, time_domain)),
                 np.cumsum(getattr(stats_2, time_domain)))
             self.assertEqual(len(expected_timestamps), len(timestamps))
             self.assertTrue(np.all(expected_timestamps == timestamps))
@@ -490,24 +536,24 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats = [
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(200),
+                    step_counts=np.ones(200),
                     episode_rewards=np.ones(200),
                     **{"__len__.return_value": 200},
-                    spec=LearningStats), 
+                    spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(250),
+                    step_counts=np.ones(250),
                     episode_rewards=np.ones(250),
                     **{"__len__.return_value": 250},
                     spec=LearningStats)
             },
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(180),
+                    step_counts=np.ones(180),
                     episode_rewards=np.ones(180) * 2,
                     **{"__len__.return_value": 180},
-                    spec=LearningStats), 
+                    spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(270),
+                    step_counts=np.ones(270),
                     episode_rewards=np.ones(270) * 3,
                     **{"__len__.return_value": 270},
                     spec=LearningStats)
@@ -535,18 +581,18 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats = [
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(200), episode_rewards=np.ones(200), spec=LearningStats), 
+                    step_counts=np.ones(200), episode_rewards=np.ones(200), spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(250), episode_rewards=np.ones(250), spec=LearningStats)
+                    step_counts=np.ones(250), episode_rewards=np.ones(250), spec=LearningStats)
             },
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(180), episode_rewards=np.ones(180) * 2, spec=LearningStats), 
+                    step_counts=np.ones(180), episode_rewards=np.ones(180) * 2, spec=LearningStats),
                 'All Too Well': mock.MagicMock(
-                    step_counts = np.ones(270), episode_rewards=np.ones(270) * 3, spec=LearningStats)
+                    step_counts=np.ones(270), episode_rewards=np.ones(270) * 3, spec=LearningStats)
             }
         ]
-        
+
         # act/assert
         with self.assertRaises(ValueError):
             LearningStatsAggregator(stats)

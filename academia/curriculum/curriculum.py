@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, Callable
 
 import numpy as np
 
@@ -19,6 +19,19 @@ class Curriculum:
         output_dir: A path to a file where agent states and training stats will be saved upon each task's
             completion or interruption. If set to ``None``, an agent's state or training stats will not
             be saved at any point, unless relevant paths are specified for any of the tasks directly.
+        task_callback: A function to be called after each task is finished. It should have the
+            following signature::
+
+                >>> def my_callback(agent: Agent,
+                >>>                 stats: LearningStats,
+                >>>                 task_id: str,
+                >>>                 ) -> Optional[Agent]:
+                >>>     pass
+
+            The parameter ``task_id`` is either the task name, or, if not specified, the order of the task's
+            execution (1 for the first task, 2 for the second, and so on).
+            The callback may or may not return an agent. If it does, the returned agent will be used for
+            subsequent episodes.
 
     Attributes:
         tasks (list[LearningTask]): Tasks to be run. Tasks are run one by one so their order matters.
@@ -89,9 +102,14 @@ class Curriculum:
         >>> curriculum.run(agent, verbose=4)
     """
 
-    def __init__(self, tasks: list[LearningTask], output_dir: Optional[str] = None) -> None:
+    def __init__(self,
+                 tasks: list[LearningTask],
+                 output_dir: Optional[str] = None,
+                 task_callback: Optional[Callable] = None,
+                 ) -> None:
         self.tasks = tasks
         self.output_dir = output_dir
+        self.__task_callback = task_callback
         if output_dir is not None:
             self.__ensure_tasks_savable()
 
@@ -132,6 +150,11 @@ class Curriculum:
             task_cpu_time = np.sum(task.stats.episode_cpu_times)
             total_wall_time += task_wall_time
             total_cpu_time += task_cpu_time
+
+            if self.__task_callback is not None:
+                new_agent = self.__task_callback(agent, self.stats, task_id)
+                if new_agent is not None:
+                    agent = new_agent
 
             if verbose >= 1:
                 _logger.info(f'Task {task_id} finished after '
