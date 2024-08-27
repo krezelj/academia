@@ -29,7 +29,7 @@ class Curriculum:
                 >>>     pass
 
             The parameter ``task_id`` is either the task name, or, if not specified, the order of the task's
-            execution (1 for the first task, 2 for the second, and so on).
+            execution as a string ('1' for the first task, '2' for the second, and so on).
             The callback may or may not return an agent. If it does, the returned agent will be used for
             subsequent episodes.
 

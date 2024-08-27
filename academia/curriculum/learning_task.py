@@ -67,8 +67,6 @@ class LearningTask:
             start of the :func:`run` method). Defaults to ``True``.
         greedy_evaluation: Whether or not the evaluation should be performed in greedy mode.
             Defaults to ``True``.
-        exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
-            after the task is finished. Unspecified by default.
         episode_callback: A function to be called after each episode is finished. It should have the
             following signature::
 
@@ -200,7 +198,6 @@ class LearningTask:
                  evaluation_count: int = 25,
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
-                 exploration_reset_value: Optional[float] = None,
                  episode_callback: Optional[Callable] = None,
                  name: Optional[str] = None,
                  output_dir: Optional[str] = None,
@@ -232,7 +229,6 @@ class LearningTask:
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
         self.__greedy_evaluation = greedy_evaluation
-        self.__exploration_reset_value = exploration_reset_value
         self.__episode_callback = episode_callback
 
         self.stats = LearningStats(self.__evaluation_interval)
@@ -306,9 +302,6 @@ class LearningTask:
                 new_agent = self.__episode_callback(agent, self.stats, episode)
                 if new_agent is not None:
                     agent = new_agent
-
-        if self.__exploration_reset_value is not None:
-            agent.reset_exploration(self.__exploration_reset_value)
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
