@@ -39,32 +39,32 @@ def __handle_overrides(default_config: dict, overriding_config: dict) -> dict:
     return merged_data
 
 
-def __inject_parameter_values(config: dict, params: dict) -> dict:
+def __inject_variables(config: dict, variables: dict) -> dict:
     """
-    Substitute parameters with their values in the specified config.
+    Substitute variables with their values in the specified config.
 
     Args:
-        config: Config with parameter references
-        params: Parameter values
+        config: Config with variable references
+        variables: Variables values
 
     Returns:
-        A config with parameter references substituted with their values
+        A config with variable references substituted with their values
     """
     new_config = {}
     for key, value in config.items():
         if isinstance(value, dict):
-            new_config[key] = __inject_parameter_values(config[key], params)
+            new_config[key] = __inject_variables(config[key], variables)
         elif isinstance(value, str) and value.startswith('$'):
-            param_name = value[1:]  # skip the dollar sign
+            var_name = value[1:]  # skip the dollar sign
             try:
-                new_config[key] = params[param_name]
+                new_config[key] = variables[var_name]
             except KeyError as e:
                 raise NameError(
-                    f'A parameter named "{param_name}" was referenced in the configuration'
+                    f'A variable named "{var_name}" was referenced in the configuration'
                     'but no value was provided when loading the configuration'
                 ) from e
         else:
-            # no parameters
+            # no variables
             new_config[key] = value
     return new_config
 
@@ -143,20 +143,20 @@ def _load_task_from_dict(task_data: dict) -> 'LearningTask':
 
     Args:
         task_data: dictionary that contains task configuration.
-            It is assumend that all the parameters had beed substituted with values,
+            It is assumend that all the variables had beed substituted with values,
             and that any directives had been handled
 
     Returns:
         A :class:`LearningTask` instance based on the provided configuration.
     """
     env_type = task_data.pop('env_type')
-    # this check is now necessary because env_type can be passed directly using parameters
+    # this check is now necessary because env_type can be passed directly using variables
     if isinstance(env_type, str):
         env_type = SavableLoadable.get_type(env_type)
     return LearningTask(env_type=env_type, **task_data)
 
 
-def load_task_config(path: str, params: Optional[dict] = None) -> LearningTask:
+def load_task_config(path: str, variables: Optional[dict] = None) -> LearningTask:
     """
     Loads a task configuration from the specified file.
 
@@ -177,19 +177,19 @@ def load_task_config(path: str, params: Optional[dict] = None) -> LearningTask:
 
     Args:
         path: Path to a configuration file.
-        params: Parameter values for the configuration file.
+        variables: Variable values for the configuration file.
 
     Returns:
         A :class:`LearningTask` instance based on the configuration in the specified file.
     """
-    if params is None:
-        params = {}
+    if variables is None:
+        variables = {}
 
     with open(path, 'r') as file:
         task_data: dict = yaml.safe_load(file)
 
     task_data = __handle_all_loads_from_data(task_data, root_path=path)
-    task_data = __inject_parameter_values(task_data, params)
+    task_data = __inject_variables(task_data, variables)
 
     return _load_task_from_dict(task_data)
 
@@ -213,7 +213,7 @@ def __handle_default_task_config(tasks_data: dict) -> dict:
 
     default_task = tasks_data[DEFAULT_ATTR_NAME]
     if not isinstance(default_task, dict):
-        # if someone passes a regular LearningTask object or anything else through a parameter
+        # if someone passes a regular LearningTask object or anything else through a variable
         # as a default task, nothing can be done
         _logger.warning(f'Default task is of an unsupported type: {type(default_task)}. '
                         'Its attributes will not be used as defaults for other tasks.')
@@ -229,7 +229,7 @@ def __handle_default_task_config(tasks_data: dict) -> dict:
     return tasks_data_processed
 
 
-def load_curriculum_config(path: str, params: Optional[dict] = None) -> Curriculum:
+def load_curriculum_config(path: str, variables: Optional[dict] = None) -> Curriculum:
     """
     Loads a curriculum configuration from the specified file.
 
@@ -264,19 +264,19 @@ def load_curriculum_config(path: str, params: Optional[dict] = None) -> Curricul
 
     Args:
         path: Path to a configuration file.
-        params: Parameter values for the configuration file.
+        variables: Variable values for the configuration file.
 
     Returns:
         A :class:`Curriculum` instance based on the configuration in the specified file.
     """
-    if params is None:
-        params = {}
+    if variables is None:
+        variables = {}
 
     with open(path, 'r') as file:
         curriculum_data: dict = yaml.safe_load(file)
 
     curriculum_data = __handle_all_loads_from_data(curriculum_data, root_path=path)
-    curriculum_data = __inject_parameter_values(curriculum_data, params)
+    curriculum_data = __inject_variables(curriculum_data, variables)
 
     tasks_data = curriculum_data['tasks']
     tasks_data = __handle_default_task_config(tasks_data)

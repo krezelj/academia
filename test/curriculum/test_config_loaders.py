@@ -150,9 +150,9 @@ class TestLoadCurriculumConfig(unittest.TestCase):
         self.assertEqual('new_name', sut.tasks[0].name)
         self.assertEqual('./tasks', sut.tasks[0].output_dir)
 
-    def test_parameters_simple(self):
+    def test_variables_simple(self):
         """
-        Parameters should be correctly loaded
+        Variables should be correctly loaded
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # arrange
@@ -168,7 +168,7 @@ class TestLoadCurriculumConfig(unittest.TestCase):
             with open(config_file_path, 'w') as f:
                 f.write(curriculum_config)
             # act
-            sut = load_curriculum_config(config_file_path, params={
+            sut = load_curriculum_config(config_file_path, variables={
                 'out': './my_curriculum',
                 'name': 'Alfie May is a baller',
             })
@@ -176,9 +176,9 @@ class TestLoadCurriculumConfig(unittest.TestCase):
         self.assertEqual('./my_curriculum', sut.output_dir)
         self.assertEqual('Alfie May is a baller', sut.tasks[0].name)
 
-    def test_parameter_missing(self):
+    def test_variables_missing(self):
         """
-        ``NameError`` should be raised when a parameter is missing
+        ``NameError`` should be raised when a variable is missing
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # arrange
@@ -195,13 +195,13 @@ class TestLoadCurriculumConfig(unittest.TestCase):
                 f.write(curriculum_config)
             # act & assert
             with self.assertRaises(NameError):
-                load_curriculum_config(config_file_path, params={
+                load_curriculum_config(config_file_path, variables={
                     'out': './my_curriculum',
                 })
 
-    def test_parameterised_full_tasks_data(self):
+    def test_variable_full_tasks_data(self):
         """
-        A curriculum task data should be able to be loaded from a parameter
+        A curriculum task data should be able to be loaded from a variable
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # arrange
@@ -215,15 +215,15 @@ class TestLoadCurriculumConfig(unittest.TestCase):
             with open(config_file_path, 'w') as f:
                 f.write(curriculum_config)
             # act
-            sut = load_curriculum_config(config_file_path, params={
+            sut = load_curriculum_config(config_file_path, variables={
                 'my_task': {'name': 'super_task'},
             })
         # assert
         self.assertEqual('super_task', sut.tasks[0].name)
 
-    def test_parameterised_full_tasks_obj(self):
+    def test_variable_full_tasks_obj(self):
         """
-        A curriculum task should be able to be loaded from a parameter directly as an object
+        A curriculum task should be able to be loaded from a variable directly as an object
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # arrange
@@ -237,15 +237,15 @@ class TestLoadCurriculumConfig(unittest.TestCase):
             with open(config_file_path, 'w') as f:
                 f.write(curriculum_config)
             # act
-            sut = load_curriculum_config(config_file_path, params={
+            sut = load_curriculum_config(config_file_path, variables={
                 'my_task': _mock_load_task_from_dict({'name': 'super_task'}),
             })
         # assert
         self.assertEqual('super_task', sut.tasks[0].name)
 
-    def test_parameterised_order(self):
+    def test_variable_order(self):
         """
-        Curriculum's tasks order should be able to be loaded from a parameter
+        Curriculum's tasks order should be able to be loaded from a variable
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             # arrange
@@ -261,7 +261,7 @@ class TestLoadCurriculumConfig(unittest.TestCase):
             with open(config_file_path, 'w') as f:
                 f.write(curriculum_config)
             # act
-            sut = load_curriculum_config(config_file_path, params={
+            sut = load_curriculum_config(config_file_path, variables={
                 'my_order': [1, 24]
             })
         # assert
@@ -404,9 +404,9 @@ class TestLoadTaskConfig(unittest.TestCase):
         # stop condition
         self.assertEqual(2, len(sut.stats.episode_rewards))
 
-    def test_parameters_simple(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+    def test_variables_simple(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
-        Parameters should be substituted with provided values
+        Variables should be substituted with provided values
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             task_config = ("env_type: placeholder\n"
@@ -422,7 +422,7 @@ class TestLoadTaskConfig(unittest.TestCase):
             # patch to avoid error when loading the mock environment
             with mock.patch.object(SavableLoadable, 'get_type',
                                    mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-                sut = load_task_config(config_file_path, params={
+                sut = load_task_config(config_file_path, variables={
                     'max_episodes': 2,
                     'evaluation_int': 24,
                 })
@@ -434,9 +434,9 @@ class TestLoadTaskConfig(unittest.TestCase):
         # stop condition
         self.assertEqual(2, len(sut.stats.episode_rewards))
 
-    def test_parameter_missing(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+    def test_variable_missing(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
-        ``NameError`` should be raised when a parameter is missing
+        ``NameError`` should be raised when a variable is missing
         """
         with tempfile.TemporaryDirectory() as temp_dir:
             task_config = ("env_type: placeholder\n"
@@ -454,13 +454,13 @@ class TestLoadTaskConfig(unittest.TestCase):
                                    mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
                 # act & assert
                 with self.assertRaises(NameError):
-                    load_task_config(config_file_path, params={
+                    load_task_config(config_file_path, variables={
                         'max_episodes': 2,
                     })
 
-    def test_parameters_in_external_files(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+    def test_variables_in_external_files(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         """
-        Parameters should be replaced with values even if they are used in external files
+        Variables should be replaced with values even if they are used in external files
         which are loaded with the ``_load`` directive
         """
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -487,7 +487,7 @@ class TestLoadTaskConfig(unittest.TestCase):
             # patch to avoid error when loading the mock environment
             with mock.patch.object(SavableLoadable, 'get_type',
                                    mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-                sut = load_task_config(new_config_file_path, params={
+                sut = load_task_config(new_config_file_path, variables={
                     'name': 'my_name'
                 })
         # assert
