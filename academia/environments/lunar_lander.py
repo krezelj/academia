@@ -11,6 +11,11 @@ class LunarLander(GenericGymnasiumWrapper):
     This class is a wrapper for *Gymnasium*'s Lunar Lander environment, which itself is
     a variant of the classic Lunar Lander game.
 
+    Note:
+        Box2D dependency for Gymnasium is required to use this environment.
+
+        You can install it using ``pip install gymnasium[box2d]``.
+
     The goal is to land a spacecraft on the moon's surface by controlling its thrusters.
     The environment has a state size of 8 and 4 possible actions.
     The difficulty ranges from 0 to 5, with higher values indicating more challenging conditions.

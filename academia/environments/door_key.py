@@ -10,6 +10,11 @@ class DoorKey(GenericMiniGridWrapper):
     """
     This class is a wrapper for *MiniGrid*'s Door Key environments.
 
+    Note:
+        MiniGrid package is required to use this environment.
+
+        You can install it using ``pip install minigrid``.
+
     DoorKey is a grid environment where an agent has to find a key and then open a door to reach the
     destination. The higher the difficulty, the bigger the grid so it is more complicated to find the key,
     then the door and then the destination.

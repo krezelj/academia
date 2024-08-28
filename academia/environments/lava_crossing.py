@@ -10,6 +10,11 @@ class LavaCrossing(GenericMiniGridWrapper):
     """
     This class is a wrapper for *MiniGrid*'s Lava Crossing environments.
 
+    Note:
+        MiniGrid package is required to use this environment.
+
+        You can install it using ``pip install minigrid``.
+
     A grid environment where an agent has to avoid patches of lava in order to
     reach the destination. The higher the difficulty, the more lava patches are
     generated on the grid.

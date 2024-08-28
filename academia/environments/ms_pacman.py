@@ -10,6 +10,11 @@ class MsPacman(GenericAtariWrapper):
     """
     This class is a wrapper for *Gymnasium*'s Ms Pacman environment.
 
+    Note:
+        You need extra packages to use this environment.
+
+        You can install them using ``pip install "gymnasium[atari, accept-rom-license]"``
+
     MsPacman is an Atari 2600 environment where the agent has to navigate a maze, eat pellets
     and avoid ghosts. The higher the difficulty, the more ghosts to avoid.
 
