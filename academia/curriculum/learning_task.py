@@ -141,9 +141,9 @@ class LearningTask:
         >>> )
         >>> task.run(agent, verbose=4)
 
-        Using callbacks:
-
-
+    Note:
+        For details on how to use configure tasks via YAML
+        files please refer to :ref:`config-files`.
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {

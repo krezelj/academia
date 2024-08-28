@@ -30,11 +30,11 @@ class MsPacman(GenericAtariWrapper):
     +-----+-----------+----------------+
     | 5   | UPRIGHT   | Move upright   |
     +-----+-----------+----------------+
-    | 6   | UPLEFT    | Move upleft    |
+    | 7   | UPLEFT    | Move upleft    |
     +-----+-----------+----------------+
-    | 7   | DOWNRIGHT | Move downright |
+    | 6   | DOWNRIGHT | Move downright |
     +-----+-----------+----------------+
-    | 8   | DOWNLEFT  | Move downleft  |
+    | 7   | DOWNLEFT  | Move downleft  |
     +-----+-----------+----------------+
 
     Difficulty levels:

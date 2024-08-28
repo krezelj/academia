@@ -1,0 +1,10 @@
+env_type: academia.environments.DoorKey
+env_args:
+  difficulty: 0
+  append_step_count: True
+  random_state: $env_random_state
+stop_conditions:
+  min_evaluation_score: 0.9
+evaluation_interval: 100
+evaluation_count: 25
+include_init_eval: True

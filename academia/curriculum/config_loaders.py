@@ -181,6 +181,10 @@ def load_task_config(path: str, variables: Optional[dict] = None) -> LearningTas
 
     Returns:
         A :class:`LearningTask` instance based on the configuration in the specified file.
+
+    Note:
+        For details on how to use configure tasks via YAML
+        files please refer to :ref:`config-files`.
     """
     if variables is None:
         variables = {}
@@ -268,6 +272,10 @@ def load_curriculum_config(path: str, variables: Optional[dict] = None) -> Curri
 
     Returns:
         A :class:`Curriculum` instance based on the configuration in the specified file.
+
+    Note:
+        For details on how to use configure curricula via YAML
+        files please refer to :ref:`config-files`.
     """
     if variables is None:
         variables = {}

@@ -12,7 +12,7 @@ class LunarLander(GenericGymnasiumWrapper):
     a variant of the classic Lunar Lander game.
 
     The goal is to land a spacecraft on the moon's surface by controlling its thrusters.
-    The environment has a state size of 8 and 4 possible actions.
+    The environment has a state size of 7 and 4 possible actions.
     The difficulty ranges from 0 to 5, with higher values indicating more challenging conditions.
     The environment can be rendered in different modes.
 

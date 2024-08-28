@@ -100,6 +100,10 @@ class Curriculum:
         >>>     random_state=123,
         >>> )
         >>> curriculum.run(agent, verbose=4)
+
+    Note:
+        For details on how to use configure curricula via YAML
+        files please refer to :ref:`config-files`.
     """
 
     def __init__(self,
