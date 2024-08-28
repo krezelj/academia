@@ -291,7 +291,10 @@ def load_curriculum_config(path: str, variables: Optional[dict] = None) -> Curri
 
     tasks = []
     for task_id in curriculum_data['order']:
-        task_raw = tasks_data[task_id]
+        try:
+            task_raw = tasks_data[task_id]
+        except KeyError:
+            raise NameError(f'Task "{task_id}" not found in the curriculum configuration.')
         if isinstance(task_raw, dict):
             task = _load_task_from_dict(task_raw)
         else:

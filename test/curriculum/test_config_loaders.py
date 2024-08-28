@@ -70,6 +70,28 @@ class TestLoadCurriculumConfig(unittest.TestCase):
         self.assertEqual('Cesar Azpilicueta', sut.tasks[2].name)
         self.assertEqual(3, len(sut.tasks))
 
+    def test_name_error_when_task_missing(self):
+        """
+        NameError should be raised when a task is referenced in the order which has
+        not been defined in this curriculum
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # arrange
+            curriculum_config = (
+                "output_dir: ./hello_output\n"
+                "order:\n"
+                "  - 1\n"
+                "tasks:\n"  # simplified task config
+                "  28:\n"
+                "    name: Cesar Azpilicueta\n"
+            )
+            config_file_path = os.path.join(temp_dir, 'config.curriculum.yml')
+            with open(config_file_path, 'w') as f:
+                f.write(curriculum_config)
+            # act & assert
+            with self.assertRaises(NameError):
+                load_curriculum_config(config_file_path)
+
     def test_task_unused(self):
         """
         ``Curriculum`` should skip the tasks that are not listed in the ``order`` attribute.
