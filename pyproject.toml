@@ -14,7 +14,7 @@ version = "0.2.0"
 authors = [
     { name="krezelj", email="jasiekk9@gmail.com" },
     { name="guts", email="szymon.gut01@gmail.com" },
-    { name="maciejors", email="maciej.orslowski@gmail.con" },
+    { name="maciejors", email="maciej.orslowski@gmail.com" },
 ]
 description = "Easy-to-use tools for Curriculum Learning"
 readme = "README.md"
