@@ -8,6 +8,7 @@ from . import LearningTask, Curriculum
 from academia.utils import SavableLoadable
 
 
+VARIABLE_PREFIX = '$'
 DEFAULT_ATTR_NAME = '_default'
 LOAD_ATTR_NAME = '_load'
 
@@ -54,8 +55,8 @@ def __inject_variables(config: dict, variables: dict) -> dict:
     for key, value in config.items():
         if isinstance(value, dict):
             new_config[key] = __inject_variables(config[key], variables)
-        elif isinstance(value, str) and value.startswith('$'):
-            var_name = value[1:]  # skip the dollar sign
+        elif isinstance(value, str) and value.startswith(VARIABLE_PREFIX):
+            var_name = value.removeprefix(VARIABLE_PREFIX)  # skip the dollar sign
             try:
                 new_config[key] = variables[var_name]
             except KeyError as e:
