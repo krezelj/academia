@@ -373,8 +373,14 @@ class DQNAgent(EpsilonGreedyAgent):
         with tempfile.TemporaryDirectory() as tempdir:
             zf.extractall(tempdir)
             # network state
-            network_params = torch.load(os.path.join(tempdir, 'network.pth'))
-            target_network_params = torch.load(os.path.join(tempdir, 'target_network.pth'))
+            network_params = torch.load(
+                os.path.join(tempdir, 'network.pth'),
+                weights_only=True,
+            )
+            target_network_params = torch.load(
+                os.path.join(tempdir, 'target_network.pth'),
+                weights_only=True,
+            )
             # agent config
             with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 params = json.load(file)
