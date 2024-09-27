@@ -32,7 +32,6 @@ classifiers = [
 ]
 dependencies = [
     "gymnasium ~=0.29",
-    "minigrid ~=2.3",
     "kaleido ~=0.2",
     "numpy ~=1.25",
     "plotly ~=5.18",
