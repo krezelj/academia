@@ -1,0 +1,5 @@
+name: 'Hard task'
+env_args:
+  difficulty: 2
+stop_conditions:
+  max_episodes: 1000

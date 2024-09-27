@@ -1,0 +1,18 @@
+order:
+  - 0
+  - 1
+  - 2
+tasks:
+  _default:
+    env_type: academia.environments.DoorKey
+    stop_conditions:
+      min_evaluation_score: 0.9
+    evaluation_interval: 100
+    evaluation_count: 25
+    include_init_eval: True
+  0:
+    _load: ./easy.task.yml
+  1:
+    _load: ./intermediate.task.yml
+  2:
+    _load: ./hard.task.yml

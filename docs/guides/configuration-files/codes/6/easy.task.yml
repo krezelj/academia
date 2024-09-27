@@ -1,0 +1,3 @@
+name: 'Easy task'
+env_args:
+  difficulty: 0

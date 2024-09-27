@@ -1,0 +1,23 @@
+output_dir: './my_curriculum/'
+order:
+- 0
+- 1
+tasks:
+  0:
+    env_args:
+      difficulty: 0
+      render_mode: human
+      append_step_count: True
+    env_type: academia.environments.LavaCrossing
+    evaluation_interval: 100
+    stop_conditions:
+      max_episodes: 500
+  1:
+    env_args:
+      difficulty: 1
+      render_mode: human
+      append_step_count: True
+    env_type: academia.environments.LavaCrossing
+    evaluation_interval: 100
+    stop_conditions:
+      max_episodes: 1000

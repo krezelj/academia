@@ -67,16 +67,23 @@ class LearningTask:
             start of the :func:`run` method). Defaults to ``True``.
         greedy_evaluation: Whether or not the evaluation should be performed in greedy mode.
             Defaults to ``True``.
-        exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
-            after the task is finished. Unspecified by default.
-        name: Name of the task. This is unused when running a single task on its own.
-            Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-            task is run through the :class:`Curriculum` object.
-        agent_save_path: A path to a file where agent's state will be saved after the training is
-            completed or if it is interrupted. If not set, an agent's state will not be saved at any point.
-        stats_save_path: A path to a file where statistics gathered during training process will be
-            saved after the training is completed or if it is interrupted. If not set, they will
-            not be saved at any point.
+        episode_callback: A function to be called after each episode is finished. It should have the
+            following signature::
+
+                >>> def my_callback(agent: Agent,
+                >>>                 stats: LearningStats,
+                >>>                 episode_no: int,
+                >>>                 ) -> Optional[Agent]:
+                >>>     pass
+
+            The callback may or may not return an agent. If it does, the returned agent will be used for
+            subsequent episodes.
+        name: Name of the task. This is used in combination with :attr:`output_dir` to
+            generate save paths for an agent and training statistics. It will also appear in the logs
+            if the task is run through the :class:`Curriculum` object.
+        output_dir: A path to a file where agent's state and statistics gathered during training process
+            will be saved after the training is completed or if it is interrupted. If not set, an agent's
+            state will not be saved at any point.
 
     Raises:
         ValueError: If no valid stop conditions were passed.
@@ -86,15 +93,12 @@ class LearningTask:
             It is of a type ``env_type``, initialized with parameters from ``env_args``.
         stats (LearningStats): Learning statistics. For more detailed description of their contents see
             :class:`LearningStats`.
-        name (str, optional): Name of the task. This is unused when running a single task
-            on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
+        name (str, optional): Name of the task. This is used in combination with :attr:`output_dir` to
+            generate save paths for an agent and training statistics. It will also appear in the logs
             if the task is run through the :class:`Curriculum` object.
-        agent_save_path (str, optional): A path to a file where agent's state will be saved after the
-            training is completed or if it is interrupted. If set to ``None``, an agent's state will not be
-            saved at any point.
-        stats_save_path (str, optional): A path to a file where statistics gathered during training
-            process will be saved after the training is completed or if it is interrupted. If set to
-            ``None``, they will not be saved at any point.
+        output_dir (str, optional): A path to a file where agent's state and statistics gathered during
+            training process will be saved after the training is completed or if it is interrupted. If not
+            set, an agent's state will not be saved at any point.
 
     Examples:
         Initialization using class contructor:
@@ -102,19 +106,21 @@ class LearningTask:
         >>> from academia.curriculum import LearningTask
         >>> from academia.environments import LavaCrossing
         >>> task = LearningTask(
+        >>>     name='lava_crossing_hard',
         >>>     env_type=LavaCrossing,
         >>>     env_args={'difficulty': 2, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 1000},
-        >>>     stats_save_path='./my_task_stats.json',
+        >>>     output_dir='.',
         >>> )
 
         Initializaton using a config file:
 
-        >>> from academia.curriculum import LearningTask, load_task_config
+        >>> from academia.curriculum import load_task_config
         >>> task = load_task_config('./my_config.task.yml')
 
         ``./my_config.task.yml``::
 
+            name: lava_crossing_hard
             env_type: academia.environments.LavaCrossing
             env_args:
                 difficulty: 2
@@ -122,7 +128,7 @@ class LearningTask:
                 append_step_count: True
             stop_conditions:
                 max_episodes: 1000
-            stats_save_path: ./my_task_stats.json
+            output_dir: .
 
         Running a task:
 
@@ -134,6 +140,10 @@ class LearningTask:
         >>>     random_state=123,
         >>> )
         >>> task.run(agent, verbose=4)
+
+    Note:
+        For details on how to use configure tasks via YAML
+        files please refer to :ref:`config-files`.
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -188,10 +198,9 @@ class LearningTask:
                  evaluation_count: int = 25,
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
-                 exploration_reset_value: Optional[float] = None,
+                 episode_callback: Optional[Callable] = None,
                  name: Optional[str] = None,
-                 agent_save_path: Optional[str] = None,
-                 stats_save_path: Optional[str] = None,
+                 output_dir: Optional[str] = None,
                  ) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
@@ -220,13 +229,12 @@ class LearningTask:
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
         self.__greedy_evaluation = greedy_evaluation
-        self.__exploration_reset_value = exploration_reset_value
+        self.__episode_callback = episode_callback
 
         self.stats = LearningStats(self.__evaluation_interval)
 
+        self.output_dir = output_dir
         self.name = name
-        self.agent_save_path = agent_save_path
-        self.stats_save_path = stats_save_path
 
     def run(self, agent: Agent, verbose=0) -> None:
         """
@@ -241,21 +249,35 @@ class LearningTask:
         """
         try:
             self.__train_agent(agent, verbose)
-        except KeyboardInterrupt:
-            if verbose >= 1:
-                _logger.info('Training interrupted.')
-            self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(130)
         except Exception as e:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
             _logger.exception(e)
             self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(1)
+            exit_code = 130 if isinstance(e, KeyboardInterrupt) else 1
+            sys.exit(exit_code)
         else:
             if verbose >= 1:
                 _logger.info('Training finished.')
             self.__handle_task_terminated(agent, verbose)
+
+    @property
+    def __generic_save_path(self) -> str | None:
+        """
+        Generate a save path for agent/stats based on the task's :attr:`output_dir` and
+        its name. The path will be suitable for both since the necessary extensions will
+        be added by the respective ``save()`` methods.
+
+        Returns:
+            A save path suitable for both agent and stats, or ``None`` is task was
+            configured not to save anything. If name is missing, the base file name
+            will be set to 'task'.
+        """
+        if self.output_dir is None:
+            return None
+        if self.name is None:
+            os.path.join(self.output_dir, 'task')
+        return os.path.join(self.output_dir, self.name)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
         """
@@ -274,8 +296,12 @@ class LearningTask:
 
             if episode % self.__evaluation_interval == 0:
                 self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
-        if self.__exploration_reset_value is not None:
-            agent.reset_exploration(self.__exploration_reset_value)
+
+            # trigger callback now - after all stats are updated
+            if self.__episode_callback is not None:
+                new_agent = self.__episode_callback(agent, self.stats, episode)
+                if new_agent is not None:
+                    agent = new_agent
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -345,23 +371,21 @@ class LearningTask:
         Args:
             interrupted: Whether or not the task has been interrupted or has finished normally
         """
-        # preserve agent's state
-        if self.agent_save_path is not None:
-            agent_save_path = SavableLoadable.prep_save_file(self.agent_save_path, interrupted)
+        # preserve agent's state and save training statistics
+        if self.__generic_save_path is not None:
+            generic_save_path = SavableLoadable.prep_save_file(self.__generic_save_path, interrupted)
+
             if verbose >= 1:
                 _logger.info("Saving agent's state...")
-            final_save_path = agent.save(agent_save_path)
+            agent_save_path = agent.save(generic_save_path)
             if verbose >= 1:
-                _logger.info(f"Agent's state saved to {final_save_path}")
+                _logger.info(f"Agent's state saved to {agent_save_path}")
 
-        # save task statistics
-        if self.stats_save_path is not None:
-            stats_save_path = SavableLoadable.prep_save_file(self.stats_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
-            final_save_path = self.stats.save(stats_save_path)
+            stats_save_path = self.stats.save(generic_save_path)
             if verbose >= 1:
-                _logger.info(f"Task's stats saved to {final_save_path}")
+                _logger.info(f"Task's stats saved to {stats_save_path}")
 
     def __is_finished(self) -> bool:
         """
@@ -373,6 +397,7 @@ class LearningTask:
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
+        return False
 
 
 class LearningStats(SavableLoadable):

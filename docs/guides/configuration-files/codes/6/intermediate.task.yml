@@ -1,0 +1,3 @@
+name: 'Intermediate task'
+env_args:
+  difficulty: 1

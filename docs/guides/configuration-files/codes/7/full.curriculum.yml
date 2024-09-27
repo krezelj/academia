@@ -1,0 +1,13 @@
+order:
+  - 0
+  - 1
+  - 2
+tasks:
+  _default:
+    _load: ./task-defaults.yml
+  0:
+    _load: ./easy.task.yml
+  1:
+    _load: ./intermediate.task.yml
+  2:
+    _load: ./hard.task.yml
