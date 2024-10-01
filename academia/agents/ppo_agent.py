@@ -498,8 +498,14 @@ class PPOAgent(Agent):
         with tempfile.TemporaryDirectory() as tempdir:
             zf.extractall(tempdir)
             
-            actor_params = torch.load(os.path.join(tempdir, 'actor.pth'))
-            critic_params = torch.load(os.path.join(tempdir, 'critic.pth'))
+            actor_params = torch.load(
+                os.path.join(tempdir, 'actor.pth'),
+                weights_only=True,
+            )
+            critic_params = torch.load(
+                os.path.join(tempdir, 'critic.pth'),
+                weights_only=True,
+            )
             
             with open(os.path.join(tempdir, 'state.agent.json'), 'r') as file:
                 agent_state = json.load(file)

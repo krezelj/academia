@@ -10,7 +10,6 @@ from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
 from academia.curriculum import LearningTask, LearningStats, LearningStatsAggregator
 
-
 # otherwise errors are logged when testing task interruption behaviour
 logging.disable(logging.ERROR)
 
@@ -43,7 +42,18 @@ def _get_learning_stats() -> LearningStats:
     return stats
 
 
-def _mock_save(path: str):
+def _mock_save_agent(path: str):
+    if not path.endswith('agent.zip'):
+        path = f'{path}.agent.zip'
+    # create an empty file
+    with open(path, 'w'):
+        pass
+    return path
+
+
+def _mock_save_stats(path: str):
+    if not path.endswith('stats.json'):
+        path = f'{path}.stats.json'
     # create an empty file
     with open(path, 'w'):
         pass
@@ -55,7 +65,7 @@ def _mock_save(path: str):
     **{
         'get_action.return_value': 0,
         'update.return_value': None,
-        'save': _mock_save,
+        'save': _mock_save_agent,
     }
 )
 @mock.patch(
@@ -68,7 +78,7 @@ def _mock_save(path: str):
         'get_legal_mask.return_value': np.array([1]),
     }
 )
-@mock.patch.object(LearningStats, 'save', lambda self, path: _mock_save(path))
+@mock.patch.object(LearningStats, 'save', lambda self, path: _mock_save_stats(path))
 class TestLearningTask(unittest.TestCase):
 
     def test_max_episodes_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -130,89 +140,6 @@ class TestLearningTask(unittest.TestCase):
     def test_unknown_stop_condition(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         with self.assertRaises(ValueError, msg='Unknown stop condition should raise an error'):
             _get_learning_task(mock_env, stop_conditions={'unknown_stop': 123})
-
-    def test_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        """
-        ``LearningTask`` should be able to load a configuration from a YAML file
-        """
-        with tempfile.TemporaryDirectory() as temp_dir:
-            task_config = ("env_type: placeholder\n"
-                           "env_args:\n"
-                           "  difficulty: 0\n"
-                           "stop_conditions:\n"
-                           "  max_episodes: 2\n"
-                           "evaluation_interval: 24\n"
-                           "name: Reece James\n"
-                           f"agent_save_path: {temp_dir}/secret_agent_123\n"
-                           f"stats_save_path: {temp_dir}/super_stats_321")
-            config_file_path = os.path.join(temp_dir, 'config.task.yml')
-            with open(config_file_path, 'w') as f:
-                f.write(task_config)
-            # load config - it should be identical to the task defined above
-            # patch to avoid error when loading the mock environment
-            with mock.patch.object(LearningTask, 'get_type',
-                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-                sut = LearningTask.load(config_file_path)
-
-        # run the task to be able to check some of the parameters validity later
-        sut.run(mock_agent)
-
-        self.assertEqual('Reece James', sut.name)
-        self.assertEqual(24, sut.stats.evaluation_interval)
-        self.assertEqual(f'{temp_dir}/secret_agent_123', sut.agent_save_path)
-        self.assertEqual(f'{temp_dir}/super_stats_321', sut.stats_save_path)
-        # stop condition
-        self.assertEqual(2, len(sut.stats.episode_rewards))
-
-    def test_saving_loading_config(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        """
-        Task's configuration should be saved in a way that loading it will produce a task of
-        identical configuration
-        """
-        task_to_save_config = {
-            'name': 'Frank Lampard',
-            'evaluation_interval': 8,
-            'include_init_eval': False,
-            'evaluation_count': 26,
-            'greedy_evaluation': False,
-            'exploration_reset_value': 33,
-            'agent_save_path': './agent_path',
-            'stats_save_path': './stats_path',
-        }
-        task_to_save = _get_learning_task(mock_env, other_task_args=task_to_save_config)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            save_path = task_to_save.save(os.path.join(temp_dir, 'test.task.yml'))
-            self.assertTrue(os.path.exists(save_path))
-            # load config - it should be identical to the task defined above
-            # patch to avoid error when loading the mock environment
-            with mock.patch.object(LearningTask, 'get_type',
-                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-                sut = LearningTask.load(save_path)
-        sut_config = sut.to_dict()
-        sut_config.pop('env_type')
-        sut_config.pop('env_args')
-        sut_config.pop('stop_conditions')
-        self.assertEqual(task_to_save_config, sut_config)
-
-    def test_saving_loading_path(self, mock_env: ScalableEnvironment, mock_agent: Agent):
-        """
-        Saving and loading using the same path should always work, regardless whether an expected
-        extension is provided or not.
-        """
-        sut_save = _get_learning_task(mock_env)
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path_no_extension = os.path.join(temp_dir, 'config')
-            path_extension = os.path.join(temp_dir, 'config.task.yml')
-            sut_save.save(path_no_extension)
-            sut_save.save(path_extension)
-            # patch to avoid error when loading the mock environment
-            with mock.patch.object(LearningTask, 'get_type',
-                                   mock.MagicMock(return_value=lambda *args, **kwargs: mock_env)):
-                try:
-                    LearningTask.load(path_no_extension)
-                    LearningTask.load(path_extension)
-                except FileNotFoundError:
-                    self.fail('save() and load() path resolving should match')
 
     def test_include_init_eval_param(self, mock_env: ScalableEnvironment, mock_agent: Agent):
         # arrange
@@ -295,12 +222,14 @@ class TestLearningTask(unittest.TestCase):
         """
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             sut.run(mock_agent)
             # assert
-            expected_save_path = os.path.join(temp_dir, 'test')
+            expected_save_path = os.path.join(temp_dir, 'test', 'test_task.agent.zip')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_agent_state_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -309,15 +238,17 @@ class TestLearningTask(unittest.TestCase):
         """
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
-            agent_save_path = os.path.join(temp_dir, 'test')
-            sut = _get_learning_task(mock_env, other_task_args={'agent_save_path': agent_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             try:
                 sut.run(mock_agent)
             except SystemExit:
                 pass
             # assert
-            expected_save_path = os.path.join(temp_dir, 'backup_test')
+            expected_save_path = os.path.join(temp_dir, 'test', 'backup_test_task.agent.zip')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_stats_saving_normal(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -325,12 +256,14 @@ class TestLearningTask(unittest.TestCase):
         Save path should not have 'backup' prepended when saving normally
         """
         with tempfile.TemporaryDirectory() as temp_dir:
-            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             sut.run(mock_agent)
             # assert
-            expected_save_path = os.path.join(temp_dir, 'test.stats.json')
+            expected_save_path = os.path.join(temp_dir, 'test', 'test_task.stats.json')
             self.assertTrue(os.path.isfile(expected_save_path))
 
     def test_stats_saving_backup(self, mock_env: ScalableEnvironment, mock_agent: Agent):
@@ -339,16 +272,65 @@ class TestLearningTask(unittest.TestCase):
         """
         mock_agent.get_action.side_effect = Exception()
         with tempfile.TemporaryDirectory() as temp_dir:
-            stats_save_path = os.path.join(temp_dir, 'test.stats.json')
-            sut = _get_learning_task(mock_env, other_task_args={'stats_save_path': stats_save_path})
+            sut = _get_learning_task(mock_env, other_task_args={
+                'output_dir': os.path.join(temp_dir, 'test'),
+                'name': 'test_task',
+            })
             # act
             try:
                 sut.run(mock_agent)
             except SystemExit:
                 pass
             # assert
-            expected_save_path = os.path.join(temp_dir, 'backup_test.stats.json')
+            expected_save_path = os.path.join(temp_dir, 'test', 'backup_test_task.stats.json')
             self.assertTrue(os.path.isfile(expected_save_path))
+
+    def test_episode_callback_triggering(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Episode callback should trigger after every episode.
+        """
+        tracking_list = []
+
+        def episode_callback(agent, stats, episode_no):
+            tracking_list.append(episode_no)
+
+        sut = _get_learning_task(
+            mock_env,
+            stop_conditions={'max_episodes': 3},
+            other_task_args={
+                'episode_callback': episode_callback,
+            },
+        )
+        sut.run(mock_agent)
+        self.assertEqual(3, len(tracking_list),
+                         msg='Episode callback triggered an incorrect number of times')
+
+    def test_episode_callback_agent_overwrite(self, mock_env: ScalableEnvironment, mock_agent: Agent):
+        """
+        Episode callback should be able to overwrite the currently used agent
+        """
+        was_new_agent_used = False
+
+        def episode_callback(agent, stats, episode_no):
+            def update(*args, **kwargs):
+                nonlocal was_new_agent_used
+                was_new_agent_used = True
+                return 0
+
+            new_agent = mock.MagicMock()
+            new_agent.get_action.return_value = 0
+            new_agent.update = update
+            return new_agent
+
+        sut = _get_learning_task(
+            mock_env,
+            stop_conditions={'max_episodes': 2},
+            other_task_args={
+                'episode_callback': episode_callback,
+            },
+        )
+        sut.run(mock_agent)
+        self.assertTrue(was_new_agent_used, msg='New agent was not used')
 
 
 class TestLearningStats(unittest.TestCase):
@@ -416,7 +398,7 @@ class TestLearningStats(unittest.TestCase):
 
 
 class TestLearningStatsAggregator(unittest.TestCase):
-        
+
     def test_timestamp_count(self):
         # arrange
         stats_1 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 3})
@@ -460,7 +442,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
             stats_1.step_counts = np.ones(shape=200)
             stats_1.episode_rewards = np.ones(shape=200)
             setattr(stats_1, time_domain, np.random.random(size=200))
-            stats_2 = mock.MagicMock(spec=LearningStats,**{"__len__.return_value": 250})
+            stats_2 = mock.MagicMock(spec=LearningStats, **{"__len__.return_value": 250})
             stats_2.step_counts = np.ones(shape=250)
             stats_2.episode_rewards = np.ones(shape=250) * 2
             setattr(stats_2, time_domain, np.random.random(size=250))
@@ -473,7 +455,7 @@ class TestLearningStatsAggregator(unittest.TestCase):
 
             # assert
             expected_timestamps = np.union1d(
-                np.cumsum(getattr(stats_1, time_domain)), 
+                np.cumsum(getattr(stats_1, time_domain)),
                 np.cumsum(getattr(stats_2, time_domain)))
             self.assertEqual(len(expected_timestamps), len(timestamps))
             self.assertTrue(np.all(expected_timestamps == timestamps))
@@ -554,24 +536,24 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats = [
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(200),
+                    step_counts=np.ones(200),
                     episode_rewards=np.ones(200),
                     **{"__len__.return_value": 200},
-                    spec=LearningStats), 
+                    spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(250),
+                    step_counts=np.ones(250),
                     episode_rewards=np.ones(250),
                     **{"__len__.return_value": 250},
                     spec=LearningStats)
             },
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(180),
+                    step_counts=np.ones(180),
                     episode_rewards=np.ones(180) * 2,
                     **{"__len__.return_value": 180},
-                    spec=LearningStats), 
+                    spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(270),
+                    step_counts=np.ones(270),
                     episode_rewards=np.ones(270) * 3,
                     **{"__len__.return_value": 270},
                     spec=LearningStats)
@@ -599,18 +581,18 @@ class TestLearningStatsAggregator(unittest.TestCase):
         stats = [
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(200), episode_rewards=np.ones(200), spec=LearningStats), 
+                    step_counts=np.ones(200), episode_rewards=np.ones(200), spec=LearningStats),
                 '2': mock.MagicMock(
-                    step_counts = np.ones(250), episode_rewards=np.ones(250), spec=LearningStats)
+                    step_counts=np.ones(250), episode_rewards=np.ones(250), spec=LearningStats)
             },
             {
                 '1': mock.MagicMock(
-                    step_counts = np.ones(180), episode_rewards=np.ones(180) * 2, spec=LearningStats), 
+                    step_counts=np.ones(180), episode_rewards=np.ones(180) * 2, spec=LearningStats),
                 'All Too Well': mock.MagicMock(
-                    step_counts = np.ones(270), episode_rewards=np.ones(270) * 3, spec=LearningStats)
+                    step_counts=np.ones(270), episode_rewards=np.ones(270) * 3, spec=LearningStats)
             }
         ]
-        
+
         # act/assert
         with self.assertRaises(ValueError):
             LearningStatsAggregator(stats)

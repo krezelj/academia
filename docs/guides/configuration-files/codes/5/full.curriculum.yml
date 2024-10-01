@@ -1,0 +1,26 @@
+order:
+  - 0
+  - 1
+  - 2
+tasks:
+  _default:
+    env_type: academia.environments.DoorKey
+    stop_conditions:
+      min_evaluation_score: 0.9
+    evaluation_interval: 100
+    evaluation_count: 25
+    include_init_eval: True
+  0:
+    name: 'Easy task'
+    env_args:
+      difficulty: 0
+  1:
+    name: 'Intermediate task'
+    env_args:
+      difficulty: 1
+  2:
+    name: 'Hard task'
+    env_args:
+      difficulty: 2
+    stop_conditions:
+      max_episodes: 1000

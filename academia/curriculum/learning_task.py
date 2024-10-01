@@ -7,7 +7,6 @@ from functools import partial
 
 import numpy as np
 import numpy.typing as npt
-import yaml
 
 from academia.environments.base import ScalableEnvironment
 from academia.agents.base import Agent
@@ -50,7 +49,7 @@ def _max_wall_time_predicate(value: float, stats: 'LearningStats') -> bool:
     return np.sum(stats.episode_wall_times) >= value
 
 
-class LearningTask(SavableLoadable):
+class LearningTask:
     """
     Controls agent's training.
 
@@ -68,16 +67,23 @@ class LearningTask(SavableLoadable):
             start of the :func:`run` method). Defaults to ``True``.
         greedy_evaluation: Whether or not the evaluation should be performed in greedy mode.
             Defaults to ``True``.
-        exploration_reset_value: If specified, agent's exploration parameter will get updated to that value
-            after the task is finished. Unspecified by default.
-        name: Name of the task. This is unused when running a single task on its own.
-            Hovewer, if specified it will appear in the logs and (optionally) in some file names if the
-            task is run through the :class:`Curriculum` object.
-        agent_save_path: A path to a file where agent's state will be saved after the training is
-            completed or if it is interrupted. If not set, an agent's state will not be saved at any point.
-        stats_save_path: A path to a file where statistics gathered during training process will be
-            saved after the training is completed or if it is interrupted. If not set, they will
-            not be saved at any point.
+        episode_callback: A function to be called after each episode is finished. It should have the
+            following signature::
+
+                >>> def my_callback(agent: Agent,
+                >>>                 stats: LearningStats,
+                >>>                 episode_no: int,
+                >>>                 ) -> Optional[Agent]:
+                >>>     pass
+
+            The callback may or may not return an agent. If it does, the returned agent will be used for
+            subsequent episodes.
+        name: Name of the task. This is used in combination with :attr:`output_dir` to
+            generate save paths for an agent and training statistics. It will also appear in the logs
+            if the task is run through the :class:`Curriculum` object.
+        output_dir: A path to a file where agent's state and statistics gathered during training process
+            will be saved after the training is completed or if it is interrupted. If not set, an agent's
+            state will not be saved at any point.
 
     Raises:
         ValueError: If no valid stop conditions were passed.
@@ -87,15 +93,12 @@ class LearningTask(SavableLoadable):
             It is of a type ``env_type``, initialized with parameters from ``env_args``.
         stats (LearningStats): Learning statistics. For more detailed description of their contents see
             :class:`LearningStats`.
-        name (str, optional): Name of the task. This is unused when running a single task
-            on its own. Hovewer, if specified it will appear in the logs and (optionally) in some file names
+        name (str, optional): Name of the task. This is used in combination with :attr:`output_dir` to
+            generate save paths for an agent and training statistics. It will also appear in the logs
             if the task is run through the :class:`Curriculum` object.
-        agent_save_path (str, optional): A path to a file where agent's state will be saved after the
-            training is completed or if it is interrupted. If set to ``None``, an agent's state will not be
-            saved at any point.
-        stats_save_path (str, optional): A path to a file where statistics gathered during training
-            process will be saved after the training is completed or if it is interrupted. If set to
-            ``None``, they will not be saved at any point.
+        output_dir (str, optional): A path to a file where agent's state and statistics gathered during
+            training process will be saved after the training is completed or if it is interrupted. If not
+            set, an agent's state will not be saved at any point.
 
     Examples:
         Initialization using class contructor:
@@ -103,19 +106,21 @@ class LearningTask(SavableLoadable):
         >>> from academia.curriculum import LearningTask
         >>> from academia.environments import LavaCrossing
         >>> task = LearningTask(
+        >>>     name='lava_crossing_hard',
         >>>     env_type=LavaCrossing,
         >>>     env_args={'difficulty': 2, 'render_mode': 'human', 'append_step_count': True},
         >>>     stop_conditions={'max_episodes': 1000},
-        >>>     stats_save_path='./my_task_stats.json',
+        >>>     output_dir='.',
         >>> )
 
         Initializaton using a config file:
 
-        >>> from academia.curriculum import LearningTask
-        >>> task = LearningTask.load('./my_config.task.yml')
+        >>> from academia.curriculum import load_task_config
+        >>> task = load_task_config('./my_config.task.yml')
 
         ``./my_config.task.yml``::
 
+            name: lava_crossing_hard
             env_type: academia.environments.LavaCrossing
             env_args:
                 difficulty: 2
@@ -123,7 +128,7 @@ class LearningTask(SavableLoadable):
                 append_step_count: True
             stop_conditions:
                 max_episodes: 1000
-            stats_save_path: ./my_task_stats.json
+            output_dir: .
 
         Running a task:
 
@@ -135,6 +140,10 @@ class LearningTask(SavableLoadable):
         >>>     random_state=123,
         >>> )
         >>> task.run(agent, verbose=4)
+
+    Note:
+        For details on how to use configure tasks via YAML
+        files please refer to :ref:`config-files`.
     """
 
     stop_predicates: dict[str, Callable[[Any, 'LearningStats'], bool]] = {
@@ -189,10 +198,9 @@ class LearningTask(SavableLoadable):
                  evaluation_count: int = 25,
                  include_init_eval: bool = True,
                  greedy_evaluation: bool = True,
-                 exploration_reset_value: Optional[float] = None,
+                 episode_callback: Optional[Callable] = None,
                  name: Optional[str] = None,
-                 agent_save_path: Optional[str] = None,
-                 stats_save_path: Optional[str] = None,
+                 output_dir: Optional[str] = None,
                  ) -> None:
         self.__env_type = env_type
         self.__env_args = env_args
@@ -221,13 +229,12 @@ class LearningTask(SavableLoadable):
         self.__evaluation_count = evaluation_count
         self.__include_init_eval = include_init_eval
         self.__greedy_evaluation = greedy_evaluation
-        self.__exploration_reset_value = exploration_reset_value
+        self.__episode_callback = episode_callback
 
         self.stats = LearningStats(self.__evaluation_interval)
 
+        self.output_dir = output_dir
         self.name = name
-        self.agent_save_path = agent_save_path
-        self.stats_save_path = stats_save_path
 
     def run(self, agent: Agent, verbose=0) -> None:
         """
@@ -242,21 +249,35 @@ class LearningTask(SavableLoadable):
         """
         try:
             self.__train_agent(agent, verbose)
-        except KeyboardInterrupt:
-            if verbose >= 1:
-                _logger.info('Training interrupted.')
-            self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(130)
         except Exception as e:
             if verbose >= 1:
                 _logger.info('Training interrupted.')
             _logger.exception(e)
             self.__handle_task_terminated(agent, verbose, interrupted=True)
-            sys.exit(1)
+            exit_code = 130 if isinstance(e, KeyboardInterrupt) else 1
+            sys.exit(exit_code)
         else:
             if verbose >= 1:
                 _logger.info('Training finished.')
             self.__handle_task_terminated(agent, verbose)
+
+    @property
+    def __generic_save_path(self) -> str | None:
+        """
+        Generate a save path for agent/stats based on the task's :attr:`output_dir` and
+        its name. The path will be suitable for both since the necessary extensions will
+        be added by the respective ``save()`` methods.
+
+        Returns:
+            A save path suitable for both agent and stats, or ``None`` is task was
+            configured not to save anything. If name is missing, the base file name
+            will be set to 'task'.
+        """
+        if self.output_dir is None:
+            return None
+        if self.name is None:
+            os.path.join(self.output_dir, 'task')
+        return os.path.join(self.output_dir, self.name)
 
     def __train_agent(self, agent: Agent, verbose=0) -> None:
         """
@@ -275,8 +296,12 @@ class LearningTask(SavableLoadable):
 
             if episode % self.__evaluation_interval == 0:
                 self.__handle_evaluation(agent, verbose=verbose, episode_no=episode)
-        if self.__exploration_reset_value is not None:
-            agent.reset_exploration(self.__exploration_reset_value)
+
+            # trigger callback now - after all stats are updated
+            if self.__episode_callback is not None:
+                new_agent = self.__episode_callback(agent, self.stats, episode)
+                if new_agent is not None:
+                    agent = new_agent
 
     def __run_episode(self, agent: Agent, evaluation_mode: bool = False) -> tuple[float, int]:
         """
@@ -346,23 +371,21 @@ class LearningTask(SavableLoadable):
         Args:
             interrupted: Whether or not the task has been interrupted or has finished normally
         """
-        # preserve agent's state
-        if self.agent_save_path is not None:
-            agent_save_path = self._prep_save_file(self.agent_save_path, interrupted)
+        # preserve agent's state and save training statistics
+        if self.__generic_save_path is not None:
+            generic_save_path = SavableLoadable.prep_save_file(self.__generic_save_path, interrupted)
+
             if verbose >= 1:
                 _logger.info("Saving agent's state...")
-            final_save_path = agent.save(agent_save_path)
+            agent_save_path = agent.save(generic_save_path)
             if verbose >= 1:
-                _logger.info(f"Agent's state saved to {final_save_path}")
+                _logger.info(f"Agent's state saved to {agent_save_path}")
 
-        # save task statistics
-        if self.stats_save_path is not None:
-            stats_save_path = self._prep_save_file(self.stats_save_path, interrupted)
             if verbose >= 1:
                 _logger.info("Saving task's stats...")
-            final_save_path = self.stats.save(stats_save_path)
+            stats_save_path = self.stats.save(generic_save_path)
             if verbose >= 1:
-                _logger.info(f"Task's stats saved to {final_save_path}")
+                _logger.info(f"Task's stats saved to {stats_save_path}")
 
     def __is_finished(self) -> bool:
         """
@@ -374,105 +397,7 @@ class LearningTask(SavableLoadable):
         for predicate in self.__initialised_stop_predicates:
             if predicate(stats=self.stats):
                 return True
-
-    @classmethod
-    def load(cls, path: str) -> 'LearningTask':
-        """
-        Loads a task configuration from the specified file.
-
-        A configuration file should be in YAML format. Properties names should be identical to the arguments
-        of the :class:`LearningTask`'s constructor.
-
-        An example task configuration file::
-
-            # my_config.task.yml
-            env_type: academia.environments.LavaCrossing
-            env_args:
-                difficulty: 2
-                render_mode: human
-            stop_conditions:
-                max_episodes: 1000
-            stats_save_path: ./my_task_stats.json
-
-        Args:
-            path: Path to a configuration file. If the specified file does not end with '.yml' extension,
-                '.task.yml' will be appended to the specified path (for consistency with :func:`save()`
-                method).
-
-        Returns:
-            A :class:`LearningTask` instance based on the configuration in the specified file.
-        """
-        # add file extension (consistency with save() method)
-        if not path.endswith('.yml'):
-            path += '.task.yml'
-        with open(path, 'r') as file:
-            task_data: dict = yaml.safe_load(file)
-        return cls.from_dict(task_data)
-
-    def save(self, path: str) -> str:
-        """
-        Saves this task's configuration to a file.
-        Configuration is stored in a YAML format.
-
-        Args:
-            path: Path where a configuration file will be created. If the extension is not provided, it will
-                 will be automatically appended ('.task.yml') to the specified path.
-
-        Returns:
-            A final (i.e. with an extension), absolute path where the configuration was saved.
-        """
-        task_data = self.to_dict()
-        # add file extension
-        if not path.endswith('.yml'):
-            path += '.task.yml'
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w') as file:
-            yaml.dump(task_data, file)
-        return os.path.abspath(path)
-
-    @classmethod
-    def from_dict(cls, task_data: dict) -> 'LearningTask':
-        """
-        Creates a task based on a configuration stored in a dictionary.
-        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
-
-        Args:
-            task_data: dictionary that contains raw contents from the configuration file
-
-        Returns:
-            A :class:`LearningTask` instance based on the provided configuration.
-        """
-        env_type = cls.get_type(task_data['env_type'])
-        # delete env_type because it will be passed to contructor separately
-        del task_data['env_type']
-        return cls(env_type=env_type, **task_data)
-
-    def to_dict(self) -> dict:
-        """
-        Puts this :class:`LearningTask`'s configuration to a dictionary.
-        This is a helper method used by the :class:`Curriculum` class and it is not useful for the end user.
-
-        Returns:
-            A dictionary with the task configuration, ready to be written to a text file.
-        """
-        task_data = {
-            'env_type': self.get_type_name_full(self.__env_type),
-            'env_args': self.__env_args,
-            'stop_conditions': self.__stop_conditions,
-            'evaluation_interval': self.__evaluation_interval,
-            'evaluation_count': self.__evaluation_count,
-            'include_init_eval': self.__include_init_eval,
-            'greedy_evaluation': self.__greedy_evaluation,
-        }
-        if self.__exploration_reset_value is not None:
-            task_data['exploration_reset_value'] = self.__exploration_reset_value
-        if self.name is not None:
-            task_data['name'] = self.name
-        if self.agent_save_path is not None:
-            task_data['agent_save_path'] = self.agent_save_path
-        if self.stats_save_path is not None:
-            task_data['stats_save_path'] = self.stats_save_path
-        return task_data
+        return False
 
 
 class LearningStats(SavableLoadable):
